@@ -56,7 +56,14 @@ function imprimirTicketHistory(v) {
   const now = new Date(v.fecha);
   const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
   
-  const imeiText = v.imeis || "N/A";
+  let imeiText = "N/A";
+  try {
+    const imeiObj = JSON.parse(v.imeis || "{}");
+    const flatImeis = Object.values(imeiObj).flat().filter(x => x && x.trim());
+    if (flatImeis.length > 0) imeiText = flatImeis.join(", ");
+  } catch(e) {
+    if (v.imeis && v.imeis !== "{}" && v.imeis !== "N/A") imeiText = v.imeis;
+  }
   
   const emisor = {
     nombre: "CLAROCELL.COM",
@@ -267,6 +274,15 @@ function renderTable() {
     const fecha = new Date(v.fecha).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' });
     const total = new Intl.NumberFormat("es-CO").format(v.total || 0);
 
+    let cleanImeis = "N/A";
+    try {
+      const imeiObj = JSON.parse(v.imeis || "{}");
+      const flatImeis = Object.values(imeiObj).flat().filter(x => x && x.trim());
+      if (flatImeis.length > 0) cleanImeis = flatImeis.join(", ");
+    } catch(e) {
+      if (v.imeis && v.imeis !== "{}" && v.imeis !== "N/A") cleanImeis = v.imeis;
+    }
+
     return `
       <tr class="hover:bg-surface-container-low transition-colors text-[13px]">
         <td class="px-4 py-4 text-center text-on-surface-variant font-medium hidden md:table-cell">${i + 1}</td>
@@ -281,7 +297,7 @@ function renderTable() {
         <td class="px-4 py-4 font-medium text-on-surface-variant hidden md:table-cell">${v.vendedor || "—"}</td>
         <td class="px-4 py-4">
           <div class="text-xs text-on-surface font-semibold truncate max-w-[150px]">${v.productos}</div>
-          <div class="text-[10px] text-primary font-bold">IMEI: ${v.imeis || 'N/A'}</div>
+          <div class="text-[10px] text-primary font-bold">IMEI: ${cleanImeis}</div>
         </td>
         <td class="px-4 py-4 text-right font-black text-on-surface text-sm">
           $${total}
@@ -303,6 +319,15 @@ window.viewSaleDetail = (id) => {
   const modal = document.getElementById("sale-detail-modal");
   const content = document.getElementById("sale-detail-content");
   const fmt = n => new Intl.NumberFormat("es-CO").format(n || 0);
+
+  let cleanImeis = "N/A";
+  try {
+    const imeiObj = JSON.parse(v.imeis || "{}");
+    const flatImeis = Object.values(imeiObj).flat().filter(x => x && x.trim());
+    if (flatImeis.length > 0) cleanImeis = flatImeis.join(", ");
+  } catch(e) {
+    if (v.imeis && v.imeis !== "{}" && v.imeis !== "N/A") cleanImeis = v.imeis;
+  }
 
   content.innerHTML = `
     <div class="space-y-6">
@@ -341,7 +366,7 @@ window.viewSaleDetail = (id) => {
               <span>${v.productos}</span>
               <span>x${v.cantidad || 1}</span>
            </div>
-           <p class="text-[11px] text-primary font-mono font-bold uppercase tracking-tighter">IMEI/SERIE: ${v.imeis || 'N/A'}</p>
+           <p class="text-[11px] text-primary font-mono font-bold uppercase tracking-tighter">IMEI/SERIE: ${cleanImeis}</p>
         </div>
       </div>
 
