@@ -58,24 +58,34 @@ function renderTable(lista) {
     return;
   }
 
+  const getCatCls = (cat) => {
+    const c = String(cat || "").toLowerCase();
+    if (c.includes("servicio")) return "bg-blue-50 text-blue-700 border border-blue-100";
+    if (c.includes("nomina") || c.includes("nómina")) return "bg-purple-50 text-purple-700 border border-purple-100";
+    if (c.includes("compra")) return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+    if (c.includes("arriendo")) return "bg-amber-50 text-amber-700 border border-amber-100";
+    return "bg-slate-50 text-slate-700 border border-slate-100";
+  };
+
   elTable.innerHTML = lista.map(e => {
+    const catCls = getCatCls(e.categoria);
     return `
       <tr class="hover:bg-surface-container-low transition-colors">
         <td class="px-4 py-3">
-          <div class="font-mono text-xs font-bold text-on-surface">${e.id || '-'}</div>
-          <div class="text-[10px] text-on-surface-variant">${e.fecha || ''}</div>
+          <div class="font-mono text-[10px] font-medium text-on-surface-variant hidden md:block">${e.id || '-'}</div>
+          <div class="text-xs font-bold text-on-surface">${e.fecha || ''}</div>
         </td>
         <td class="px-4 py-3">
-          <span class="px-2 py-1 rounded-md text-[10px] font-bold bg-surface-container-high text-on-surface">
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${catCls}">
             ${e.categoria || 'Otro'}
           </span>
         </td>
-        <td class="px-4 py-3 text-sm text-on-surface-variant max-w-[200px] truncate" title="${e.concepto}">
+        <td class="px-4 py-3 text-sm font-semibold text-on-surface max-w-[200px] truncate" title="${e.concepto}">
           ${e.concepto || '-'}
         </td>
-        <td class="px-4 py-3 text-sm text-on-surface-variant">${e.responsable || '-'}</td>
-        <td class="px-4 py-3 text-sm font-black text-error">-$${new Intl.NumberFormat("es-CO").format(e.monto || 0)}</td>
-        <td class="px-4 py-3 text-right">
+        <td class="px-4 py-3 text-sm text-on-surface-variant hidden md:table-cell">${e.responsable || '-'}</td>
+        <td class="px-4 py-3 text-sm font-black text-red-600">-$${new Intl.NumberFormat("es-CO").format(e.monto || 0)}</td>
+        <td class="px-4 py-3 text-right hidden md:table-cell">
           <button class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-colors opacity-50 cursor-not-allowed" title="No se pueden editar egresos por seguridad">
             <span class="material-symbols-outlined text-[18px]">lock</span>
           </button>

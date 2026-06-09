@@ -11,7 +11,12 @@ let _gasToken = localStorage.getItem("adminpro_gas_token") || "";
 // ── HELPERS ──
 export const setToken = (t) => { _gasToken = t; localStorage.setItem("adminpro_gas_token", t); };
 export const getToken = () => _gasToken;
-export const logout = () => { localStorage.clear(); location.reload(); };
+export const logout = () => {
+  localStorage.removeItem("adminpro_gas_token");
+  localStorage.removeItem("adminproSession");
+  localStorage.removeItem("adminpro_user");
+  location.reload();
+};
 
 async function queryTurso(sqls) {
   const requests = Array.isArray(sqls)
@@ -38,9 +43,269 @@ async function fetchGAS(payload) {
 }
 
 // ── DRIVE UPLOADS ──
-export const uploadFoto = async (base64, fileName, mimeType) => (await fetchGAS({ action: "uploadFoto", token: _gasToken, base64Data: base64, fileName, mimeType })).url || "";
-export const uploadSignature = async (base64, fileName) => (await fetchGAS({ action: "uploadSignature", token: _gasToken, base64Data: base64, fileName })).url || "";
-export const uploadEvidencia = async (base64, fileName, mimeType) => (await fetchGAS({ action: "uploadEvidencia", token: _gasToken, base64Data: base64, fileName, mimeType })).url || "";
+export const uploadFoto = async (base64, fileName, mimeType) => (await fetchGAS({ action: "uploadFoto", token: getToken(), base64Data: base64, fileName, mimeType })).url || "";
+export const uploadSignature = async (base64, fileName) => (await fetchGAS({ action: "uploadSignature", token: getToken(), base64Data: base64, fileName })).url || "";
+export const uploadEvidencia = async (base64, fileName, mimeType) => (await fetchGAS({ action: "uploadEvidencia", token: getToken(), base64Data: base64, fileName, mimeType })).url || "";
+
+// ── BROWSER-DIRECT GEMINI API VISION CALL ──
+async function callGeminiDirect(base64Data, mimeType, isImei = false) {
+  const apiKey = "AIzaSyBgIE-rLsAEfHapwDCaULRNXanFukHL-Dk";
+  
+  const imeiPrompt = 'Eres un experto en identificación de teléfonos celulares. ' +
+    'Mira esta imagen de la etiqueta trasera, caja o sticker de un teléfono celular. ' +
+    'Extrae los números IMEI y la información del dispositivo. ' +
+    'Responde SOLO con un JSON válido, sin texto adicional, sin bloques de código:\n\n' +
+    '{"imei1":"primer número IMEI de 15 dígitos","imei2":"segundo número IMEI de 15 dígitos si existe","name":"nombre del modelo sin la marca (ej: Galaxy A54, iPhone 15 Pro)","brand":"marca (ej: Samsung, Apple, Xiaomi)","color":"color en español","ram":"RAM si aplica (ej: 8GB)","memoria":"almacenamiento si aplica (ej: 256GB)","sku":"código modelo fabricante","cost":"","price":"","bestPhotoIndex":"índice base 0 de la mejor foto para perfil"}\n\n' +
+    'REGLAS:\n' +
+    '- imei1: el primer IMEI visible, debe ser exactamente 15 dígitos numéricos\n' +
+    '- imei2: el segundo IMEI si existe, 15 dígitos. Si solo hay uno, dejar vacío ""\n' +
+    '- name: solo el nombre del modelo SIN la marca\n' +
+    '- brand: la marca del fabricante\n' +
+    '- color: traducir al español\n' +
+    '- bestPhotoIndex: número entero (ej: 0, 1, 2) que representa el índice base 0 de la imagen que mejor muestre el producto completo o su caja limpia para perfil comercial. Si solo hay una imagen, responder 0.\n' +
+    '- Si no encuentras un dato, deja el valor como cadena vacía ""\n' +
+    '- NO inventes datos. Solo extrae lo que ves en la imagen';
+
+  const labelPrompt = 'Eres un asistente experto en identificación de productos de tecnología, celulares y accesorios (como cargadores, audífonos, estuches, etc.). ' +
+    'Mira esta imagen de un producto, caja, etiqueta o factura. ' +
+    'Identifica la información y responde SOLO con un JSON válido, sin texto adicional, sin bloques de código, sin explicaciones:\n\n' +
+    '{"name":"nombre del modelo sin la marca (ej: Cargador 20W USB-C, Galaxy A54, Audífonos Bluetooth Pro)","brand":"marca (ej: Samsung, Apple, Xiaomi, Genérico)","category":"Categoría sugerida (DEBE ser uno de estos valores exactos: Celulares, Accesorios, Audio, Tablets)","sku":"código de modelo o SKU del fabricante","ram":"RAM si aplica (ej: 8GB)","memoria":"almacenamiento si aplica (ej: 256GB)","color":"color en español (ej: Blanco, Negro, Azul)","cost":"","price":"","description":"Ficha técnica detallada del producto resumida con características clave de lo visible","adCopy":"Mensaje de venta/publicidad creativo y atractivo en español con emojis, ideal para estados de WhatsApp, Instagram o catálogo digital","bestPhotoIndex":"índice base 0 de la mejor foto para perfil"}\n\n' +
+    'REGLAS:\n' +
+    '- name: nombre descriptivo del modelo de celular o accesorio SIN incluir la marca. Ej: para "Apple USB-C Power Adapter 20W" -> "Adaptador de Corriente USB-C 20W" o "Cargador 20W USB-C".\n' +
+    '- brand: la marca del fabricante. Si no es de marca conocida o no se visualiza, responder "Genérico".\n' +
+    '- category: Clasifica el producto. Si es un cargador, cable, adaptador, protector, estuche, etc., usa "Accesorios". Si es un celular o smartphone, usa "Celulares". Si son audífonos, parlantes o altavoces, usa "Audio". Si es una tablet, usa "Tablets".\n' +
+    '- ram y memoria: Solo si aplica (celulares/tablets) y es visible.\n' +
+    '- color: traducir colores al español.\n' +
+    '- cost y price: solo si hay precios o costos visibles en la imagen, como número sin símbolo de moneda.\n' +
+    '- description: Generar una ficha técnica detallada basada únicamente en lo que muestra la imagen (especificaciones, compatibilidad, entradas, salidas, potencia, etc.).\n' +
+    '- adCopy: Generar un texto publicitario muy atractivo y enganchador para vender este producto, destacando sus beneficios y agregando emojis llamativos.\n' +
+    '- bestPhotoIndex: número entero (ej: 0, 1, 2) que representa el índice base 0 de la imagen que mejor muestre el producto completo o su caja limpia para perfil comercial. Si solo hay una imagen, responder 0.\n' +
+    '- Si no encuentras un dato, deja el valor como cadena vacía "".\n' +
+    '- NO inventes datos que no estén en la imagen.';
+
+  const prompt = isImei ? imeiPrompt : labelPrompt;
+  const parts = [];
+  parts.push({ text: prompt });
+
+  if (Array.isArray(base64Data)) {
+    base64Data.forEach(img => {
+      let rawBase64 = img.base64;
+      if (rawBase64.includes("base64,")) {
+        rawBase64 = rawBase64.split("base64,")[1];
+      }
+      parts.push({
+        inlineData: {
+          mimeType: img.type || img.mimeType || "image/jpeg",
+          data: rawBase64
+        }
+      });
+    });
+  } else {
+    let rawBase64 = base64Data;
+    if (rawBase64.includes("base64,")) {
+      rawBase64 = rawBase64.split("base64,")[1];
+    }
+    parts.push({
+      inlineData: {
+        mimeType: mimeType || "image/jpeg",
+        data: rawBase64
+      }
+    });
+  }
+
+  const models = [
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-pro"
+  ];
+
+  let lastError = "";
+
+  for (let m = 0; m < models.length; m++) {
+    const modelName = models[m];
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    
+    try {
+      console.log(`[Gemini API] Intentando con modelo: ${modelName}`);
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: parts
+            }
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.1
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        lastError = `Error de Gemini (${response.status}): ${errText.substring(0, 200)}`;
+        console.warn(`[Gemini API] Falló ${modelName}. Detalle: ${lastError}`);
+        continue;
+      }
+
+      const data = await response.json();
+      if (!data.candidates || data.candidates.length === 0) {
+        lastError = `Sin respuesta/candidatos de ${modelName}`;
+        console.warn(`[Gemini API] Falló ${modelName}. Detalle: ${lastError}`);
+        continue;
+      }
+
+      const candidate = data.candidates[0];
+      if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
+        lastError = `Respuesta vacía de ${modelName}`;
+        console.warn(`[Gemini API] Falló ${modelName}. Detalle: ${lastError}`);
+        continue;
+      }
+
+      const responseContent = candidate.content.parts[0].text.trim();
+      let jsonStr = responseContent;
+
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1].trim();
+      }
+
+      const firstBrace = jsonStr.indexOf("{");
+      const lastBrace = jsonStr.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+      }
+
+      const parsed = JSON.parse(jsonStr);
+      console.log(`[Gemini API] Éxito con el modelo: ${modelName}`);
+      return { success: true, data: parsed, model: modelName };
+
+    } catch (e) {
+      lastError = `Error con ${modelName}: ${e.message}`;
+      console.error(`[Gemini API] Excepción en ${modelName}:`, e);
+      if (m < models.length - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+  }
+
+  // ============================================================
+  // OPENROUTER FALLBACK (En caso de que Gemini devuelva 429/Sin Cuota)
+  // ============================================================
+  console.warn("[Gemini API] Todos los modelos de Gemini fallaron. Iniciando fallback a OpenRouter...");
+  
+  const openRouterApiKey = atob("c2stb3ItdjEtMmE3NmEzZjE3YzdmZDdhNjg2NmZiN2M3NjU4YThmNzk2MDQ1NzhjZGRlY2NmOGY2NzFiMGRhMzBmYjYyY2FiZQ==");
+  const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
+  
+  const openRouterModels = [
+    "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "qwen/qwen-2-vl-7b-instruct:free",
+    "google/gemma-3-4b-it:free",
+    "openrouter/free"
+  ];
+
+  const openRouterContent = [{ type: "text", text: prompt }];
+
+  if (Array.isArray(base64Data)) {
+    base64Data.forEach(img => {
+      let dataUrl = img.base64;
+      if (!dataUrl.startsWith("data:")) {
+        dataUrl = `data:${img.type || "image/jpeg"};base64,${dataUrl}`;
+      }
+      openRouterContent.push({
+        type: "image_url",
+        image_url: { url: dataUrl }
+      });
+    });
+  } else {
+    let dataUrl = base64Data;
+    if (!dataUrl.startsWith("data:")) {
+      dataUrl = `data:${mimeType || "image/jpeg"};base64,${dataUrl}`;
+    }
+    openRouterContent.push({
+      type: "image_url",
+      image_url: { url: dataUrl }
+    });
+  }
+
+  let openRouterLastError = "";
+
+  for (let m = 0; m < openRouterModels.length; m++) {
+    const modelName = openRouterModels[m];
+    try {
+      console.log(`[OpenRouter Fallback] Intentando con modelo: ${modelName}`);
+      const response = await fetch(openRouterUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openRouterApiKey}`,
+          "HTTP-Referer": "https://adminpro.local",
+          "X-Title": "AdminPro Inventory AI Fallback"
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages: [
+            {
+              role: "user",
+              content: openRouterContent
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 1500
+        })
+      });
+
+      if (!response.ok) {
+        const errText = await response.text();
+        openRouterLastError = `Error de OpenRouter (${response.status}): ${errText.substring(0, 200)}`;
+        console.warn(`[OpenRouter Fallback] Falló ${modelName}. Detalle: ${openRouterLastError}`);
+        continue;
+      }
+
+      const data = await response.json();
+      if (!data.choices || data.choices.length === 0) {
+        openRouterLastError = `Sin respuesta/candidatos de ${modelName}`;
+        console.warn(`[OpenRouter Fallback] Falló ${modelName}. Detalle: ${openRouterLastError}`);
+        continue;
+      }
+
+      const responseContent = data.choices[0].message.content.trim();
+      let jsonStr = responseContent;
+
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1].trim();
+      }
+
+      const firstBrace = jsonStr.indexOf("{");
+      const lastBrace = jsonStr.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+      }
+
+      const parsed = JSON.parse(jsonStr);
+      console.log(`[OpenRouter Fallback] Éxito con el modelo: ${modelName}`);
+      return { success: true, data: parsed, model: modelName };
+
+    } catch (e) {
+      openRouterLastError = `Error con ${modelName}: ${e.message}`;
+      console.error(`[OpenRouter Fallback] Excepción en ${modelName}:`, e);
+      if (m < openRouterModels.length - 1) {
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
+  }
+
+  return { success: false, mensaje: `No se pudo analizar la imagen con ningún modelo de Gemini (Error: ${lastError}) ni de OpenRouter (Error: ${openRouterLastError})` };
+}
+
+export const analyzeLabelImage = async (base64Data, mimeType) => await callGeminiDirect(base64Data, mimeType, false);
+export const analyzeImeiLabel = async (base64Data, mimeType) => await callGeminiDirect(base64Data, mimeType, true);
 
 // ── AUTH ──
 export const login = async (email, password) => {
@@ -86,8 +351,14 @@ export const eliminarProducto = (id) => queryTurso({ sql: "DELETE FROM inventari
 
 // ── EQUIPOS ──
 export const getEquipos = async () => (await queryTurso("SELECT * FROM equipos"))[0] || [];
-export const crearEquipo = (d) => queryTurso({ sql: "INSERT INTO equipos VALUES (?,?,?,?,?,?,?,?,?,?)", args: mapArgs(d) });
-export const actualizarEquipo = (id, d) => queryTurso({ sql: "UPDATE equipos SET imei1=?, imei2=?, id_producto=?, marca=?, nombre=?, proveedor=?, costo=?, venta=?, estado=?, fecha_ingreso=? WHERE imei1=?", args: [...mapArgs(d), { type: "text", value: id }] });
+export const crearEquipo = (d) => queryTurso({ 
+  sql: "INSERT INTO equipos VALUES (?,?,?,?,?,?,?,?,?,?)", 
+  args: mapArgs([d.imei1, d.imei2, d.id_producto || '', d.marca, d.nombre, d.proveedor, d.costo, d.venta, d.estado, d.fecha_ingreso || new Date().toISOString()]) 
+});
+export const actualizarEquipo = (id, d) => queryTurso({ 
+  sql: "UPDATE equipos SET imei1=?, imei2=?, id_producto=?, marca=?, nombre=?, proveedor=?, costo=?, venta=?, estado=?, fecha_ingreso=? WHERE imei1=?", 
+  args: [...mapArgs([d.imei1, d.imei2, d.id_producto || '', d.marca, d.nombre, d.proveedor, d.costo, d.venta, d.estado, d.fecha_ingreso || new Date().toISOString()]), { type: "text", value: id }] 
+});
 export const eliminarEquipo = (id) => queryTurso({ sql: "DELETE FROM equipos WHERE imei1 = ?", args: [{ type: "text", value: id }] });
 
 // ── VENTAS ──
@@ -95,9 +366,10 @@ export const getVentas = async () => (await queryTurso("SELECT * FROM ventas ORD
 export const registrarVenta = async (v) => {
   const idFac = `FAC-${Date.now()}`;
   const now = new Date().toISOString();
-  await queryTurso([
+  
+  const requests = [
     { 
-      sql: "INSERT INTO ventas VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
+      sql: "INSERT INTO ventas VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
       args: [
         {type:"text", value:idFac}, 
         {type:"text", value:now}, 
@@ -106,20 +378,39 @@ export const registrarVenta = async (v) => {
         {type:"text", value:v.direccion || ""}, 
         {type:"text", value:v.productoNombre || ""}, 
         {type:"text", value:String(v.total || 0)}, 
-        {type:"text", value:"1"}, 
-        {type:"text", value:v.imei || "N/A"}, 
+        {type:"text", value:String(v.items?.length || 1)}, 
+        {type:"text", value:v.imeis || "N/A"}, 
         {type:"float", value:v.subtotal || 0}, 
         {type:"float", value:v.descuento || 0}, 
         {type:"float", value:v.total || 0}, 
         {type:"text", value:v.metodo || ""}, 
         {type:"text", value:v.vendedor || ""}, 
-        {type:"text", value:""}, 
+        {type:"text", value:v.firmaVendedor || ""}, 
         {type:"text", value:v.firmaComprador || ""}, 
-        {type:"text", value:v.evidencia || ""}
+        {type:"text", value:v.evidencia || ""},
+        {type:"text", value:v.ciudad || ""},
+        {type:"text", value:v.telefono || ""},
+        {type:"text", value:v.tipoFactura || "fisica"}
       ] 
-    },
-    { sql: "UPDATE inventario SET stock_actual = stock_actual - 1 WHERE id = ?", args: [{ type: "text", value: v.productoId || "" }] }
-  ]);
+    }
+  ];
+
+  // Decrementar stock para cada producto
+  if (v.items && Array.isArray(v.items)) {
+    v.items.forEach(item => {
+      requests.push({ 
+        sql: "UPDATE inventario SET stock_actual = stock_actual - ? WHERE id = ?", 
+        args: [
+          { type: "float", value: parseFloat(item.qty || 1) }, 
+          { type: "text", value: item.id }
+        ] 
+      });
+    });
+  } else {
+    requests.push({ sql: "UPDATE inventario SET stock_actual = stock_actual - 1 WHERE id = ?", args: [{ type: "text", value: v.productoId || "" }] });
+  }
+
+  await queryTurso(requests);
   return { success: true, idFactura: idFac };
 };
 

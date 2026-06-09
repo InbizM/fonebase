@@ -37,25 +37,44 @@ function renderTable(lista) {
     return;
   }
 
-  container.innerHTML = lista.map(u => `
-    <tr class="hover:bg-surface-container-low transition-colors text-sm border-b border-surface-variant/30">
-      <td class="px-4 py-4 font-bold text-on-surface">${u.nombre}</td>
-      <td class="px-4 py-4 text-on-surface-variant">${u.email}</td>
-      <td class="px-4 py-4 text-center">
-        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${u.rol === 'Administrador' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}">${u.rol}</span>
-      </td>
-      <td class="px-4 py-4 text-center">
-        <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold ${u.estado === 'Activo' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'}">
-          <span class="w-1.5 h-1.5 rounded-full ${u.estado === 'Activo' ? 'bg-green-600' : 'bg-slate-400'}"></span>
-          ${u.estado}
-        </span>
-      </td>
-      <td class="px-4 py-4 text-right space-x-1">
-        <button onclick="window.userEdit('${u.email}')" class="p-1.5 text-primary hover:bg-primary/10 rounded-lg" title="Editar"><span class="material-symbols-outlined text-[18px]">edit</span></button>
-        <button onclick="window.userDelete('${u.email}')" class="p-1.5 text-on-surface-variant hover:text-error rounded-lg" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
-      </td>
-    </tr>
-  `).join("");
+  container.innerHTML = lista.map(u => {
+    const initials = (u.nombre || "U").split(" ").filter(Boolean).map(n => n[0]).join("").substring(0, 2).toUpperCase();
+    const rolColor = u.rol === 'Administrador' ? 'bg-purple-50 text-purple-700 border border-purple-100'
+                   : u.rol === 'Vendedor' ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                   : 'bg-orange-50 text-orange-700 border border-orange-100';
+
+    return `
+      <tr class="hover:bg-surface-container-low transition-colors text-sm">
+        <td class="px-4 py-4">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary/5 text-primary flex items-center justify-center font-black text-xs shrink-0 border border-primary/10">
+              ${initials}
+            </div>
+            <div>
+              <p class="font-black text-sm text-on-surface">${u.nombre}</p>
+              <p class="text-[10px] text-on-surface-variant font-medium md:hidden">${u.email}</p>
+            </div>
+          </div>
+        </td>
+        <td class="px-4 py-4 text-on-surface-variant hidden md:table-cell">${u.email}</td>
+        <td class="px-4 py-4 text-center">
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${rolColor}">${u.rol}</span>
+        </td>
+        <td class="px-4 py-4 text-center">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${u.estado === 'Activo' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-slate-50 text-slate-500 border border-slate-100'}">
+            <span class="w-1.5 h-1.5 rounded-full ${u.estado === 'Activo' ? 'bg-green-600' : 'bg-slate-400'}"></span>
+            ${u.estado}
+          </span>
+        </td>
+        <td class="px-4 py-4 text-right">
+          <div class="flex items-center justify-end gap-1">
+            <button onclick="window.userEdit('${u.email}')" class="p-1.5 text-primary hover:bg-primary/10 rounded-full transition-colors" title="Editar"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+            <button onclick="window.userDelete('${u.email}')" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join("");
 }
 
 function setupEvents() {

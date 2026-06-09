@@ -99,33 +99,33 @@ function renderTable(lista) {
     const waUrl = `https://wa.me/57${phone}?text=${waMsg}`;
 
     return `
-      <tr class="hover:bg-surface-container-low transition-colors ${cancelado ? 'opacity-70' : ''}">
+      <tr class="hover:bg-surface-container-low transition-colors ${cancelado ? 'opacity-60' : ''}">
         <td class="px-4 py-3">
           <p class="font-bold text-sm text-on-surface">${c.cliente || '-'}</p>
           <p class="text-[11px] text-on-surface-variant">${c.telefono || ''}</p>
         </td>
-        <td class="px-4 py-3 font-mono text-xs text-on-surface-variant">${c.idFactura || '-'}</td>
-        <td class="px-4 py-3 text-sm text-on-surface-variant">${c.fecha || '-'}</td>
+        <td class="px-4 py-3 font-mono text-xs text-on-surface-variant hidden md:table-cell">${c.idFactura || '-'}</td>
+        <td class="px-4 py-3 text-sm text-on-surface-variant hidden md:table-cell">${c.fecha || '-'}</td>
         <td class="px-4 py-3">
-          <span class="px-2 py-1 border rounded-md text-[10px] font-bold uppercase tracking-wider ${tipoCls}">${c.tipo || 'Crédito'}</span>
+          <span class="px-2 py-0.5 border rounded-full text-[10px] font-bold uppercase tracking-wider ${tipoCls}">${c.tipo || 'Crédito'}</span>
         </td>
-        <td class="px-4 py-3 text-sm font-medium">${fmt(c.total)}</td>
-        <td class="px-4 py-3 text-sm font-medium text-green-600">${fmt(c.abonado)}</td>
+        <td class="px-4 py-3 text-sm font-medium hidden md:table-cell">${fmt(c.total)}</td>
+        <td class="px-4 py-3 text-sm font-medium text-green-600 hidden md:table-cell">${fmt(c.abonado)}</td>
         <td class="px-4 py-3 text-sm font-black text-error">${fmt(c.saldo)}</td>
         <td class="px-4 py-3 text-center">${diasLabel}</td>
         <td class="px-4 py-3">
-          <span class="px-2 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${statusCls}">${c.estado || 'Activo'}</span>
+          <span class="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider uppercase ${statusCls}">${c.estado || 'Activo'}</span>
         </td>
         <td class="px-4 py-3">
-          <div class="flex items-center gap-1 justify-end">
+          <div class="flex items-center gap-1.5 justify-end">
             ${phone ? `<a href="${waUrl}" target="_blank"
-                class="p-1.5 text-green-600 hover:bg-green-100 rounded-lg transition-colors" title="Enviar WhatsApp">
-                <span class="material-symbols-outlined text-[18px]">chat</span>
+                class="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center" title="Enviar WhatsApp">
+                <span class="material-symbols-outlined text-[20px]">chat</span>
               </a>` : ''}
             ${!cancelado ? `<button onclick="window.credAddAbono('${c.id}')"
-                class="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-on-primary rounded-lg text-xs font-bold transition-colors">
+                class="px-3.5 py-1.5 bg-primary text-on-primary hover:bg-primary/95 rounded-xl text-xs font-bold transition-all shadow-sm">
                 Abonar
-              </button>` : `<span class="text-xs text-green-600 font-semibold">✓ Pagado</span>`}
+              </button>` : `<span class="text-xs text-green-600 font-semibold flex items-center gap-0.5"><span class="material-symbols-outlined text-[16px]">check_circle</span> Pagado</span>`}
           </div>
         </td>
       </tr>

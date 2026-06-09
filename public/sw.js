@@ -1,4 +1,4 @@
-const CACHE_NAME = 'adminpro-v1';
+const CACHE_NAME = 'adminpro-v12';
 const BASE = '/adminpro/';
 
 // Archivos esenciales para cachear (offline shell)

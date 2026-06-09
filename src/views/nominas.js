@@ -47,33 +47,33 @@ function renderList(data) {
     const d = new Date(n.fecha).toLocaleDateString("es-CO", { year: "numeric", month: "short", day: "numeric" });
     const total = parseFloat(n.total_pagar) || 0;
     
-    let estadoClass = "bg-amber-100 text-amber-800";
-    if (n.estado === "Pagado") estadoClass = "bg-green-100 text-green-800";
-    else if (n.estado === "Anulado") estadoClass = "bg-red-100 text-red-800";
+    let estadoClass = "bg-amber-50 text-amber-700 border border-amber-100";
+    if (n.estado === "Pagado") estadoClass = "bg-green-50 text-green-700 border border-green-100";
+    else if (n.estado === "Anulado") estadoClass = "bg-red-50 text-red-700 border border-red-100";
 
     return `
-      <tr class="hover:bg-surface-container-lowest transition-colors group">
-        <td class="px-4 py-3 border-b border-surface-variant whitespace-nowrap">
-          <p class="text-sm font-medium text-on-surface">${d}</p>
-          <p class="text-[11px] text-on-surface-variant font-mono mt-0.5">${n.id_nomina}</p>
+      <tr class="hover:bg-surface-container-low transition-colors group">
+        <td class="px-4 py-3 whitespace-nowrap">
+          <p class="text-sm font-semibold text-on-surface">${d}</p>
+          <p class="text-[10px] text-on-surface-variant font-mono mt-0.5 hidden md:block">${n.id_nomina}</p>
         </td>
-        <td class="px-4 py-3 border-b border-surface-variant">
-          <p class="text-sm font-bold text-on-surface">${n.empleado}</p>
-          <p class="text-[11px] text-on-surface-variant">${n.periodo}</p>
+        <td class="px-4 py-3">
+          <p class="text-sm font-black text-on-surface">${n.empleado}</p>
+          <p class="text-xs text-on-surface-variant">${n.periodo}</p>
         </td>
-        <td class="px-4 py-3 border-b border-surface-variant text-right">
+        <td class="px-4 py-3 text-right hidden md:table-cell">
           <p class="text-sm font-medium text-on-surface">$${parseFloat(n.salario_base).toLocaleString("es-CO")}</p>
           ${parseFloat(n.bonificaciones) > 0 ? `<p class="text-[11px] text-green-600">+ $${parseFloat(n.bonificaciones).toLocaleString()}</p>` : ""}
           ${parseFloat(n.deducciones) > 0 ? `<p class="text-[11px] text-red-600">- $${parseFloat(n.deducciones).toLocaleString()}</p>` : ""}
         </td>
-        <td class="px-4 py-3 border-b border-surface-variant text-right">
+        <td class="px-4 py-3 text-right">
           <span class="text-sm font-black text-primary">$${total.toLocaleString("es-CO")}</span>
         </td>
-        <td class="px-4 py-3 border-b border-surface-variant text-center">
-          <span class="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${estadoClass}">${n.estado}</span>
+        <td class="px-4 py-3 text-center">
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${estadoClass}">${n.estado}</span>
         </td>
-        <td class="px-4 py-3 border-b border-surface-variant text-right">
-          <button class="nom-del-btn p-1.5 text-on-surface-variant hover:text-error hover:bg-error-container rounded-lg transition-colors opacity-0 group-hover:opacity-100" data-id="${n.id_nomina}" title="Eliminar">
+        <td class="px-4 py-3 text-right">
+          <button class="nom-del-btn p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors opacity-100 md:opacity-0 md:group-hover:opacity-100" data-id="${n.id_nomina}" title="Eliminar">
             <span class="material-symbols-outlined text-[18px]">delete</span>
           </button>
         </td>

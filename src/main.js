@@ -1,11 +1,33 @@
 import "./style.css";
 
-// Register Service Worker for PWA
+// Initialize theme from local storage
+if (localStorage.getItem("adminpro_theme") === "dark") {
+  document.documentElement.classList.add("dark");
+} else {
+  document.documentElement.classList.remove("dark");
+}
+
+
+// Register Service Worker for PWA with auto-update detection
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/adminpro/sw.js', { scope: '/adminpro/' }).catch(err => {
-      console.log('ServiceWorker registration failed: ', err);
-    });
+    navigator.serviceWorker.register('/adminpro/sw.js', { scope: '/adminpro/' })
+      .then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing;
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              showToast("Nueva versión disponible. Actualizando aplicación... 🔄", "success");
+              setTimeout(() => {
+                window.location.reload();
+              }, 1500);
+            }
+          });
+        });
+      })
+      .catch(err => {
+        console.log('ServiceWorker registration failed: ', err);
+      });
   });
 }
 
@@ -57,7 +79,7 @@ document.addEventListener("keydown", (e) => {
       return;
     }
     _barcodeBuffer = ""; // Resetear en un Enter normal
-  } else if (e.key.length === 1) {
+  } else if (e.key && e.key.length === 1) {
     _barcodeBuffer += e.key;
     clearTimeout(_barcodeTimer);
     // Un lector físico lee muy rápido (ej. 10-30ms por carácter). 
@@ -97,7 +119,7 @@ function clearSession() {
 // Navigation Groups
 // ============================================================
 const NAV_GROUPS = [
-  { label: "Inicio", items: [{ id: "dashboard", label: "Dashboard", icon: "dashboard", roles: ["Administrador", "Vendedor", "Técnico"] }] },
+  { label: "Inicio", items: [{ id: "dashboard", label: "Dashboard", icon: "dashboard", roles: ["Administrador", "Vendedor", "Técnico de reparación"] }] },
   {
     label: "Operaciones",
     items: [
@@ -111,27 +133,27 @@ const NAV_GROUPS = [
   {
     label: "Inventario",
     items: [
-      { id: "inventory",     label: "Catálogo General",    icon: "inventory_2",   roles: ["Administrador", "Vendedor", "Técnico"] },
+      { id: "inventory",     label: "Catálogo General",    icon: "inventory_2",   roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
       { id: "imei",          label: "Equipos IMEI",        icon: "phone_android", roles: ["Administrador", "Vendedor"] },
       { id: "reventas",      label: "Reventas",            icon: "storefront",    roles: ["Administrador", "Vendedor"] }
     ]
   },
-  { label: "Servicios", items: [{ id: "technical", label: "Servicio Técnico", icon: "build", roles: ["Administrador", "Técnico"] }] },
+  { label: "Servicios", items: [{ id: "technical", label: "Servicio Técnico", icon: "build", roles: ["Administrador", "Técnico de reparación"] }] },
   {
     label: "Organización",
     items: [
-      { id: "tasks",         label: "Lista de Tareas",     icon: "check_circle",   roles: ["Administrador", "Vendedor", "Técnico"] },
-      { id: "calendar",      label: "Actividad",           icon: "history_toggle_off", roles: ["Administrador", "Vendedor", "Técnico"] }
+      { id: "tasks",         label: "Lista de Tareas",     icon: "check_circle",   roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
+      { id: "calendar",      label: "Actividad",           icon: "history_toggle_off", roles: ["Administrador", "Vendedor", "Técnico de reparación"] }
     ]
   },
   {
     label: "Personas",
     items: [
-      { id: "clients",       label: "Clientes",            icon: "people",          roles: ["Administrador", "Vendedor", "Técnico"] },
+      { id: "clients",       label: "Clientes",            icon: "people",          roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
       { id: "users",         label: "Equipo / Usuarios",   icon: "manage_accounts", roles: ["Administrador"] }
     ]
   },
-  { label: "Otros", items: [{ id: "settings", label: "Ajustes", icon: "settings", roles: ["Administrador", "Vendedor", "Técnico"] }] }
+  { label: "Otros", items: [{ id: "settings", label: "Ajustes", icon: "settings", roles: ["Administrador", "Vendedor", "Técnico de reparación"] }] }
 ];
 
 // ============================================================
@@ -165,7 +187,7 @@ function buildNavLinks(containerId, rol, mobile = false) {
   if (mobile) {
     // Barra Inferior (Solo 5 iconos: 4 fijos + 1 de Menú)
     let primaryItems = [];
-    if (userRol === 'Técnico') {
+    if (userRol === 'Técnico de reparación') {
       primaryItems = [
         { id: "dashboard", label: "Home",     icon: "dashboard" },
         { id: "technical", label: "Reparar",  icon: "build" },
@@ -196,17 +218,76 @@ function buildNavLinks(containerId, rol, mobile = false) {
       </button>
     `;
 
-    // Llenar el Drawer Grid con TODOS los elementos
+    // Llenar el Drawer Grid con elementos agrupados por categoría (Rediseño con 3 grupos balanceados y color-code)
     const drawerGrid = document.getElementById("mobile-drawer-grid");
     if (drawerGrid) {
-      drawerGrid.innerHTML = NAV_GROUPS.flatMap(g => g.items).filter(i => !i.roles || i.roles.includes(userRol)).map(item => `
-        <button data-nav="${item.id}" class="flex flex-col items-center gap-2 p-4 bg-surface-container rounded-2xl active:scale-95 transition-all">
-          <div class="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm">
-            <span class="material-symbols-outlined text-primary text-[24px]">${item.icon}</span>
+      const MOBILE_GROUPS = [
+        {
+          label: "Operaciones y Negocio",
+          colorClass: "bg-red-50/70 text-primary",
+          iconColor: "text-primary",
+          items: [
+            { id: "dashboard", label: "Dashboard", icon: "dashboard", roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
+            { id: "pos",           label: "Ventas (POS)",        icon: "point_of_sale", roles: ["Administrador", "Vendedor"] },
+            { id: "sales-history", label: "Historial Ventas",   icon: "history",       roles: ["Administrador", "Vendedor"] },
+            { id: "credits",       label: "Créditos",            icon: "credit_score",  roles: ["Administrador", "Vendedor"] },
+            { id: "expenses",      label: "Egresos",             icon: "payments",      roles: ["Administrador"] },
+            { id: "nominas",       label: "Nóminas",             icon: "request_quote", roles: ["Administrador"] }
+          ]
+        },
+        {
+          label: "Inventario y Soporte",
+          colorClass: "bg-blue-50/70 text-blue-600",
+          iconColor: "text-blue-600",
+          items: [
+            { id: "inventory",     label: "Catálogo General",    icon: "inventory_2",   roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
+            { id: "imei",          label: "Equipos IMEI",        icon: "phone_android", roles: ["Administrador", "Vendedor"] },
+            { id: "reventas",      label: "Reventas",            icon: "storefront",    roles: ["Administrador", "Vendedor"] },
+            { id: "technical",     label: "Servicio Técnico",    icon: "build",         roles: ["Administrador", "Técnico de reparación"] }
+          ]
+        },
+        {
+          label: "Equipo y Configuración",
+          colorClass: "bg-purple-50/70 text-purple-600",
+          iconColor: "text-purple-600",
+          items: [
+            { id: "tasks",         label: "Lista de Tareas",     icon: "check_circle",   roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
+            { id: "calendar",      label: "Actividad",           icon: "history_toggle_off", roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
+            { id: "clients",       label: "Clientes",            icon: "people",          roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
+            { id: "users",         label: "Equipo / Usuarios",   icon: "manage_accounts", roles: ["Administrador"] },
+            { id: "settings",      label: "Ajustes",             icon: "settings",        roles: ["Administrador", "Vendedor", "Técnico de reparación"] }
+          ]
+        }
+      ];
+
+      drawerGrid.innerHTML = MOBILE_GROUPS.map(group => {
+        const visibleItems = group.items.filter(item => !item.roles || item.roles.includes(userRol));
+        if (visibleItems.length === 0) return "";
+        
+        return `
+          <div class="mt-4 first:mt-0">
+            <h4 class="text-[10px] font-black uppercase tracking-[0.2em] px-1 flex items-center gap-1.5 opacity-80 mb-2.5 ${group.iconColor}">
+              <span class="w-1.5 h-1.5 rounded-full shrink-0 bg-current opacity-50"></span>
+              ${group.label}
+            </h4>
+            <div class="grid grid-cols-3 gap-2.5">
+              ${visibleItems.map(item => `
+                <button data-nav="${item.id}"
+                  class="bg-white rounded-2xl p-2.5 flex flex-col items-center gap-2
+                         active:scale-95 transition-all duration-150 shadow-sm
+                         border border-slate-100 hover:border-primary/20 hover:shadow-md group">
+                  <div class="w-[50px] h-[50px] rounded-2xl ${group.colorClass} flex items-center justify-center
+                              group-active:scale-90 transition-transform">
+                    <span class="material-symbols-outlined text-[24px]"
+                          style="font-variation-settings:'FILL' 1">${item.icon}</span>
+                  </div>
+                  <span class="text-[9px] font-extrabold text-slate-700 text-center leading-tight line-clamp-1 w-full">${item.label}</span>
+                </button>
+              `).join("")}
+            </div>
           </div>
-          <span class="text-[11px] font-bold text-on-surface text-center leading-tight">${item.label}</span>
-        </button>
-      `).join("");
+        `;
+      }).join("");
     }
   } else {
     // Menú Desktop Grouped
@@ -285,6 +366,7 @@ function showApp(nombre, rol) {
 
   buildNavLinks("desktop-nav", rol, false);
   buildNavLinks("mobile-nav",  rol, true);
+  initNotifications();
   
   const userRol = rol || 'Vendedor';
   
@@ -339,7 +421,8 @@ function showApp(nombre, rol) {
   registerView("nominas", initNominas());
   registerView("settings", initSettings());
 
-  navigate("dashboard");
+  const initialHash = window.location.hash.replace('#', '');
+  navigate(initialHash || "dashboard");
 }
 
 function showStep(step) {
@@ -414,4 +497,126 @@ if (session && session.token && getToken()) {
 } else {
   clearSession();
   showLoginScreen();
+}
+
+// ============================================================
+// Notifications / Alertas Logic
+// ============================================================
+async function initNotifications() {
+  const btn = document.getElementById("header-notification-btn");
+  const dropdown = document.getElementById("notifications-dropdown");
+
+  if (!btn || !dropdown) return;
+
+  // Toggle Dropdown
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    dropdown.classList.toggle("hidden");
+    loadNotificationsList();
+  });
+
+  document.addEventListener("click", () => {
+    dropdown.classList.add("hidden");
+  });
+
+  dropdown.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
+  // Periodically check for alerts
+  checkAlerts();
+  setInterval(checkAlerts, 60000); // Check every minute
+}
+
+async function checkAlerts() {
+  try {
+    const { getDashboard } = await import("./api.js");
+    const data = await getDashboard();
+    
+    const alerts = [];
+    
+    // 1. Stock critico
+    if (data.productosBajoStock && data.productosBajoStock.length > 0) {
+      data.productosBajoStock.forEach(p => {
+        alerts.push({
+          type: "stock",
+          icon: "warning",
+          color: "text-red-600 bg-red-50 border-red-100",
+          title: `Stock bajo: ${p.nombre}`,
+          desc: `Quedan ${p.stockActual} unidades (Mínimo: ${p.stock_minimo || 1})`
+        });
+      });
+    }
+
+    // 2. Ordenes en Mora/Vencidas
+    const { getCreditos } = await import("./api.js");
+    const creditos = await getCreditos();
+    const creditosMora = creditos.filter(c => c.estado === "En Mora");
+    creditosMora.forEach(c => {
+      alerts.push({
+        type: "credit",
+        icon: "credit_card",
+        color: "text-amber-600 bg-amber-50 border-amber-100",
+        title: `Crédito vencido: ${c.cliente}`,
+        desc: `Saldo pendiente: $${new Intl.NumberFormat("es-CO").format(c.saldo)}`
+      });
+    });
+
+    // 3. Tareas pendientes para hoy o vencidas
+    const { getTareas } = await import("./api.js");
+    const tareas = await getTareas();
+    const pendingTareas = tareas.filter(t => t.estado !== "Completada" && new Date(t.fecha_vencimiento) <= new Date());
+    pendingTareas.forEach(t => {
+      alerts.push({
+        type: "task",
+        icon: "check_circle",
+        color: "text-blue-600 bg-blue-50 border-blue-100",
+        title: `Tarea pendiente: ${t.tarea}`,
+        desc: `Vence el ${new Date(t.fecha_vencimiento).toLocaleDateString()}`
+      });
+    });
+
+    window._activeAlerts = alerts;
+
+    const badge = document.getElementById("header-notification-badge");
+    const countBadge = document.getElementById("notifications-count-badge");
+
+    if (alerts.length > 0) {
+      badge?.classList.remove("hidden");
+      if (countBadge) countBadge.textContent = alerts.length;
+    } else {
+      badge?.classList.add("hidden");
+      if (countBadge) countBadge.textContent = "0";
+    }
+  } catch (err) {
+    console.error("Error loading alerts", err);
+  }
+}
+
+function loadNotificationsList() {
+  const list = document.getElementById("notifications-list");
+  if (!list) return;
+
+  const alerts = window._activeAlerts || [];
+  if (alerts.length === 0) {
+    list.innerHTML = `
+      <div class="p-6 text-center text-xs text-slate-400 italic flex flex-col items-center gap-2">
+        <span class="material-symbols-outlined text-2xl opacity-40">notifications_active</span>
+        Sin notificaciones pendientes
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = alerts.map(a => `
+    <div class="p-3.5 flex gap-3 hover:bg-slate-50 transition-colors">
+      <div class="w-8 h-8 rounded-xl flex items-center justify-center border shrink-0 ${a.color}">
+        <span class="material-symbols-outlined text-[18px]">${a.icon}</span>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-black text-slate-800 leading-snug truncate">${a.title}</p>
+        <p class="text-[10px] text-slate-500 font-medium leading-normal mt-0.5">${a.desc}</p>
+      </div>
+    </div>
+  `).join("");
 }

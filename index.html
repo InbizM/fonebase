@@ -2,7 +2,7 @@
 <html lang="es" class="">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>AdminPro — Sistema de Gestión</title>
   <meta name="description" content="Sistema profesional de inventario, ventas y créditos." />
   <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet" />
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/src/style.css" />
+  <link rel="stylesheet" href="/src/style.css?v=1.0.3" />
   <link rel="manifest" href="/adminpro/manifest.json" />
   <meta name="theme-color" content="#dc2626" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -144,11 +144,23 @@
       <!-- View title -->
       <h1 id="header-title" class="font-bold text-on-surface text-[17px] flex-1 tracking-tight">Dashboard</h1>
       <!-- Actions -->
-      <div class="flex items-center gap-2">
-        <button class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors relative">
+      <div class="flex items-center gap-2 relative">
+        <button id="header-notification-btn" class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors relative">
           <span class="material-symbols-outlined text-[20px]">notifications</span>
-          <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full"></span>
+          <span id="header-notification-badge" class="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full hidden"></span>
         </button>
+        
+        <!-- Notifications Dropdown -->
+        <div id="notifications-dropdown" class="hidden absolute right-0 top-12 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden">
+          <div class="px-4 py-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+            <span class="text-xs font-black text-slate-800 uppercase tracking-wider">Notificaciones</span>
+            <span id="notifications-count-badge" class="px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-black rounded-full">0</span>
+          </div>
+          <div id="notifications-list" class="max-h-64 overflow-y-auto divide-y divide-slate-100">
+            <div class="p-4 text-center text-xs text-slate-400 italic">Cargando alertas...</div>
+          </div>
+        </div>
+
         <button class="hidden md:flex p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors">
           <span class="material-symbols-outlined text-[20px]">account_circle</span>
         </button>
@@ -193,12 +205,12 @@
           <!-- Tabla de Nóminas -->
           <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm overflow-hidden">
             <div class="overflow-x-auto">
-              <table class="w-full text-left border-collapse text-sm min-w-[800px]">
+              <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
                 <thead class="bg-surface-container text-on-surface-variant text-[11px] uppercase tracking-wider font-bold">
                   <tr>
                     <th class="px-4 py-3 border-b border-surface-variant w-32">Fecha</th>
                     <th class="px-4 py-3 border-b border-surface-variant">Empleado / Periodo</th>
-                    <th class="px-4 py-3 border-b border-surface-variant text-right">Desglose</th>
+                    <th class="px-4 py-3 border-b border-surface-variant text-right hidden md:table-cell">Desglose</th>
                     <th class="px-4 py-3 border-b border-surface-variant text-right">Total a Pagar</th>
                     <th class="px-4 py-3 border-b border-surface-variant text-center w-28">Estado</th>
                     <th class="px-4 py-3 border-b border-surface-variant w-16"></th>
@@ -231,7 +243,7 @@
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
-            <form id="nom-form" class="p-6 space-y-4 overflow-y-auto" onsubmit="return false">
+            <form id="nom-form" class="p-6 space-y-4 overflow-y-auto overflow-x-hidden" onsubmit="return false">
               <div>
                 <label class="block text-xs font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Empleado *</label>
                 <select id="nom-empleado" required class="w-full bg-surface-container border border-surface-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
@@ -310,9 +322,9 @@
           </div>
 
           <!-- KPI Cards Row -->
-          <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div id="dash-kpi-row" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <!-- Ventas Hoy -->
-            <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div id="dash-card-ventas" class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-2">
                 <div class="w-9 h-9 rounded-lg bg-green-100 flex items-center justify-center">
                   <span class="material-symbols-outlined text-green-700 text-[18px]" style="font-variation-settings:'FILL' 1">trending_up</span>
@@ -322,7 +334,7 @@
               <p id="dash-ventas-hoy" class="text-2xl font-black text-on-surface">—</p>
             </div>
             <!-- Egresos Hoy -->
-            <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div id="dash-card-egresos" class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-2">
                 <div class="w-9 h-9 rounded-lg bg-red-100 flex items-center justify-center">
                   <span class="material-symbols-outlined text-red-700 text-[18px]" style="font-variation-settings:'FILL' 1">trending_down</span>
@@ -332,7 +344,7 @@
               <p id="dash-egresos-hoy" class="text-2xl font-black text-error">—</p>
             </div>
             <!-- Utilidad -->
-            <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div id="dash-card-utilidad" class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-2">
                 <div class="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
                   <span class="material-symbols-outlined text-blue-700 text-[18px]" style="font-variation-settings:'FILL' 1">account_balance</span>
@@ -342,7 +354,7 @@
               <p id="dash-utilidad" class="text-2xl font-black text-on-surface">—</p>
             </div>
             <!-- Stock Critico -->
-            <div class="bg-surface-container-lowest border border-error-container rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+            <div id="dash-card-stock" class="bg-surface-container-lowest border border-error-container rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
               <div class="flex items-center gap-2 mb-2">
                 <div class="w-9 h-9 rounded-lg bg-error-container/60 flex items-center justify-center">
                   <span class="material-symbols-outlined text-error text-[18px]" style="font-variation-settings:'FILL' 1">warning</span>
@@ -353,31 +365,98 @@
             </div>
           </div>
 
+          <!-- Métricas del Negocio -->
+          <div id="dash-business-metrics" class="mb-6">
+            <h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">Métricas del Negocio</h3>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              <!-- Catálogo -->
+              <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">folder_open</span>
+                  </div>
+                  <p class="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider truncate">Catálogo</p>
+                </div>
+                <p id="dash-total-productos" class="text-xl font-black text-on-surface">—</p>
+              </div>
+              <!-- Stock Total -->
+              <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-lg bg-green-50 text-green-600 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">inventory_2</span>
+                  </div>
+                  <p class="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider truncate">Stock Total</p>
+                </div>
+                <p id="dash-total-stock" class="text-xl font-black text-on-surface">—</p>
+              </div>
+              <!-- Equipos IMEI -->
+              <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">phone_android</span>
+                  </div>
+                  <p class="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider truncate">Equipos IMEI</p>
+                </div>
+                <p id="dash-total-equipos" class="text-xl font-black text-on-surface">—</p>
+              </div>
+              <!-- Clientes -->
+              <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">people</span>
+                  </div>
+                  <p class="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider truncate">Clientes</p>
+                </div>
+                <p id="dash-total-clientes" class="text-xl font-black text-on-surface">—</p>
+              </div>
+              <!-- Créditos Activos -->
+              <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">credit_score</span>
+                  </div>
+                  <p class="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider truncate">Créditos Act.</p>
+                </div>
+                <p id="dash-creditos-activos" class="text-xl font-black text-on-surface">—</p>
+              </div>
+              <!-- Reventas -->
+              <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200">
+                <div class="flex items-center gap-2 mb-2">
+                  <div class="w-8 h-8 rounded-lg bg-red-50 text-red-600 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-[16px]">storefront</span>
+                  </div>
+                  <p class="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider truncate">Reventas</p>
+                </div>
+                <p id="dash-total-reventas" class="text-xl font-black text-on-surface">—</p>
+              </div>
+            </div>
+          </div>
+
           <!-- Quick Access Module Grid -->
-          <div class="mb-6">
+          <div id="dash-quick-access" class="mb-6">
             <h3 class="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-3">Acceso Rápido</h3>
-            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-              <button data-goto="pos" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
+            <div id="dash-quick-access-grid" class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+              <button data-goto="pos" id="dash-qa-vender" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
                 <span class="material-symbols-outlined text-2xl text-on-surface-variant group-hover:text-on-primary transition-colors" style="font-variation-settings:'FILL' 1">point_of_sale</span>
                 <span class="text-[11px] font-bold text-on-surface-variant group-hover:text-on-primary transition-colors">Vender</span>
               </button>
-              <button data-goto="inventory" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
+              <button data-goto="inventory" id="dash-qa-inventario" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
                 <span class="material-symbols-outlined text-2xl text-on-surface-variant group-hover:text-on-primary transition-colors" style="font-variation-settings:'FILL' 1">inventory_2</span>
                 <span class="text-[11px] font-bold text-on-surface-variant group-hover:text-on-primary transition-colors">Inventario</span>
               </button>
-              <button data-goto="clients" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
+              <button data-goto="clients" id="dash-qa-clientes" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
                 <span class="material-symbols-outlined text-2xl text-on-surface-variant group-hover:text-on-primary transition-colors" style="font-variation-settings:'FILL' 1">people</span>
                 <span class="text-[11px] font-bold text-on-surface-variant group-hover:text-on-primary transition-colors">Clientes</span>
               </button>
-              <button data-goto="credits" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
+              <button data-goto="credits" id="dash-qa-creditos" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
                 <span class="material-symbols-outlined text-2xl text-on-surface-variant group-hover:text-on-primary transition-colors" style="font-variation-settings:'FILL' 1">credit_score</span>
                 <span class="text-[11px] font-bold text-on-surface-variant group-hover:text-on-primary transition-colors">Créditos</span>
               </button>
-              <button data-goto="technical" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
+              <button data-goto="technical" id="dash-qa-tecnico" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
                 <span class="material-symbols-outlined text-2xl text-on-surface-variant group-hover:text-on-primary transition-colors" style="font-variation-settings:'FILL' 1">build</span>
                 <span class="text-[11px] font-bold text-on-surface-variant group-hover:text-on-primary transition-colors">Técnico</span>
               </button>
-              <button data-goto="expenses" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
+              <button data-goto="expenses" id="dash-qa-egresos" class="dash-shortcut group flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border border-surface-variant rounded-xl hover:bg-primary hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-200">
                 <span class="material-symbols-outlined text-2xl text-on-surface-variant group-hover:text-on-primary transition-colors" style="font-variation-settings:'FILL' 1">payments</span>
                 <span class="text-[11px] font-bold text-on-surface-variant group-hover:text-on-primary transition-colors">Egresos</span>
               </button>
@@ -385,10 +464,10 @@
           </div>
 
           <!-- Main grid: 2 columns -->
-          <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
+          <div id="dash-ventas-section" class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-6">
 
             <!-- LEFT: Ventas Recientes (2/3) -->
-            <div class="lg:col-span-2 bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
+            <div id="dash-ultimas-ventas" class="lg:col-span-2 bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
               <div class="flex items-center justify-between px-5 py-4 border-b border-surface-variant">
                 <div class="flex items-center gap-2">
                   <span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings:'FILL' 1">receipt_long</span>
@@ -402,9 +481,9 @@
             </div>
 
             <!-- RIGHT: Top Productos + Stock Bajo (1/3) -->
-            <div class="space-y-5">
+            <div id="dash-right-col" class="space-y-5">
               <!-- Top Productos -->
-              <div class="bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
+              <div id="dash-top-productos-card" class="bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
                 <div class="px-5 py-4 border-b border-surface-variant">
                   <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-amber-600 text-[20px]" style="font-variation-settings:'FILL' 1">trophy</span>
@@ -416,7 +495,7 @@
                 </ul>
               </div>
               <!-- Stock Bajo -->
-              <div class="bg-surface-container-lowest border border-error-container rounded-xl shadow-sm overflow-hidden">
+              <div id="dash-stock-alertas-card" class="bg-surface-container-lowest border border-error-container rounded-xl shadow-sm overflow-hidden">
                 <div class="px-5 py-4 border-b border-error-container/50">
                   <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-error text-[20px]" style="font-variation-settings:'FILL' 1">inventory</span>
@@ -430,37 +509,8 @@
             </div>
           </div>
 
-          <!-- Bottom Row: Chart + Service Queue -->
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-            <!-- Bar Chart -->
-            <div class="bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
-              <div class="px-5 py-4 border-b border-surface-variant">
-                <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined text-blue-600 text-[20px]" style="font-variation-settings:'FILL' 1">bar_chart</span>
-                  <h3 class="font-bold text-on-surface text-sm">Ventas últimos 7 días</h3>
-                </div>
-              </div>
-              <div class="p-5">
-                <div class="flex h-44 items-end gap-2" id="dash-chart"></div>
-              </div>
-            </div>
-            <!-- Servicio Técnico Queue -->
-            <div class="bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
-              <div class="flex items-center justify-between px-5 py-4 border-b border-surface-variant">
-                <div class="flex items-center gap-2">
-                  <span class="material-symbols-outlined text-purple-600 text-[20px]" style="font-variation-settings:'FILL' 1">build</span>
-                  <h3 class="font-bold text-on-surface text-sm">Servicio Técnico</h3>
-                </div>
-                <button data-goto="technical" class="dash-shortcut text-xs font-semibold text-primary hover:underline">Ver todo →</button>
-              </div>
-              <ul id="dash-tec-list" class="divide-y divide-surface-variant">
-                <li class="p-5 text-sm text-on-surface-variant text-center">Cargando...</li>
-              </ul>
-            </div>
-          </div>
-
-          <!-- New Row: Tasks -->
-          <div class="grid grid-cols-1 gap-5 mb-6">
+          <!-- Tasks Row (Prioritized) -->
+          <div id="dash-tasks-section" class="grid grid-cols-1 gap-5 mb-6">
             <!-- Mini To-Do List -->
             <div class="bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
               <div class="flex items-center justify-between px-5 py-4 border-b border-surface-variant">
@@ -475,6 +525,36 @@
               </ul>
             </div>
           </div>
+
+          <!-- Bottom Row: Chart + Service Queue -->
+          <div id="dash-bottom-row" class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <!-- Bar Chart -->
+            <div id="dash-chart-card" class="bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
+              <div class="px-5 py-4 border-b border-surface-variant">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-blue-600 text-[20px]" style="font-variation-settings:'FILL' 1">bar_chart</span>
+                  <h3 class="font-bold text-on-surface text-sm">Ventas últimos 7 días</h3>
+                </div>
+              </div>
+              <div class="p-5">
+                <div class="flex h-44 items-end gap-2" id="dash-chart"></div>
+              </div>
+            </div>
+            <!-- Servicio Técnico Queue -->
+            <div id="dash-tec-queue-card" class="bg-surface-container-lowest border border-surface-variant rounded-xl shadow-sm overflow-hidden">
+              <div class="flex items-center justify-between px-5 py-4 border-b border-surface-variant">
+                <div class="flex items-center gap-2">
+                  <span class="material-symbols-outlined text-purple-600 text-[20px]" style="font-variation-settings:'FILL' 1">build</span>
+                  <h3 class="font-bold text-on-surface text-sm">Servicio Técnico</h3>
+                </div>
+                <button data-goto="technical" class="dash-shortcut text-xs font-semibold text-primary hover:underline">Ver todo →</button>
+              </div>
+              <ul id="dash-tec-list" class="divide-y divide-surface-variant">
+                <li class="p-5 text-sm text-on-surface-variant text-center">Cargando...</li>
+              </ul>
+            </div>
+          </div>
+
 
         </div>
       </section>
@@ -543,7 +623,7 @@
           <div id="inv-view-container">
             <div id="inv-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-card-gap"></div>
             <div id="inv-table-wrapper" class="hidden overflow-x-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm">
-              <table class="w-full text-left border-collapse text-sm min-w-[800px]">
+              <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
                 <thead class="bg-surface-container text-on-surface-variant text-[11px] uppercase tracking-wider font-bold">
                   <tr>
                     <th class="px-4 py-3 border-b border-surface-variant w-12">Img</th>
@@ -573,145 +653,272 @@
             style="font-variation-settings:'FILL' 1">add</span>
           <span class="text-xs font-bold tracking-wide">Nuevo Producto</span>
         </button>
+      </section>
 
-        <!-- MODAL: Crear / Editar Producto -->
-        <div id="inv-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+      <!-- MODAL: Crear / Editar Producto -->
+        <div id="inv-modal" class="hidden fixed inset-0 z-[60] items-center justify-center p-0 sm:p-4">
           <!-- Backdrop -->
           <div id="inv-modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <!-- Panel -->
-          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
-            <!-- Header -->
-            <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
-              <h3 id="inv-modal-title" class="font-bold text-lg text-on-surface">Nuevo Producto</h3>
-              <button id="inv-modal-close" class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg transition-colors">
-                <span class="material-symbols-outlined">close</span>
+          <!-- Panel: full-screen on mobile, centered card on sm+ -->
+          <div class="relative bg-white w-full sm:rounded-2xl sm:max-w-lg shadow-2xl z-10 flex flex-col
+                      h-[100dvh] sm:h-auto sm:max-h-[92vh] rounded-t-3xl sm:rounded-2xl mt-auto sm:mt-0">
+
+            <!-- Header sticky -->
+            <div class="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings:'FILL' 1">inventory_2</span>
+                </div>
+                <h3 id="inv-modal-title" class="font-black text-on-surface text-base">Nuevo Producto</h3>
+              </div>
+              <button id="inv-modal-close" class="p-2 text-on-surface-variant hover:text-on-surface hover:bg-slate-100 rounded-xl transition-colors">
+                <span class="material-symbols-outlined text-[20px]">close</span>
               </button>
             </div>
-            <!-- Form -->
-            <form id="inv-form" class="p-6 space-y-4" onsubmit="return false">
-              <!-- Photo picker -->
-              <div>
-                <label class="block text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wider">Foto del producto</label>
-                <div class="flex items-center gap-4">
+
+            <!-- Scrollable form body -->
+            <form id="inv-form" class="flex-1 overflow-y-auto overflow-x-hidden" onsubmit="return false">
+
+              <!-- ── FOTO ──────────────────────────────── -->
+              <div class="px-5 pt-5 pb-4">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Foto del producto</p>
+                <div class="flex gap-3 items-center">
                   <div id="inv-img-preview"
-                    class="w-20 h-20 rounded-xl bg-surface-container border-2 border-dashed border-surface-variant
-                           flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer"
+                    class="w-[72px] h-[72px] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200
+                           flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
                     onclick="document.getElementById('inv-img-file').click()">
-                    <span class="material-symbols-outlined text-3xl text-on-surface-variant/40">add_photo_alternate</span>
+                    <span class="material-symbols-outlined text-2xl text-slate-300">add_photo_alternate</span>
                   </div>
                   <div class="flex-1">
-                    <input id="inv-img-file" type="file" accept="image/*" capture="environment" class="hidden" />
+                    <input id="inv-img-file" type="file" accept="image/*" class="hidden" />
                     <button type="button" onclick="document.getElementById('inv-img-file').click()"
-                      class="flex items-center gap-2 px-4 py-2.5 border border-surface-variant rounded-lg text-sm
-                             font-medium text-on-surface-variant hover:bg-surface-container transition-colors w-full justify-center">
-                      <span class="material-symbols-outlined text-[18px]">camera_alt</span>
+                      class="flex items-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl
+                             text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors w-full justify-center active:scale-[0.98]">
+                      <span class="material-symbols-outlined text-[18px] text-primary">camera_alt</span>
                       Tomar foto o elegir archivo
                     </button>
-                    <p class="text-[11px] text-on-surface-variant mt-1.5 text-center">Se sube automáticamente a Google Drive</p>
+                    <p class="text-[10px] text-slate-400 mt-1.5 text-center">Se sube automáticamente a Google Drive</p>
                   </div>
                 </div>
                 <input id="inv-existing-img" type="hidden" value="" />
               </div>
 
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="col-span-2">
-                  <label class="field-label">Nombre del Producto *</label>
+              <!-- ── IA SCANNER ────────────────────────── -->
+              <div class="px-5 pb-4 space-y-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Escáner de Producto IA (Multifoto)</p>
+                
+                <!-- Grid de miniaturas -->
+                <div id="inv-label-thumbnails" class="grid grid-cols-4 gap-2 hidden">
+                  <!-- Se rellena dinámicamente -->
+                </div>
+
+                <!-- Controles del escáner -->
+                <div class="flex gap-2">
+                  <div id="inv-label-card" class="flex-1 bg-slate-50 border border-dashed border-slate-200 rounded-2xl py-3 px-4 flex items-center justify-center gap-2 hover:bg-slate-100/50 transition-all cursor-pointer relative group">
+                    <input id="inv-label-file" type="file" accept="image/*" multiple class="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                    <span class="material-symbols-outlined text-primary text-[18px]">add_a_photo</span>
+                    <span class="text-xs font-black text-slate-700">Agregar foto...</span>
+                  </div>
+                  
+                  <button type="button" id="inv-ai-process-btn" disabled
+                    class="px-4 py-3 bg-slate-100 text-slate-400 text-xs font-black rounded-2xl transition-all flex items-center gap-1.5 cursor-not-allowed">
+                    <span class="material-symbols-outlined text-[16px]">psychology</span> Procesar IA
+                  </button>
+                </div>
+                <p class="text-[9px] text-slate-400 text-center">Puedes agregar varias fotos (frente, reverso, etc.) para un análisis completo</p>
+              </div>
+
+              <div class="h-px bg-slate-100 mx-5"></div>
+
+              <!-- ── IDENTIFICACIÓN ────────────────────── -->
+              <div class="px-5 pt-4 pb-4 space-y-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Identificación</p>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 mb-1.5">Nombre del Producto *</label>
                   <input id="inv-nombre" type="text" required class="field-input" placeholder="Ej: iPhone 14 Pro" />
                 </div>
-                <div>
-                  <label class="field-label">ID / Código *</label>
-                  <div class="flex gap-2">
-                    <input id="inv-id" type="text" required class="field-input flex-1" placeholder="PROD-001" />
-                    <button type="button" id="inv-auto-id-btn" title="Generar ID Automático" class="p-2.5 bg-surface-container text-primary rounded-xl border border-surface-variant hover:bg-primary/10 transition-colors">
-                      <span class="material-symbols-outlined text-[20px]">autorenew</span>
-                    </button>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">ID / Código *</label>
+                    <div class="flex gap-2">
+                      <input id="inv-id" type="text" required class="field-input flex-1 min-w-0" placeholder="PROD-001" />
+                      <button type="button" id="inv-auto-id-btn" title="Generar ID"
+                        class="p-2.5 bg-slate-50 text-primary rounded-xl border border-slate-200 hover:bg-primary/10 transition-colors flex-shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">autorenew</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label class="field-label">SKU / Barcode</label>
-                  <div class="flex gap-2">
-                    <input id="inv-sku" type="text" class="field-input flex-1" placeholder="SKU-123" />
-                    <button id="inv-scan-sku" type="button" title="Escanear SKU" class="p-2.5 bg-surface-container text-primary rounded-xl border border-surface-variant hover:bg-primary/10 transition-colors">
-                      <span class="material-symbols-outlined text-[20px]">qr_code_scanner</span>
-                    </button>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">SKU / Barcode</label>
+                    <div class="flex gap-2">
+                      <input id="inv-sku" type="text" class="field-input flex-1 min-w-0" placeholder="SKU-123" />
+                      <button id="inv-scan-sku" type="button" title="Escanear"
+                        class="p-2.5 bg-slate-50 text-primary rounded-xl border border-slate-200 hover:bg-primary/10 transition-colors flex-shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <label class="field-label">Marca</label>
-                  <div class="flex gap-2">
-                    <input id="inv-marca" type="text" list="datalist-marcas" class="field-input flex-1" placeholder="Ej: Apple" autocomplete="off" />
-                    <datalist id="datalist-marcas"></datalist>
-                    <button type="button" id="inv-add-marca-btn" title="Agregar Marca" class="p-2.5 bg-surface-container text-primary rounded-xl border border-surface-variant hover:bg-primary/10 transition-colors shrink-0">
-                      <span class="material-symbols-outlined text-[20px]">add</span>
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label class="field-label">Categoría</label>
-                  <div class="flex gap-2">
-                    <input id="inv-categoria" type="text" list="datalist-categorias" class="field-input flex-1" placeholder="Ej: Celular" autocomplete="off" />
-                    <datalist id="datalist-categorias"></datalist>
-                    <button type="button" id="inv-add-cat-btn" title="Agregar Categoría" class="p-2.5 bg-surface-container text-primary rounded-xl border border-surface-variant hover:bg-primary/10 transition-colors shrink-0">
-                      <span class="material-symbols-outlined text-[20px]">add</span>
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <label class="field-label">Tipo</label>
-                  <select id="inv-tipo" class="field-input">
-                    <option value="Físico" selected>Físico</option>
-                    <option value="Digital">Digital</option>
-                    <option value="Servicio">Servicio</option>
-                    <option value="Reventa">Reventa</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="field-label">Ubicación</label>
-                  <input id="inv-ubicacion" type="text" class="field-input" placeholder="Estante A" />
-                </div>
-                <div>
-                  <label class="field-label">Precio Costo</label>
-                  <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container-lowest focus-within:border-primary px-3 gap-1">
-                    <span class="text-on-surface-variant font-bold shrink-0">$</span>
-                    <input id="inv-costo" type="text" class="flex-1 py-2.5 bg-transparent outline-none font-medium text-on-surface" placeholder="0" />
-                  </div>
-                </div>
-                <div>
-                  <label class="field-label">Precio Venta</label>
-                  <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container-lowest focus-within:border-primary px-3 gap-1">
-                    <span class="text-on-surface-variant font-bold shrink-0">$</span>
-                    <input id="inv-venta" type="text" class="flex-1 py-2.5 bg-transparent outline-none font-medium text-on-surface" placeholder="0" />
-                  </div>
-                </div>
-                <div>
-                  <label class="field-label">Stock Mínimo</label>
-                  <input id="inv-stock-min" type="number" min="0" class="field-input" placeholder="5" />
-                </div>
-                <div>
-                  <label class="field-label">Stock Actual</label>
-                  <input id="inv-stock-act" type="number" min="0" class="field-input" placeholder="0" />
                 </div>
               </div>
+
+              <!-- ── ESPECIFICACIONES (Solo para Celulares) ── -->
+              <div id="inv-specs-container" class="hidden px-5 pt-4 pb-4 space-y-3 bg-slate-50/50 border-t border-b border-slate-100">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Especificaciones del Teléfono</p>
+                <div class="grid grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">RAM</label>
+                    <input id="inv-ram" type="text" class="field-input bg-white" placeholder="Ej: 8GB" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Memoria</label>
+                    <input id="inv-memoria" type="text" class="field-input bg-white" placeholder="Ej: 256GB" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Color</label>
+                    <input id="inv-color" type="text" class="field-input bg-white" placeholder="Ej: Negro" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="h-px bg-slate-100 mx-5"></div>
+
+              <!-- ── CLASIFICACIÓN ──────────────────────── -->
+              <div class="px-5 pt-4 pb-4 space-y-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Clasificación</p>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Marca</label>
+                    <div class="flex gap-2">
+                      <input id="inv-marca" type="text" list="datalist-marcas" class="field-input flex-1 min-w-0" placeholder="Ej: Apple" autocomplete="off" />
+                      <datalist id="datalist-marcas"></datalist>
+                      <button type="button" id="inv-add-marca-btn" title="Nueva Marca"
+                        class="p-2.5 bg-slate-50 text-primary rounded-xl border border-slate-200 hover:bg-primary/10 transition-colors flex-shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">add</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Categoría</label>
+                    <div class="flex gap-2">
+                      <input id="inv-categoria" type="text" list="datalist-categorias" class="field-input flex-1 min-w-0" placeholder="Ej: Celular" autocomplete="off" />
+                      <datalist id="datalist-categorias"></datalist>
+                      <button type="button" id="inv-add-cat-btn" title="Nueva Categoría"
+                        class="p-2.5 bg-slate-50 text-primary rounded-xl border border-slate-200 hover:bg-primary/10 transition-colors flex-shrink-0">
+                        <span class="material-symbols-outlined text-[18px]">add</span>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Tipo</label>
+                    <select id="inv-tipo" class="field-input">
+                      <option value="Físico" selected>Físico</option>
+                      <option value="Digital">Digital</option>
+                      <option value="Servicio">Servicio</option>
+                      <option value="Reventa">Reventa</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Ubicación</label>
+                    <input id="inv-ubicacion" type="text" class="field-input" placeholder="Ej: Estante A" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="h-px bg-slate-100 mx-5"></div>
+
+              <!-- ── PRECIOS ─────────────────────────────── -->
+              <div class="px-5 pt-4 pb-4 space-y-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precios</p>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Precio Costo</label>
+                    <div class="flex items-center border border-slate-200 rounded-xl bg-slate-50 focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/20 px-3 gap-1 transition-all">
+                      <span class="text-slate-400 font-bold text-sm flex-shrink-0">$</span>
+                      <input id="inv-costo" type="text" class="flex-1 py-2.5 bg-transparent outline-none font-bold text-on-surface text-sm" placeholder="0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Precio Venta</label>
+                    <div class="flex items-center border border-slate-200 rounded-xl bg-slate-50 focus-within:border-primary focus-within:bg-white focus-within:ring-2 focus-within:ring-primary/20 px-3 gap-1 transition-all">
+                      <span class="text-primary font-bold text-sm flex-shrink-0">$</span>
+                      <input id="inv-venta" type="text" class="flex-1 py-2.5 bg-transparent outline-none font-bold text-primary text-sm" placeholder="0" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="h-px bg-slate-100 mx-5"></div>
+
+              <!-- ── STOCK ──────────────────────────────── -->
+              <div class="px-5 pt-4 pb-6 space-y-3">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Stock</p>
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Stock Mínimo</label>
+                    <input id="inv-stock-min" type="number" min="0" class="field-input" placeholder="5" />
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1.5">Stock Actual</label>
+                    <input id="inv-stock-act" type="number" min="0" class="field-input" placeholder="0" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="h-px bg-slate-100 mx-5"></div>
+
+              <!-- ── MARKETING IA ──────────────────────── -->
+              <div id="inv-ai-copy-section" class="hidden px-5 pt-4 pb-6 space-y-4">
+                <div class="flex items-center gap-2 text-primary">
+                  <span class="material-symbols-outlined text-[18px]">auto_awesome</span>
+                  <p class="text-[10px] font-black uppercase tracking-widest">Marketing IA (Catálogo & Redes)</p>
+                </div>
+                
+                <!-- Ficha Técnica -->
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2">
+                  <div class="flex justify-between items-center">
+                    <span class="text-xs font-black text-slate-700">Ficha Técnica</span>
+                    <button type="button" id="inv-btn-copy-desc" class="flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-dark transition-colors">
+                      <span class="material-symbols-outlined text-[14px]">content_copy</span> Copiar
+                    </button>
+                  </div>
+                  <textarea id="inv-ai-desc" readonly class="w-full h-20 text-xs bg-white border border-slate-200 rounded-xl p-2.5 outline-none resize-none font-medium text-slate-600 no-scrollbar"></textarea>
+                </div>
+
+                <!-- Copia Publicitaria -->
+                <div class="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-2">
+                  <div class="flex justify-between items-center">
+                    <span class="text-xs font-black text-slate-700">Copia Publicitaria (Redes/Historias)</span>
+                    <button type="button" id="inv-btn-copy-ad" class="flex items-center gap-1 text-[11px] font-bold text-primary hover:text-primary-dark transition-colors">
+                      <span class="material-symbols-outlined text-[14px]">content_copy</span> Copiar
+                    </button>
+                  </div>
+                  <textarea id="inv-ai-ad" readonly class="w-full h-24 text-xs bg-white border border-slate-200 rounded-xl p-2.5 outline-none resize-none font-medium text-slate-600 no-scrollbar"></textarea>
+                </div>
+              </div>
+
             </form>
-            <!-- Footer -->
-            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-variant bg-surface-container-low rounded-b-2xl">
+
+            <!-- Footer sticky -->
+            <div class="flex-shrink-0 flex items-center justify-end gap-3 px-5 py-4 border-t border-slate-100 bg-white rounded-b-3xl sm:rounded-b-2xl">
               <button onclick="document.getElementById('inv-modal-close').click()"
-                class="px-5 py-2.5 text-sm font-semibold text-on-surface-variant border border-surface-variant rounded-lg hover:bg-surface-container transition-colors">
+                class="px-5 py-2.5 text-sm font-semibold text-slate-500 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors">
                 Cancelar
               </button>
               <button id="inv-save-btn"
-                class="flex items-center gap-1.5 px-5 py-2.5 bg-primary text-on-primary text-sm font-bold rounded-lg hover:bg-primary-container transition-colors shadow-sm">
+                class="flex items-center gap-2 px-6 py-2.5 bg-primary text-white text-sm font-black rounded-xl hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25 active:scale-[0.98]">
                 <span class="material-symbols-outlined text-[18px]">save</span> Guardar
               </button>
             </div>
           </div>
         </div>
-      </section>
 
       <!-- MODAL: Detalle de Producto (solo lectura) -->
       <div id="inv-detail-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
         <div id="inv-detail-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto z-10">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden z-10">
           <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
             <h3 class="font-bold text-lg text-on-surface">Detalle del Producto</h3>
             <button id="inv-detail-close" class="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg">
@@ -777,7 +984,7 @@
       </div>
 
       <!-- MINI-MODAL: Agregar Marca / Categoría -->
-      <div id="inv-quick-input-modal" class="hidden fixed inset-0 z-[60] items-center justify-center p-4">
+      <div id="inv-quick-input-modal" class="hidden fixed inset-0 z-[70] items-center justify-center p-4">
         <div id="inv-qi-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
         <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-xs z-10 p-6">
           <h4 id="inv-qi-title" class="font-bold text-base text-on-surface mb-4">Nueva Marca</h4>
@@ -797,12 +1004,43 @@
 
       <!-- Placeholder views for other sections -->
       <!-- POS VIEW -->
-      <section data-view="pos" class="hidden min-h-[calc(100vh-3.5rem)] pb-20 md:pb-0 overflow-y-auto overflow-x-hidden">
+      <style>
+        /* POS Mobile Bottom Sheet */
+        #pos-cart-sheet {
+          transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+          transform: translateY(100%);
+          will-change: transform;
+        }
+        #pos-cart-sheet.open {
+          transform: translateY(0);
+        }
+        #pos-sheet-overlay {
+          transition: opacity 0.3s ease;
+          opacity: 0;
+          pointer-events: none;
+        }
+        #pos-sheet-overlay.open {
+          opacity: 1;
+          pointer-events: auto;
+        }
+        @keyframes cartBounce {
+          0%, 100% { transform: scale(1); }
+          40% { transform: scale(1.25); }
+          70% { transform: scale(0.9); }
+        }
+        .cart-badge-bounce { animation: cartBounce 0.4s ease; }
+      </style>
 
+      <section data-view="pos" class="hidden min-h-[calc(100vh-3.5rem)] overflow-x-hidden">
 
         <div class="flex flex-col lg:flex-row h-full">
-          <!-- Left: Products & Scanner -->
-          <div class="flex-1 flex flex-col p-container-padding lg:h-[calc(100vh-3.5rem)] overflow-y-auto hide-scrollbar bg-background">
+
+          <!-- ══════════════════════════════════════════ -->
+          <!--  Left panel: Products (full width mobile) -->
+          <!-- ══════════════════════════════════════════ -->
+          <div class="flex-1 flex flex-col p-container-padding lg:h-[calc(100vh-3.5rem)] overflow-y-auto hide-scrollbar bg-background pb-32 lg:pb-6">
+
+            <!-- Header -->
             <div class="flex items-center justify-between mb-4">
               <div>
                 <h2 class="text-2xl font-bold text-on-surface">Punto de Venta</h2>
@@ -812,13 +1050,13 @@
                 </div>
               </div>
             </div>
-            
-            <!-- Scanner / Search Bar -->
+
+            <!-- Search + Scan bar -->
             <div class="flex gap-2 mb-4">
               <div class="relative flex-1">
                 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary text-[20px]">barcode_scanner</span>
-                <input id="pos-search" type="text" placeholder="Busca producto por nombre, SKU..." autofocus
-                  class="w-full bg-surface-container-low border border-primary/30 rounded-xl pl-10 pr-4 py-3 
+                <input id="pos-search" type="text" placeholder="Busca producto por nombre, SKU..."
+                  class="w-full bg-surface-container-low border border-primary/30 rounded-xl pl-10 pr-4 py-3
                          text-on-surface shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium" />
               </div>
               <button id="pos-scan-btn"
@@ -844,13 +1082,16 @@
             </div>
 
             <!-- Product Grid -->
-            <div id="pos-products-grid" class="flex-none grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pr-2 pb-6">
+            <div id="pos-products-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 pb-6">
               <!-- Products injected via JS -->
             </div>
           </div>
 
-          <!-- Right: Cart / Ticket -->
-          <div class="w-full lg:w-[380px] xl:w-[420px] bg-surface-container-lowest border-t lg:border-t-0 lg:border-l border-surface-variant flex flex-col shadow-2xl z-20 lg:h-[calc(100vh-3.5rem)] sticky bottom-0 lg:static">
+          <!-- ══════════════════════════════════════════ -->
+          <!--  Right panel (desktop sidebar)            -->
+          <!-- ══════════════════════════════════════════ -->
+          <div class="hidden lg:flex w-[380px] xl:w-[420px] bg-surface-container-lowest border-l border-surface-variant flex-col shadow-2xl z-20 lg:h-[calc(100vh-3.5rem)] sticky top-14">
+
             <!-- Customer selector -->
             <div class="p-4 border-b border-surface-variant bg-surface-container-low flex items-end gap-2">
               <div class="flex-1">
@@ -858,10 +1099,12 @@
                   <span class="material-symbols-outlined text-[16px]">person</span>
                   <span class="text-[11px] font-bold uppercase tracking-wider">Cliente</span>
                 </div>
-                <input id="pos-cliente-nombre" type="text" readonly placeholder="Consumidor Final" class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface font-medium cursor-not-allowed shadow-sm" />
+                <input id="pos-cliente-nombre" type="text" readonly placeholder="Consumidor Final"
+                  class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface font-medium cursor-not-allowed shadow-sm" />
                 <input id="pos-cliente-doc" type="hidden" />
               </div>
-              <button id="pos-select-client-btn" class="px-4 py-2 bg-surface-container text-primary text-sm font-bold rounded-lg border border-surface-variant hover:bg-primary/10 transition-colors shadow-sm whitespace-nowrap flex items-center gap-1">
+              <button id="pos-select-client-btn"
+                class="px-4 py-2 bg-surface-container text-primary text-sm font-bold rounded-lg border border-surface-variant hover:bg-primary/10 transition-colors shadow-sm whitespace-nowrap flex items-center gap-1">
                 <span class="material-symbols-outlined text-[18px]">search</span>
                 Buscar
               </button>
@@ -886,7 +1129,8 @@
                   <span>Descuento</span>
                   <div class="flex items-center gap-1">
                     <span class="text-error font-medium">-</span>
-                    <input id="pos-descuento" type="number" min="0" value="0" class="w-20 text-right bg-surface-container border border-surface-variant rounded px-2 py-0.5 text-sm focus:outline-none focus:border-primary" />
+                    <input id="pos-descuento" type="number" min="0" value="0"
+                      class="w-20 text-right bg-surface-container border border-surface-variant rounded px-2 py-0.5 text-sm focus:outline-none focus:border-primary" />
                   </div>
                 </div>
                 <div class="flex justify-between text-xl font-black text-on-surface pt-2 border-t border-surface-variant/50">
@@ -894,15 +1138,13 @@
                   <span id="pos-total" class="text-primary">$0</span>
                 </div>
               </div>
-
-              <!-- Payment Method -->
               <select id="pos-metodo-pago" class="w-full bg-surface-container border border-surface-variant rounded-lg px-3 py-3 text-sm font-medium text-on-surface focus:outline-none focus:border-primary mb-3">
                 <option value="Efectivo">💵 Efectivo</option>
                 <option value="Transferencia">📱 Transferencia (Nequi/Bancolombia)</option>
                 <option value="Tarjeta">💳 Tarjeta (Datáfono)</option>
                 <option value="Crédito">🤝 Crédito / Fiado</option>
               </select>
-              <div class="grid grid-cols-3 gap-2 mt-2">
+              <div class="grid grid-cols-3 gap-2">
                 <button id="pos-pay-btn-venta" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex flex-col items-center justify-center gap-1 transition-transform active:scale-[0.98] shadow-md">
                   <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">payments</span>
                   <span class="text-xs">Venta</span>
@@ -916,8 +1158,148 @@
                   <span class="text-xs">Separe</span>
                 </button>
               </div>
+            </div>
           </div>
         </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!--  MOBILE: Floating Cart Button (visible only on < lg)      -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <button id="pos-cart-fab"
+          class="lg:hidden fixed bottom-20 right-4 z-40 bg-primary text-white rounded-2xl px-5 py-3.5
+                 flex items-center gap-3 shadow-[0_8px_24px_rgba(189,0,48,0.4)] active:scale-95 transition-all">
+          <span class="material-symbols-outlined text-[22px]" style="font-variation-settings:'FILL' 1">shopping_cart</span>
+          <div class="flex flex-col items-start leading-none">
+            <span id="pos-fab-label" class="text-xs font-medium opacity-80">Ver carrito</span>
+            <span id="pos-fab-total" class="text-base font-black">$0</span>
+          </div>
+          <span id="pos-fab-badge"
+            class="hidden absolute -top-2 -right-2 bg-white text-primary text-[11px] font-black
+                   w-6 h-6 rounded-full flex items-center justify-center shadow-md border-2 border-primary">
+            0
+          </span>
+        </button>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!--  MOBILE: Bottom Sheet overlay                             -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div id="pos-sheet-overlay"
+          class="lg:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm">
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <!--  MOBILE: Cart Bottom Sheet                                -->
+        <!-- ══════════════════════════════════════════════════════════ -->
+        <div id="pos-cart-sheet"
+          class="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white rounded-t-3xl shadow-2xl
+                 flex flex-col max-h-[90vh]">
+
+          <!-- Sheet handle + header -->
+          <div class="flex-shrink-0">
+            <div class="flex justify-center pt-3 pb-1">
+              <div class="w-10 h-1 rounded-full bg-slate-200"></div>
+            </div>
+            <div class="flex items-center justify-between px-5 py-3 border-b border-surface-variant">
+              <div>
+                <p class="font-black text-on-surface text-base">Tu Carrito</p>
+                <p id="pos-sheet-subtitle" class="text-xs text-on-surface-variant">0 productos</p>
+              </div>
+              <button id="pos-sheet-close"
+                class="p-2 rounded-xl bg-surface-container text-on-surface-variant hover:text-on-surface active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-[20px]">keyboard_arrow_down</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Customer inside sheet -->
+          <div class="flex-shrink-0 px-4 pt-3 pb-2 border-b border-surface-variant bg-surface-container-low flex items-center gap-2">
+            <div class="flex-1">
+              <div class="flex items-center gap-1.5 text-on-surface-variant mb-1">
+                <span class="material-symbols-outlined text-[14px]">person</span>
+                <span class="text-[10px] font-bold uppercase tracking-wider">Cliente</span>
+              </div>
+              <input id="pos-cliente-nombre-mobile" type="text" readonly placeholder="Consumidor Final"
+                class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface font-medium cursor-not-allowed shadow-sm" />
+            </div>
+            <button id="pos-select-client-btn-mobile"
+              class="px-3 py-2 bg-surface-container text-primary text-sm font-bold rounded-lg border border-surface-variant hover:bg-primary/10 transition-colors whitespace-nowrap flex items-center gap-1">
+              <span class="material-symbols-outlined text-[16px]">search</span>
+              Buscar
+            </button>
+          </div>
+
+          <!-- Cart items (scrollable) -->
+          <div id="pos-cart-items-mobile" class="flex-1 overflow-y-auto p-4 flex flex-col gap-3 min-h-[120px]">
+            <div class="flex flex-col items-center justify-center h-full py-8 text-on-surface-variant/50">
+              <span class="material-symbols-outlined text-5xl mb-2" style="font-variation-settings:'FILL' 1">shopping_cart</span>
+              <p class="text-sm font-medium">El carrito está vacío</p>
+              <p class="text-xs mt-1 opacity-70">Agrega productos desde la pantalla</p>
+            </div>
+          </div>
+
+          <!-- Totals + Checkout -->
+          <div class="flex-shrink-0 px-5 pt-4 pb-6 border-t border-surface-variant bg-surface-container-lowest">
+            <div class="flex justify-between items-center mb-2 text-sm text-on-surface-variant">
+              <span>Subtotal</span>
+              <span id="pos-subtotal-mobile" class="font-medium">$0</span>
+            </div>
+            <div class="flex justify-between items-center mb-3 text-sm text-on-surface-variant">
+              <span>Descuento</span>
+              <div class="flex items-center gap-1">
+                <span class="text-error font-medium">-</span>
+                <input id="pos-descuento-mobile" type="number" min="0" value="0"
+                  class="w-20 text-right bg-surface-container border border-surface-variant rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-primary" />
+              </div>
+            </div>
+            <div class="flex justify-between items-center text-2xl font-black text-on-surface mb-4 pb-3 border-b border-surface-variant/60">
+              <span>Total</span>
+              <span id="pos-total-mobile" class="text-primary">$0</span>
+            </div>
+
+            <select id="pos-metodo-pago-mobile"
+              class="w-full bg-surface-container border border-surface-variant rounded-xl px-3 py-3 text-sm font-medium text-on-surface focus:outline-none focus:border-primary mb-3">
+              <option value="Efectivo">💵 Efectivo</option>
+              <option value="Transferencia">📱 Transferencia (Nequi/Bancolombia)</option>
+              <option value="Tarjeta">💳 Tarjeta (Datáfono)</option>
+              <option value="Crédito">🤝 Crédito / Fiado</option>
+            </select>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button id="pos-pay-btn-venta-mobile"
+                class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-[0.97] shadow-md">
+                <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">payments</span>
+                <span class="text-xs">Venta</span>
+              </button>
+              <button id="pos-pay-btn-credito-mobile"
+                class="w-full bg-pink-600 hover:bg-pink-700 text-white font-bold py-3.5 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-[0.97] shadow-md">
+                <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">credit_score</span>
+                <span class="text-xs">Crédito</span>
+              </button>
+              <button id="pos-pay-btn-separe-mobile"
+                class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 rounded-xl flex flex-col items-center justify-center gap-1 active:scale-[0.97] shadow-md">
+                <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">bookmark_added</span>
+                <span class="text-xs">Separe</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Hidden inputs needed by pos.js (desktop) -->
+        <input id="pos-cliente-nombre" type="text" readonly class="hidden" placeholder="Consumidor Final" />
+        <input id="pos-cliente-doc" type="hidden" />
+        <div id="pos-cart-items" class="hidden"></div>
+        <span id="pos-subtotal" class="hidden">$0</span>
+        <input id="pos-descuento" type="number" min="0" value="0" class="hidden" />
+        <span id="pos-total" class="hidden">$0</span>
+        <select id="pos-metodo-pago" class="hidden">
+          <option value="Efectivo">Efectivo</option>
+          <option value="Transferencia">Transferencia</option>
+          <option value="Tarjeta">Tarjeta</option>
+          <option value="Crédito">Crédito</option>
+        </select>
+        <button id="pos-pay-btn-venta" class="hidden"></button>
+        <button id="pos-pay-btn-credito" class="hidden"></button>
+        <button id="pos-pay-btn-separe" class="hidden"></button>
 
 
         <!-- POS CHECKOUT MODAL (FIRMAS Y EVIDENCIA) -->
@@ -932,32 +1314,115 @@
             </div>
             
             <div class="p-6 overflow-y-auto flex-1 space-y-6">
-              <!-- Evidencia -->
-              <div>
-                <label class="block text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wider">Evidencia (Transferencia / Foto Equipo)</label>
+              <!-- Tipo de Factura -->
+              <div class="bg-surface-container-low p-4 rounded-xl border border-surface-variant">
+                <label class="block text-xs font-semibold text-on-surface-variant mb-3 uppercase tracking-wider text-center">Tipo de Facturación</label>
+                <div class="grid grid-cols-2 gap-3">
+                  <label class="relative flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border-2 border-surface-variant rounded-xl cursor-pointer hover:border-primary transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                    <input type="radio" name="pos-billing-type" value="fisica" class="absolute opacity-0" checked>
+                    <span class="material-symbols-outlined text-2xl text-on-surface-variant group-data-[checked]:text-primary">receipt_long</span>
+                    <span class="text-xs font-bold text-on-surface-variant">Factura Física</span>
+                  </label>
+                  <label class="relative flex flex-col items-center gap-2 p-4 bg-surface-container-lowest border-2 border-surface-variant rounded-xl cursor-pointer hover:border-primary transition-all has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+                    <input type="radio" name="pos-billing-type" value="digital" class="absolute opacity-0">
+                    <span class="material-symbols-outlined text-2xl text-on-surface-variant">history_edu</span>
+                    <span class="text-xs font-bold text-on-surface-variant">Factura Digital</span>
+                  </label>                </div>
+              </div>
+
+              <!-- Datos Adicionales (Only for Digital) -->
+              <div id="pos-digital-fields" class="hidden space-y-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-tighter">Dirección</label>
+                    <input id="pos-cliente-direccion" type="text" placeholder="Calle/Cra..." class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-tighter">Ciudad</label>
+                    <input id="pos-cliente-ciudad" type="text" placeholder="Maicao..." class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                  </div>
+                </div>
+                <div>
+                  <label class="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-tighter">Teléfono / Celular</label>
+                  <input id="pos-cliente-tel" type="tel" placeholder="300..." class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                </div>
+
+                <!-- IMEI Area -->
+                <div id="pos-imei-container" class="hidden bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-2">
+                   <p class="text-[10px] font-black text-amber-800 uppercase tracking-widest flex items-center gap-1">
+                     <span class="material-symbols-outlined text-sm">phone_android</span> Captura de IMEIs
+                   </p>
+                   <div id="pos-imei-list" class="space-y-2"></div>
+                </div>
+              </div>
+
+              <!-- Evidencia (Only for Physical) -->
+              <div id="pos-evidencia-container">
+                <label class="block text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wider">Evidencia (Imagen de Factura Física)</label>
                 <input id="pos-evidencia-file" type="file" accept="image/*" class="w-full text-sm text-on-surface-variant file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
               </div>
-              
-              <!-- Firma Cliente -->
-              <div>
-                <label class="block text-xs font-semibold text-on-surface-variant mb-2 uppercase tracking-wider">Firma del Cliente</label>
-                <div class="border-2 border-dashed border-surface-variant rounded-xl bg-surface-container-low h-32 relative">
-                  <!-- Canvas for signature (implementation pending) -->
-                  <canvas id="pos-canvas-cliente" class="w-full h-full cursor-crosshair"></canvas>
-                  <button type="button" class="absolute top-2 right-2 text-xs bg-surface-variant text-on-surface px-2 py-1 rounded">Limpiar</button>
+
+              <!-- Firmas (Only for Digital) -->
+              <div id="pos-signatures-container" class="hidden space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <!-- Firma Vendedor -->
+                  <div>
+                    <label class="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-tighter">Firma del Vendedor</label>
+                    <div class="border-2 border-dashed border-surface-variant rounded-xl bg-surface-container-low h-28 relative">
+                      <canvas id="pos-canvas-vendedor" class="w-full h-full cursor-crosshair"></canvas>
+                      <button type="button" class="absolute top-1 right-1 text-[9px] bg-surface-variant text-on-surface px-1.5 py-0.5 rounded">Limpiar</button>
+                    </div>
+                  </div>
+                  <!-- Firma Cliente -->
+                  <div>
+                    <label class="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-tighter">Firma del Comprador</label>
+                    <div class="border-2 border-dashed border-surface-variant rounded-xl bg-surface-container-low h-28 relative">
+                      <canvas id="pos-canvas-cliente" class="w-full h-full cursor-crosshair"></canvas>
+                      <button type="button" class="absolute top-1 right-1 text-[9px] bg-surface-variant text-on-surface px-1.5 py-0.5 rounded">Limpiar</button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-
-            <div class="p-4 border-t border-surface-variant bg-surface-container-low flex justify-end gap-3">
-              <button id="pos-checkout-cancel" class="px-5 py-2.5 text-sm font-semibold text-on-surface-variant hover:bg-surface-container rounded-lg">Atrás</button>
-              <button id="pos-checkout-confirm" class="px-6 py-2.5 bg-primary text-on-primary font-bold rounded-lg shadow-md hover:scale-[1.02] transition-transform">Confirmar y Facturar</button>
+            <div class="p-4 border-t border-surface-variant bg-surface-container-low flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div class="flex gap-2 w-full sm:w-auto order-2 sm:order-1">
+                <button id="pos-print-bt-btn" class="flex-grow sm:flex-grow-0 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-md transition-all text-xs">
+                  <span class="material-symbols-outlined text-[18px]">bluetooth</span>
+                  <span>BT Print</span>
+                </button>
+                <button id="pos-checkout-cancel" class="flex-grow sm:flex-grow-0 px-4 py-2.5 text-xs sm:text-sm font-semibold text-on-surface-variant hover:bg-surface-container border border-surface-variant sm:border-none rounded-lg">Atrás</button>
+              </div>
+              <button id="pos-checkout-confirm" class="w-full sm:w-auto px-6 py-3 bg-primary text-on-primary font-bold rounded-lg shadow-md hover:scale-[1.02] transition-transform order-1 sm:order-2 text-sm">Confirmar y Facturar</button>
             </div>
+          </div>
+        </div>
+
+        <!-- POS FULLSCREEN SIGNATURE MODAL -->
+        <div id="pos-signature-modal" class="hidden fixed inset-0 z-[70] flex flex-col bg-white">
+          <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant bg-surface-container-lowest">
+            <h3 id="pos-sig-modal-title" class="font-bold text-lg text-on-surface text-center flex-1">Firma Digital</h3>
+            <button id="pos-sig-modal-close" class="p-2 text-on-surface-variant hover:bg-surface-container rounded-full transition-colors">
+              <span class="material-symbols-outlined">close</span>
+            </button>
+          </div>
+          <div class="flex-1 bg-slate-50 relative overflow-hidden flex items-center justify-center p-4">
+             <div class="w-full h-full max-w-4xl max-h-[500px] bg-white border-2 border-dashed border-slate-300 rounded-3xl relative shadow-inner overflow-hidden">
+                <canvas id="pos-canvas-fullscreen" class="w-full h-full cursor-crosshair"></canvas>
+                <div class="absolute top-4 left-4 bg-slate-100/80 backdrop-blur px-3 py-1 rounded-full text-[10px] font-black text-slate-500 uppercase tracking-widest pointer-events-none">
+                  Firma Aquí dentro
+                </div>
+             </div>
+          </div>
+          <div class="p-6 border-t border-surface-variant bg-white flex justify-center gap-4">
+             <button id="pos-sig-modal-clear" class="flex-1 max-w-[150px] py-4 bg-surface-container border border-surface-variant rounded-2xl font-bold text-on-surface-variant active:scale-95 transition-all">Limpiar</button>
+             <button id="pos-sig-modal-save" class="flex-1 max-w-[300px] py-4 bg-primary text-on-primary rounded-2xl font-bold shadow-xl shadow-primary/30 active:scale-95 transition-all flex items-center justify-center gap-2">
+               <span class="material-symbols-outlined text-[20px]">check_circle</span> Guardar Firma
+             </button>
           </div>
         </div>
       </section>
       <!-- IMEI VIEW -->
-      <section data-view="imei" class="hidden h-[calc(100vh-4rem)] md:h-full overflow-hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-16 md:pb-0">
+      <section data-view="imei" class="hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-24 md:pb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 shrink-0">
           <div>
             <h2 class="text-2xl font-bold text-on-surface">Equipos IMEI</h2>
@@ -986,13 +1451,13 @@
 
         <!-- Table container -->
         <div class="flex-1 overflow-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm relative">
-          <table class="w-full text-left border-collapse text-sm min-w-[800px]">
+          <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
             <thead class="bg-surface-container text-on-surface-variant sticky top-0 z-10 text-[11px] uppercase tracking-wider font-bold">
               <tr>
                 <th class="px-4 py-3 border-b border-surface-variant">IMEI 1 / IMEI 2</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Equipo</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Estado</th>
-                <th class="px-4 py-3 border-b border-surface-variant">Proveedor</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Proveedor</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Costo / Venta</th>
                 <th class="px-4 py-3 border-b border-surface-variant text-right">Acciones</th>
               </tr>
@@ -1013,7 +1478,7 @@
         <!-- MODAL -->
         <div id="imei-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
           <div id="imei-modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden no-scrollbar z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
               <h3 id="imei-modal-title" class="font-bold text-lg text-on-surface">Registrar Equipo IMEI</h3>
               <button id="imei-modal-close" class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg">
@@ -1022,8 +1487,19 @@
             </div>
             <form id="imei-form" class="p-6 space-y-4" onsubmit="return false">
               <input type="hidden" id="imei-original" />
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="col-span-2">
+              <div class="flex flex-col gap-4">
+                <!-- Escanear etiqueta con foto -->
+                <div id="imei-label-card" class="bg-slate-50 border border-dashed border-slate-200 rounded-2xl p-4 flex flex-col items-center justify-center text-center hover:bg-slate-100/50 transition-all cursor-pointer relative group">
+                  <input id="imei-label-file" type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                  <div id="imei-label-card-content" class="w-full">
+                    <div class="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mb-2 mx-auto group-hover:scale-105 transition-transform">
+                      <span class="material-symbols-outlined text-[20px]">photo_camera</span>
+                    </div>
+                    <p class="text-xs font-black text-slate-800">Escanear etiqueta con Foto</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Toma una foto a la caja del equipo para rellenar todo automáticamente</p>
+                  </div>
+                </div>
+                <div>
                   <label class="field-label">IMEI Principal (15 dígitos) *</label>
                   <div class="flex gap-2">
                     <input id="imei-1" type="text" required class="field-input flex-1" placeholder="35xxxxxxxxxxxxx" maxlength="15" />
@@ -1032,7 +1508,7 @@
                     </button>
                   </div>
                 </div>
-                <div class="col-span-2">
+                <div>
                   <label class="field-label">IMEI Secundario (Opcional)</label>
                   <div class="flex gap-2">
                     <input id="imei-2" type="text" class="field-input flex-1" placeholder="35xxxxxxxxxxxxx" maxlength="15" />
@@ -1041,36 +1517,50 @@
                     </button>
                   </div>
                 </div>
-                <div class="col-span-2">
+                <div class="relative">
                   <label class="field-label">Producto en Inventario *</label>
-                  <select id="imei-nombre" required class="field-input">
-                    <option value="">Seleccione un equipo...</option>
-                  </select>
-                  <p class="text-[10px] text-on-surface-variant mt-1">Selecciona el equipo del inventario. Los datos se llenan automáticamente.</p>
+                  <input type="hidden" id="imei-nombre" required />
+                  <button type="button" id="imei-dropdown-trigger" class="w-full flex items-center justify-between field-input bg-slate-50 text-left border border-slate-200 focus:border-primary hover:bg-slate-100/50 transition-colors">
+                    <span id="imei-dropdown-selected-text" class="truncate text-slate-500 font-medium">Seleccione un equipo...</span>
+                    <span class="material-symbols-outlined text-[20px] text-slate-400">keyboard_arrow_down</span>
+                  </button>
+                  <div id="imei-dropdown-menu" class="hidden absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden flex flex-col max-h-[320px]">
+                    <div class="p-2.5 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
+                      <span class="material-symbols-outlined text-[18px] text-slate-400">search</span>
+                      <input type="text" id="imei-dropdown-search" class="w-full bg-transparent border-none outline-none text-xs text-on-surface" placeholder="Buscar producto..." autocomplete="off" />
+                    </div>
+                    <div id="imei-dropdown-options" class="overflow-y-auto no-scrollbar flex-1 py-1 max-h-[260px]">
+                    </div>
+                  </div>
+                  <p class="text-[10px] text-on-surface-variant mt-1">Selecciona el equipo del inventario o crea uno nuevo.</p>
                 </div>
-                <div>
-                  <label class="field-label">Marca <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
-                  <input id="imei-marca" type="text" readonly class="field-input bg-surface-container cursor-not-allowed text-on-surface-variant" placeholder="Se llena al seleccionar" />
+                <div class="flex flex-row gap-4">
+                  <div class="flex-1 min-w-0">
+                    <label class="field-label">Marca <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
+                    <input id="imei-marca" type="text" readonly class="field-input bg-surface-container cursor-not-allowed text-on-surface-variant" placeholder="Se llena al seleccionar" />
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <label class="field-label">Proveedor</label>
+                    <input id="imei-proveedor" type="text" class="field-input border border-slate-200 focus:border-primary" placeholder="Proveedor del equipo" />
+                  </div>
                 </div>
-                <div>
-                  <label class="field-label">Proveedor <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
-                  <input id="imei-proveedor" type="text" readonly class="field-input bg-surface-container cursor-not-allowed text-on-surface-variant" placeholder="Se llena al seleccionar" />
-                </div>
-                <div>
-                  <label class="field-label">Costo <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
-                  <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container px-3 gap-1 cursor-not-allowed">
-                    <span class="text-on-surface-variant font-bold shrink-0">$</span>
-                    <input id="imei-costo" type="text" readonly class="flex-1 py-2.5 bg-transparent outline-none font-bold text-on-surface-variant cursor-not-allowed" placeholder="0" />
+                <div class="flex flex-row gap-4">
+                  <div class="flex-1 min-w-0">
+                    <label class="field-label">Costo <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
+                    <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container px-3 gap-1 cursor-not-allowed">
+                      <span class="text-on-surface-variant font-bold shrink-0">$</span>
+                      <input id="imei-costo" type="text" readonly class="flex-1 py-2.5 bg-transparent outline-none font-bold text-on-surface-variant cursor-not-allowed" placeholder="0" />
+                    </div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <label class="field-label">Venta <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
+                    <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container px-3 gap-1 cursor-not-allowed">
+                      <span class="text-primary font-bold shrink-0">$</span>
+                      <input id="imei-venta" type="text" readonly class="flex-1 py-2.5 bg-transparent outline-none font-bold text-primary cursor-not-allowed" placeholder="0" />
+                    </div>
                   </div>
                 </div>
                 <div>
-                  <label class="field-label">Venta <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
-                  <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container px-3 gap-1 cursor-not-allowed">
-                    <span class="text-primary font-bold shrink-0">$</span>
-                    <input id="imei-venta" type="text" readonly class="flex-1 py-2.5 bg-transparent outline-none font-bold text-primary cursor-not-allowed" placeholder="0" />
-                  </div>
-                </div>
-                <div class="col-span-2">
                   <label class="field-label">Estado</label>
                   <select id="imei-estado" class="field-input">
                     <option value="Disponible">Disponible</option>
@@ -1088,7 +1578,7 @@
         </div>
       </section>
       <!-- CLIENTS VIEW -->
-      <section data-view="clients" class="hidden h-[calc(100vh-4rem)] md:h-full overflow-hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-16 md:pb-0">
+      <section data-view="clients" class="hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-24 md:pb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 shrink-0">
           <div>
             <h2 class="text-2xl font-bold text-on-surface">Directorio de Clientes</h2>
@@ -1106,13 +1596,13 @@
 
         <!-- Table container -->
         <div class="flex-1 overflow-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm relative">
-          <table class="w-full text-left border-collapse text-sm min-w-[800px]">
+          <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
             <thead class="bg-surface-container text-on-surface-variant sticky top-0 z-10 text-[11px] uppercase tracking-wider font-bold">
               <tr>
-                <th class="px-4 py-3 border-b border-surface-variant">Documento</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Documento</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Nombre</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Contacto</th>
-                <th class="px-4 py-3 border-b border-surface-variant">Dirección</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Dirección</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Tipo</th>
                 <th class="px-4 py-3 border-b border-surface-variant text-right">Acciones</th>
               </tr>
@@ -1133,7 +1623,7 @@
         <!-- MODAL -->
         <div id="cli-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
           <div id="cli-modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
               <h3 id="cli-modal-title" class="font-bold text-lg text-on-surface">Nuevo Cliente</h3>
               <button id="cli-modal-close" class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg">
@@ -1182,14 +1672,14 @@
         </div>
       </section>
       <!-- CREDITS VIEW -->
-      <section data-view="credits" class="hidden h-[calc(100vh-4rem)] md:h-full overflow-hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-16 md:pb-0">
+      <section data-view="credits" class="hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-24 md:pb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 shrink-0">
           <div>
             <h2 class="text-2xl font-bold text-on-surface">Gestión de Créditos</h2>
             <p class="text-sm text-on-surface-variant mt-0.5">Control de fiados, abonos y deudas pendientes.</p>
           </div>
           <!-- Filters -->
-          <div class="flex gap-2 w-full md:w-auto">
+          <div class="flex flex-wrap md:flex-nowrap gap-2 w-full md:w-auto">
             <div class="relative flex-1 md:w-64">
               <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
               <input id="cred-search" type="text" placeholder="Buscar cliente..."
@@ -1208,6 +1698,9 @@
               <option value="Entregado">🟢 Entregados</option>
               <option value="En Mora">🔴 En Mora</option>
             </select>
+            <button id="cred-new-btn" class="flex items-center justify-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-xl text-sm font-bold shadow-md hover:bg-primary/95 transition-all cursor-pointer">
+              <span class="material-symbols-outlined text-[18px]">add</span> Nuevo Crédito
+            </button>
           </div>
         </div>
 
@@ -1225,15 +1718,15 @@
 
         <!-- Table container -->
         <div class="flex-1 overflow-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm relative">
-          <table class="w-full text-left border-collapse text-sm min-w-[800px]">
+          <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
             <thead class="bg-surface-container text-on-surface-variant sticky top-0 z-10 text-[11px] uppercase tracking-wider font-bold">
               <tr>
                 <th class="px-4 py-3 border-b border-surface-variant">Cliente</th>
-                <th class="px-4 py-3 border-b border-surface-variant">ID Factura</th>
-                <th class="px-4 py-3 border-b border-surface-variant">Fecha</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">ID Factura</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Fecha</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Tipo</th>
-                <th class="px-4 py-3 border-b border-surface-variant">Deuda Total</th>
-                <th class="px-4 py-3 border-b border-surface-variant">Abonado</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Deuda Total</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Abonado</th>
                 <th class="px-4 py-3 border-b border-surface-variant text-error font-black">Saldo Pendiente</th>
                 <th class="px-4 py-3 border-b border-surface-variant text-center">Días</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Estado</th>
@@ -1249,7 +1742,7 @@
         <!-- MODAL ABONO -->
         <div id="cred-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
           <div id="cred-modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto z-10">
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto overflow-x-hidden z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
               <h3 class="font-bold text-lg text-on-surface">Registrar Abono</h3>
               <button id="cred-modal-close" class="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg">
@@ -1290,10 +1783,62 @@
             </div>
           </div>
         </div>
+
+        <!-- MODAL NUEVO CRÉDITO -->
+        <div id="cred-new-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+          <div id="cred-new-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm max-h-[90vh] overflow-y-auto overflow-x-hidden z-10">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
+              <h3 class="font-bold text-lg text-on-surface">Crear Nuevo Crédito</h3>
+              <button id="cred-new-close" class="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <form id="cred-new-form" class="p-6 space-y-4" onsubmit="return false">
+              <div>
+                <label class="field-label">Cliente *</label>
+                <div class="flex gap-2">
+                  <input id="cred-new-cliente" type="text" required readonly class="field-input flex-1 bg-slate-50 cursor-not-allowed" placeholder="Seleccione un cliente..." />
+                  <button id="cred-select-client-btn" type="button" class="px-3 bg-primary text-on-primary rounded-xl flex items-center justify-center shadow-sm hover:bg-primary/95">
+                    <span class="material-symbols-outlined">search</span>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Documento/Teléfono</label>
+                <input id="cred-new-cliente-doc" type="text" readonly class="field-input bg-slate-50 cursor-not-allowed" placeholder="Automático..." />
+              </div>
+              <div>
+                <label class="field-label">Deuda Total *</label>
+                <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container-lowest focus-within:border-primary px-3 gap-1">
+                  <span class="text-on-surface-variant font-bold text-lg shrink-0">$</span>
+                  <input id="cred-new-total" type="text" required class="flex-1 py-3 bg-transparent outline-none text-lg font-bold text-on-surface" placeholder="0" />
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Abono Inicial (Opcional)</label>
+                <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container-lowest focus-within:border-primary px-3 gap-1">
+                  <span class="text-on-surface-variant font-bold text-lg shrink-0">$</span>
+                  <input id="cred-new-abono" type="text" class="flex-1 py-3 bg-transparent outline-none text-lg font-bold text-on-surface" placeholder="0" />
+                </div>
+              </div>
+              <div>
+                <label class="field-label">Detalle/Concepto</label>
+                <textarea id="cred-new-detalle" rows="2" class="field-input" placeholder="Ej: Venta de cargador, celular, etc."></textarea>
+              </div>
+            </form>
+            <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-variant bg-surface-container-low rounded-b-2xl">
+              <button onclick="document.getElementById('cred-new-close').click()" class="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container rounded-lg">Cancelar</button>
+              <button id="cred-save-new-btn" class="flex items-center gap-1.5 px-5 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg shadow-md">
+                <span class="material-symbols-outlined text-[18px]">save</span> Guardar
+              </button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- REVENTAS VIEW -->
-      <section data-view="reventas" class="hidden h-[calc(100vh-4rem)] md:h-full overflow-hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-16 md:pb-0">
+      <section data-view="reventas" class="hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-24 md:pb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 shrink-0">
           <div>
             <h2 class="text-2xl font-bold text-on-surface">Reventas</h2>
@@ -1309,10 +1854,10 @@
         </div>
 
         <div class="flex-1 overflow-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm relative">
-          <table class="w-full text-left border-collapse text-sm min-w-[800px]">
+          <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
             <thead class="bg-surface-container text-on-surface-variant sticky top-0 z-10 text-[11px] uppercase tracking-wider font-bold">
               <tr>
-                <th class="px-4 py-3 border-b border-surface-variant">ID / Fecha</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">ID / Fecha</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Producto</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Categoría</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Costo / Venta</th>
@@ -1331,46 +1876,63 @@
 
         <div id="ped-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
           <div id="ped-modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
               <h3 id="ped-modal-title" class="font-bold text-lg text-on-surface">Nuevo Pedido</h3>
               <button id="ped-modal-close" class="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors">
                 <span class="material-symbols-outlined">close</span>
               </button>
             </div>
-            <form id="ped-form" class="p-6 space-y-4">
+            <form id="ped-form" class="space-y-0" onsubmit="return false">
               <input type="hidden" id="ped-id" />
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="col-span-2">
+              <div class="p-6 flex flex-col gap-4">
+                <div>
                   <label class="field-label">Producto *</label>
                   <input id="ped-producto" type="text" required class="field-input" placeholder="Ej: Pantalla iPhone 12" />
                 </div>
-                <div>
-                  <label class="field-label">Categoría *</label>
-                  <select id="ped-categoria" class="field-input">
-                    <option value="Celulares">Celulares</option>
-                    <option value="Accesorios">Accesorios</option>
-                    <option value="Repuestos">Repuestos</option>
-                    <option value="Servicios">Servicios</option>
-                    <option value="Otros">Otros</option>
-                  </select>
+                <div class="flex flex-row gap-4">
+                  <div class="flex-1 min-w-0">
+                    <label class="field-label">Categoría *</label>
+                    <select id="ped-categoria" class="field-input">
+                      <option value="Celulares">Celulares</option>
+                      <option value="Accesorios">Accesorios</option>
+                      <option value="Repuestos">Repuestos</option>
+                      <option value="Servicios">Servicios</option>
+                      <option value="Otros">Otros</option>
+                    </select>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <label class="field-label">Proveedor</label>
+                    <input id="ped-proveedor" type="text" class="field-input" placeholder="Nombre proveedor" />
+                  </div>
                 </div>
-                <div>
-                  <label class="field-label">Proveedor</label>
-                  <input id="ped-proveedor" type="text" class="field-input" placeholder="Nombre proveedor" />
+                <div class="flex flex-row gap-4">
+                  <div class="flex-1 min-w-0">
+                    <label class="field-label">Costo Proveedor *</label>
+                    <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container-lowest focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 px-3 gap-1 transition-all">
+                      <span class="text-on-surface-variant font-bold shrink-0">$</span>
+                      <input id="ped-costo" type="text" required class="flex-1 py-2.5 bg-transparent outline-none font-semibold text-on-surface" placeholder="0" />
+                    </div>
+                  </div>
+                  <div class="flex-1 min-w-0">
+                    <label class="field-label">Precio Venta *</label>
+                    <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container-lowest focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/30 px-3 gap-1 transition-all">
+                      <span class="text-primary font-bold shrink-0">$</span>
+                      <input id="ped-precio" type="text" required class="flex-1 py-2.5 bg-transparent outline-none font-semibold text-primary" placeholder="0" />
+                    </div>
+                  </div>
                 </div>
-                <div><label class="field-label">Costo Proveedor</label><input id="ped-costo" type="text" required class="field-input" /></div>
-                <div><label class="field-label">Precio Venta</label><input id="ped-precio" type="text" required class="field-input" /></div>
               </div>
-              <div class="pt-4 flex justify-end">
-                <button type="submit" id="ped-save-btn" class="px-6 py-2 bg-primary text-on-primary font-bold rounded-lg shadow-md">Guardar</button>
+              <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-variant bg-surface-container-low rounded-b-2xl">
+                <button onclick="document.getElementById('ped-modal-close').click()" type="button" class="px-5 py-2.5 text-sm font-semibold text-on-surface-variant border border-surface-variant rounded-lg hover:bg-surface-container transition-colors">Cancelar</button>
+                <button type="submit" id="ped-save-btn" class="flex items-center gap-1.5 px-5 py-2.5 bg-primary text-on-primary text-sm font-bold rounded-lg hover:bg-primary-container shadow-sm transition-colors"><span class="material-symbols-outlined text-[18px]">save</span> Guardar</button>
               </div>
             </form>
           </div>
         </div>
       </section>
       <!-- TECHNICAL VIEW -->
-      <section data-view="technical" class="hidden h-[calc(100vh-4rem)] md:h-full overflow-hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-16 md:pb-0">
+      <section data-view="technical" class="hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-24 md:pb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 shrink-0">
           <div>
             <h2 class="text-2xl font-bold text-on-surface">Servicio Técnico</h2>
@@ -1414,7 +1976,7 @@
         <!-- MODAL -->
         <div id="tech-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
           <div id="tech-modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
               <h3 id="tech-modal-title" class="font-bold text-lg text-on-surface">Ingreso a Servicio Técnico</h3>
               <button id="tech-modal-close" class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg">
@@ -1463,6 +2025,44 @@
                     <option value="Sin Arreglo">Sin Arreglo</option>
                   </select>
                 </div>
+                
+                <!-- Evidencias Fotográficas -->
+                <div class="col-span-2 pt-2 border-t border-surface-variant">
+                  <h4 class="font-bold text-sm text-on-surface mb-3">Evidencias Fotográficas</h4>
+                  <div class="grid grid-cols-2 gap-4">
+                    <!-- Recepción -->
+                    <div>
+                      <label class="block text-xs font-semibold text-on-surface-variant mb-1">Recepción</label>
+                      <input type="file" id="tech-img-recepcion" accept="image/*" class="hidden" />
+                      <div id="tech-preview-recepcion-btn" class="w-full h-24 border-2 border-dashed border-surface-variant rounded-xl flex flex-col items-center justify-center text-on-surface-variant cursor-pointer hover:border-primary hover:text-primary transition-colors bg-surface-container-lowest">
+                        <span class="material-symbols-outlined text-2xl mb-1">add_a_photo</span>
+                        <span class="text-[10px] font-medium text-center px-2">Subir / Tomar Foto</span>
+                      </div>
+                      <div id="tech-preview-recepcion-wrap" class="hidden relative w-full h-24 rounded-xl overflow-hidden shadow-sm">
+                        <img id="tech-preview-recepcion" src="" class="w-full h-full object-cover" />
+                        <button type="button" id="tech-remove-recepcion" class="absolute top-1 right-1 w-6 h-6 bg-black/60 rounded-full text-white flex items-center justify-center hover:bg-red-600 transition-colors">
+                          <span class="material-symbols-outlined text-[14px]">close</span>
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- Resultado -->
+                    <div>
+                      <label class="block text-xs font-semibold text-on-surface-variant mb-1">Resultado</label>
+                      <input type="file" id="tech-img-resultado" accept="image/*" class="hidden" />
+                      <div id="tech-preview-resultado-btn" class="w-full h-24 border-2 border-dashed border-surface-variant rounded-xl flex flex-col items-center justify-center text-on-surface-variant cursor-pointer hover:border-primary hover:text-primary transition-colors bg-surface-container-lowest">
+                        <span class="material-symbols-outlined text-2xl mb-1">add_a_photo</span>
+                        <span class="text-[10px] font-medium text-center px-2">Subir / Tomar Foto</span>
+                      </div>
+                      <div id="tech-preview-resultado-wrap" class="hidden relative w-full h-24 rounded-xl overflow-hidden shadow-sm">
+                        <img id="tech-preview-resultado" src="" class="w-full h-full object-cover" />
+                        <button type="button" id="tech-remove-resultado" class="absolute top-1 right-1 w-6 h-6 bg-black/60 rounded-full text-white flex items-center justify-center hover:bg-red-600 transition-colors">
+                          <span class="material-symbols-outlined text-[14px]">close</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </form>
             <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-variant bg-surface-container-low rounded-b-2xl">
@@ -1473,7 +2073,7 @@
         </div>
       </section>
       <!-- EXPENSES VIEW -->
-      <section data-view="expenses" class="hidden h-[calc(100vh-4rem)] md:h-full overflow-hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-16 md:pb-0">
+      <section data-view="expenses" class="hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-24 md:pb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 shrink-0">
           <div>
             <h2 class="text-2xl font-bold text-on-surface">Control de Egresos</h2>
@@ -1499,15 +2099,15 @@
 
         <!-- Table container -->
         <div class="flex-1 overflow-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm relative">
-          <table class="w-full text-left border-collapse text-sm min-w-[800px]">
+          <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
             <thead class="bg-surface-container text-on-surface-variant sticky top-0 z-10 text-[11px] uppercase tracking-wider font-bold">
               <tr>
                 <th class="px-4 py-3 border-b border-surface-variant">ID / Fecha</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Categoría</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Concepto</th>
-                <th class="px-4 py-3 border-b border-surface-variant">Responsable</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Responsable</th>
                 <th class="px-4 py-3 border-b border-surface-variant font-black text-error">Monto</th>
-                <th class="px-4 py-3 border-b border-surface-variant text-right">Acciones</th>
+                <th class="px-4 py-3 border-b border-surface-variant text-right hidden md:table-cell">Acciones</th>
               </tr>
             </thead>
             <tbody id="exp-table-body" class="divide-y divide-surface-variant text-on-surface">
@@ -1526,7 +2126,7 @@
         <!-- MODAL -->
         <div id="exp-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
           <div id="exp-modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto z-10">
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto overflow-x-hidden z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
               <h3 id="exp-modal-title" class="font-bold text-lg text-error">Registrar Egreso</h3>
               <button id="exp-modal-close" class="p-1.5 text-on-surface-variant hover:text-on-surface hover:bg-surface-container rounded-lg">
@@ -1572,7 +2172,7 @@
       </section>
 
       <!-- SALES HISTORY VIEW -->
-      <section data-view="sales-history" class="hidden p-container-padding max-w-6xl mx-auto">
+      <section data-view="sales-history" class="hidden p-container-padding max-w-6xl mx-auto pb-24 md:pb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div>
             <h2 class="text-2xl font-bold text-on-surface">Historial de Ventas</h2>
@@ -1585,15 +2185,28 @@
               class="w-full md:w-80 pl-10 pr-4 py-2.5 bg-surface-container-lowest border border-surface-variant rounded-xl text-sm focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all shadow-sm" />
           </div>
         </div>
+
+        <!-- Cards Stats -->
+        <div class="grid grid-cols-2 gap-4 mb-6">
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm">
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Total Facturas</p>
+            <p id="sales-stat-count" class="text-xl font-black text-on-surface">0</p>
+          </div>
+          <div class="bg-surface-container-lowest border border-surface-variant rounded-xl p-4 shadow-sm">
+            <p class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Total Facturado</p>
+            <p id="sales-stat-amount" class="text-xl font-black text-primary">$0</p>
+          </div>
+        </div>
+
         <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm overflow-hidden">
           <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse">
+            <table class="responsive-table w-full text-left border-collapse">
               <thead>
                 <tr class="bg-surface-container-low text-[11px] uppercase tracking-wider text-on-surface-variant font-bold border-b border-surface-variant">
-                  <th class="px-4 py-3 text-center w-10">#</th>
+                  <th class="px-4 py-3 text-center w-10 hidden md:table-cell">#</th>
                   <th class="px-4 py-3">Factura / Fecha</th>
                   <th class="px-4 py-3">Cliente</th>
-                  <th class="px-4 py-3">Vendedor</th>
+                  <th class="px-4 py-3 hidden md:table-cell">Vendedor</th>
                   <th class="px-4 py-3">Productos</th>
                   <th class="px-4 py-3 text-right">Monto</th>
                   <th class="px-4 py-3 text-center">Acciones</th>
@@ -1619,16 +2232,21 @@
               <span class="material-symbols-outlined">close</span>
             </button>
           </div>
-          <div id="sale-detail-content" class="p-6 max-h-[70vh] overflow-y-auto bg-slate-50/30">
+          <div id="sale-detail-content" class="p-6 max-h-[70vh] overflow-y-auto overflow-x-hidden bg-slate-50/30">
             <!-- JS dynamic content -->
           </div>
-          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-            <button onclick="window.print()" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-slate-100 transition-all">
-              <span class="material-symbols-outlined text-[18px]">print</span> Imprimir
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+            <button id="sale-detail-print-bt" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-700 transition-all">
+              <span class="material-symbols-outlined text-[18px]">bluetooth</span> Imprimir BT
             </button>
-            <button onclick="document.getElementById('sale-detail-close').click()" class="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">
-              Cerrar
-            </button>
+            <div class="flex gap-3">
+              <button id="sale-detail-print-btn" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-slate-100 transition-all">
+                <span class="material-symbols-outlined text-[18px]">print</span> Imprimir Ticket (48mm)
+              </button>
+              <button onclick="document.getElementById('sale-detail-close').click()" class="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1719,7 +2337,7 @@
       </section>
 
       <!-- USERS VIEW -->
-      <section data-view="users" class="hidden h-[calc(100vh-4rem)] md:h-full overflow-hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-16 md:pb-0">
+      <section data-view="users" class="hidden flex flex-col p-container-padding max-w-[1400px] mx-auto pb-24 md:pb-6">
         <div class="flex flex-col md:flex-row justify-between items-start md:items-end gap-4 mb-6 shrink-0">
           <div>
             <h2 class="text-2xl font-bold text-on-surface">Gestión de Usuarios</h2>
@@ -1735,11 +2353,11 @@
         </div>
 
         <div class="flex-1 overflow-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm relative">
-          <table class="w-full text-left border-collapse text-sm min-w-[800px]">
+          <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
             <thead class="bg-surface-container text-on-surface-variant sticky top-0 z-10 text-[11px] uppercase tracking-wider font-bold">
               <tr>
                 <th class="px-4 py-3 border-b border-surface-variant">Nombre</th>
-                <th class="px-4 py-3 border-b border-surface-variant">Email</th>
+                <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Email</th>
                 <th class="px-4 py-3 border-b border-surface-variant text-center">Rol</th>
                 <th class="px-4 py-3 border-b border-surface-variant text-center">Estado</th>
                 <th class="px-4 py-3 border-b border-surface-variant text-right">Acciones</th>
@@ -1757,7 +2375,7 @@
         <!-- MODAL USUARIOS -->
         <div id="user-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
           <div id="user-modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto z-10">
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant">
               <h3 id="user-modal-title" class="font-bold text-lg text-on-surface">Usuario</h3>
               <button id="user-modal-close" class="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg"><span class="material-symbols-outlined">close</span></button>
@@ -1782,7 +2400,7 @@
                     <select id="user-input-rol" class="field-input">
                       <option value="Vendedor">Vendedor</option>
                       <option value="Administrador">Administrador</option>
-                      <option value="Técnico">Técnico</option>
+                      <option value="Técnico de reparación">Técnico de reparación</option>
                     </select>
                   </div>
                   <div>
@@ -1803,92 +2421,214 @@
       </section>
 
       <!-- SETTINGS VIEW -->
+      <section data-view="settings" class="hidden overflow-y-auto pb-24 md:pb-8 bg-slate-50 min-h-[calc(100vh-3.5rem)]">
 
-      <section data-view="settings" class="hidden h-[calc(100vh-4rem)] md:h-full overflow-y-auto p-container-padding max-w-4xl mx-auto pb-16 md:pb-0">
-        <div class="mb-8">
-          <h2 class="text-2xl font-bold text-on-surface">Ajustes de Cuenta</h2>
-          <p class="text-sm text-on-surface-variant mt-0.5">Configura tu perfil y preferencias del sistema.</p>
+        <!-- Hero header -->
+        <div class="bg-white border-b border-slate-100 px-5 py-6 mb-2">
+          <h2 class="text-2xl font-black text-on-surface">Ajustes</h2>
+          <p class="text-sm text-slate-400 mt-0.5">Cuenta, preferencias y seguridad</p>
         </div>
 
-        <div class="space-y-6">
-          <!-- Profile Section -->
-          <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl p-6 shadow-sm">
-            <h3 class="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">person</span> Perfil de Usuario
-            </h3>
-            <div class="flex flex-col md:flex-row gap-6 items-start">
-              <div class="w-24 h-24 rounded-full bg-primary-container text-on-primary-container flex items-center justify-center text-3xl font-bold shrink-0">
-                <span id="set-avatar">U</span>
+        <div class="px-4 space-y-2 mt-2">
+
+          <!-- ── PERFIL ───────────────────────── -->
+          <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <!-- Avatar row -->
+            <div class="flex items-center gap-4 px-5 py-4 border-b border-slate-50">
+              <div class="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center flex-shrink-0 shadow-md shadow-primary/30">
+                <span id="set-avatar" class="text-white text-2xl font-black">U</span>
               </div>
-              <div class="flex-1 space-y-4 w-full">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-xs font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Nombre Completo</label>
-                    <p id="set-name" class="text-on-surface font-medium bg-surface-container-low px-4 py-2 rounded-lg border border-surface-variant">Cargando...</p>
-                  </div>
-                  <div>
-                    <label class="block text-xs font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Rol</label>
-                    <p id="set-role" class="text-on-surface font-medium bg-surface-container-low px-4 py-2 rounded-lg border border-surface-variant">Cargando...</p>
-                  </div>
-                  <div class="md:col-span-2">
-                    <label class="block text-xs font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Correo Electrónico</label>
-                    <p id="set-email" class="text-on-surface font-medium bg-surface-container-low px-4 py-2 rounded-lg border border-surface-variant">Cargando...</p>
-                  </div>
+              <div class="flex-1 min-w-0">
+                <p id="set-name" class="font-black text-slate-800 text-base truncate">Cargando...</p>
+                <div class="flex items-center gap-2 mt-0.5">
+                  <span id="set-role" class="text-[11px] font-bold text-primary bg-red-50 px-2 py-0.5 rounded-full">—</span>
                 </div>
+              </div>
+            </div>
+            <!-- Email row -->
+            <div class="flex items-center gap-3 px-5 py-3.5">
+              <span class="material-symbols-outlined text-slate-400 text-[18px]">mail</span>
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Correo</p>
+                <p id="set-email" class="text-sm font-medium text-slate-700 truncate">Cargando...</p>
               </div>
             </div>
           </div>
 
-          <!-- Preferences Section -->
-          <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl p-6 shadow-sm">
-            <h3 class="text-lg font-bold text-on-surface mb-4 flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary">palette</span> Preferencias
-            </h3>
-            <div class="space-y-4">
-              <div class="flex items-center justify-between p-4 bg-surface-container-low rounded-xl border border-surface-variant">
+          <!-- ── APARIENCIA ────────────────────── -->
+          <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 pt-4 pb-2">
+              <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Apariencia</p>
+            </div>
+            <!-- Modo Oscuro -->
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-50 last:border-0">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-slate-600 text-[18px]" style="font-variation-settings:'FILL' 1">dark_mode</span>
+                </div>
                 <div>
-                  <p class="font-bold text-on-surface">Modo Oscuro</p>
-                  <p class="text-xs text-on-surface-variant">Cambia la apariencia de la aplicación a colores oscuros.</p>
+                  <p class="text-sm font-bold text-slate-800">Modo Oscuro</p>
+                  <p class="text-[11px] text-slate-400">Colores oscuros en la app</p>
                 </div>
-                <label class="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" id="set-theme-toggle" class="sr-only peer">
-                  <div class="w-11 h-6 bg-surface-variant peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-surface-variant after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                </label>
               </div>
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input type="checkbox" id="set-theme-toggle" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-primary
+                            peer-checked:after:translate-x-full after:content-[''] after:absolute
+                            after:top-[2px] after:left-[2px] after:bg-white after:rounded-full
+                            after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
+              </label>
+            </div>
+            <!-- Idioma -->
+            <div class="flex items-center justify-between px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-blue-50 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-blue-500 text-[18px]" style="font-variation-settings:'FILL' 1">language</span>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800">Idioma</p>
+                  <p class="text-[11px] text-slate-400">Español (Colombia)</p>
+                </div>
+              </div>
+              <span class="material-symbols-outlined text-slate-300 text-[18px]">chevron_right</span>
             </div>
           </div>
 
-          <!-- Danger Zone -->
-          <div class="bg-red-50/50 border border-red-100 rounded-2xl p-6 shadow-sm">
-            <h3 class="text-lg font-bold text-error mb-4 flex items-center gap-2">
-              <span class="material-symbols-outlined text-error">security</span> Seguridad
-            </h3>
-            <p class="text-sm text-on-surface-variant mb-4">Cierra tu sesión actual de forma segura para proteger tus datos en este dispositivo.</p>
-            <button id="set-logout-btn" class="px-6 py-2.5 bg-error text-white font-bold rounded-lg hover:bg-error/90 shadow-sm flex items-center gap-2 transition-colors">
-              <span class="material-symbols-outlined">logout</span> Cerrar Sesión
-            </button>
+          <!-- ── NOTIFICACIONES ─────────────────── -->
+          <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 pt-4 pb-2">
+              <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Notificaciones</p>
+            </div>
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-amber-50 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-amber-500 text-[18px]" style="font-variation-settings:'FILL' 1">notifications</span>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800">Alertas de stock</p>
+                  <p class="text-[11px] text-slate-400">Avisar cuando el stock esté bajo</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input type="checkbox" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-primary
+                            peer-checked:after:translate-x-full after:content-[''] after:absolute
+                            after:top-[2px] after:left-[2px] after:bg-white after:rounded-full
+                            after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
+              </label>
+            </div>
+            <div class="flex items-center justify-between px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-green-50 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-green-500 text-[18px]" style="font-variation-settings:'FILL' 1">credit_score</span>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800">Cobros pendientes</p>
+                  <p class="text-[11px] text-slate-400">Recordatorio de créditos vencidos</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer flex-shrink-0">
+                <input type="checkbox" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:bg-primary
+                            peer-checked:after:translate-x-full after:content-[''] after:absolute
+                            after:top-[2px] after:left-[2px] after:bg-white after:rounded-full
+                            after:h-5 after:w-5 after:transition-all after:shadow-sm"></div>
+              </label>
+            </div>
           </div>
+
+          <!-- ── ACERCA DE ─────────────────────── -->
+          <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div class="px-5 pt-4 pb-2">
+              <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Acerca de</p>
+            </div>
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-50">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings:'FILL' 1">shield</span>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800">AdminPro</p>
+                  <p class="text-[11px] text-slate-400">Versión 1.0.0</p>
+                </div>
+              </div>
+              <span class="text-[10px] font-black text-slate-300 bg-slate-50 px-2 py-1 rounded-lg">v1.0</span>
+            </div>
+            <div class="flex items-center justify-between px-5 py-3.5">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center">
+                  <span class="material-symbols-outlined text-slate-500 text-[18px]" style="font-variation-settings:'FILL' 1">store</span>
+                </div>
+                <div>
+                  <p class="text-sm font-bold text-slate-800">CLAROCELL.COM</p>
+                  <p class="text-[11px] text-slate-400">NIT: 1193400777-2</p>
+                </div>
+              </div>
+              <span class="material-symbols-outlined text-slate-300 text-[18px]">chevron_right</span>
+            </div>
+          </div>
+
+          <!-- ── SEGURIDAD ─────────────────────── -->
+          <div class="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden">
+            <div class="px-5 pt-4 pb-2">
+              <p class="text-[10px] font-black text-red-400 uppercase tracking-widest">Seguridad</p>
+            </div>
+            <div class="px-5 pb-2">
+              <p class="text-[11px] text-slate-400">Cierra tu sesión actual de forma segura para proteger tus datos en este dispositivo.</p>
+            </div>
+            <div class="px-4 pb-4">
+              <button id="set-logout-btn"
+                class="w-full flex items-center justify-center gap-2 py-3.5 bg-red-50 text-primary
+                       font-black text-sm rounded-xl border border-red-200 active:scale-[0.98]
+                       hover:bg-red-100 transition-all">
+                <span class="material-symbols-outlined text-[18px]">logout</span>
+                Cerrar Sesión
+              </button>
+            </div>
+          </div>
+
         </div>
       </section>
 
     </main><!-- /main -->
 
     <!-- MOBILE BOTTOM NAV -->
-    <nav class="fixed bottom-0 left-0 right-0 bg-surface-container-lowest border-t border-surface-variant
-                shadow-[0_-2px_10px_rgba(0,0,0,0.05)] flex md:hidden z-30 safe-area-bottom">
+    <nav class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-surface-variant
+                flex md:hidden z-30 safe-area-bottom">
       <div id="mobile-nav" class="flex w-full"></div>
     </nav>
 
     <!-- MOBILE DRAWER (Extensión del menú) -->
-    <div id="mobile-drawer" class="hidden fixed inset-0 z-[60]">
-      <div id="mobile-drawer-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-300"></div>
-      <div id="mobile-drawer-content" class="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] p-6 pb-12 translate-y-full transition-transform duration-300 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
-        <div class="w-12 h-1.5 bg-surface-variant rounded-full mx-auto mb-8"></div>
-        <div class="flex justify-between items-center mb-6 px-2">
-           <h3 class="text-lg font-black text-on-surface">Menú Principal</h3>
-           <button id="mobile-drawer-close" class="p-2 bg-surface-container rounded-full"><span class="material-symbols-outlined">close</span></button>
+    <div id="mobile-drawer" class="hidden fixed inset-0" style="z-index: 9999;">
+      <div id="mobile-drawer-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-0 transition-opacity duration-300"></div>
+      <div id="mobile-drawer-content"
+        class="absolute left-0 right-0 bg-white rounded-t-[28px] translate-y-full transition-transform duration-300
+               shadow-[0_-20px_60px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden"
+        style="max-height: 85dvh; bottom: -80px; padding-bottom: calc(env(safe-area-inset-bottom, 16px) + 80px);">
+
+        <!-- Handle bar -->
+        <div class="flex-shrink-0 flex justify-center pt-3 pb-1">
+          <div class="w-10 h-1 rounded-full bg-slate-200"></div>
         </div>
-        <div id="mobile-drawer-grid" class="grid grid-cols-3 gap-y-6 gap-x-4 max-h-[60vh] overflow-y-auto">
+
+        <!-- Header -->
+        <div class="flex-shrink-0 flex justify-between items-center px-5 pb-4 pt-2">
+          <div>
+            <h3 class="text-lg font-black text-on-surface">Menú Principal</h3>
+            <p class="text-xs text-slate-400 font-medium">Todos los módulos</p>
+          </div>
+          <button id="mobile-drawer-close"
+            class="p-2.5 bg-slate-100 rounded-2xl text-slate-500 hover:bg-slate-200 active:scale-90 transition-all">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <!-- Gradient top overlay to fade items as they scroll -->
+        <div class="absolute left-0 right-0 h-8 bg-gradient-to-b from-white to-transparent pointer-events-none z-10 top-[86px]"></div>
+
+        <!-- Scrollable grid -->
+        <div id="mobile-drawer-grid"
+          class="flex-1 overflow-y-auto px-5 pb-6 flex flex-col gap-2">
           <!-- JS dynamic links -->
         </div>
       </div>
@@ -1896,10 +2636,12 @@
 
   </div><!-- /app-shell -->
 
-  <!-- Tailwind custom components -->
   <style>
     .field-label { @apply block text-xs font-semibold text-on-surface-variant mb-1 uppercase tracking-wider; }
-    .field-input { @apply w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2.5 text-sm text-on-surface placeholder-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all; }
+    .field-input { @apply w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2.5 text-sm text-on-surface focus:outline-none focus:border-primary focus:ring-1 transition-all; }
+    .field-input::placeholder { color: var(--color-on-surface-variant); opacity: 0.5; }
+    .field-input:focus { box-shadow: 0 0 0 2px rgba(189, 0, 48, 0.2); }
+    html.dark .field-input:focus { box-shadow: 0 0 0 2px rgba(255, 77, 109, 0.3); }
     .nav-btn-mobile { @apply flex flex-col items-center justify-center gap-0.5 py-2 px-2 w-full h-14; }
   </style>
 

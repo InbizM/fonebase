@@ -71,18 +71,32 @@ function renderTable(lista) {
     
     const fmt = n => new Intl.NumberFormat("es-CO").format(n);
     
+    const getCatCls = (cat) => {
+      const c = String(cat || "").toLowerCase();
+      if (c.includes("celular") || c.includes("teléfono")) return "bg-blue-50 text-blue-700 border border-blue-100";
+      if (c.includes("accesorio")) return "bg-purple-50 text-purple-700 border border-purple-100";
+      if (c.includes("repuesto")) return "bg-orange-50 text-orange-700 border border-orange-100";
+      return "bg-slate-50 text-slate-600 border border-slate-100";
+    };
+
+    const catCls = getCatCls(p.categoria);
+
     return `
       <tr class="hover:bg-surface-container-low transition-colors text-sm">
-        <td class="px-4 py-3 font-mono font-bold">${p.id || '-'}</td>
-        <td class="px-4 py-3 font-bold">${p.producto || '-'}</td>
-        <td class="px-4 py-3"><span class="px-2 py-0.5 bg-surface-container rounded text-[10px] font-medium">${p.categoria || 'Otros'}</span></td>
+        <td class="px-4 py-3 font-mono font-bold hidden md:table-cell">${p.id || '-'}</td>
+        <td class="px-4 py-3 font-black text-on-surface">${p.producto || '-'}</td>
         <td class="px-4 py-3">
-          <p class="text-[10px] text-on-surface-variant">C: $${fmt(costo)}</p>
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${catCls}">
+            ${p.categoria || 'Otros'}
+          </span>
+        </td>
+        <td class="px-4 py-3">
+          <p class="text-[10px] text-on-surface-variant line-through hidden md:block">C: $${fmt(costo)}</p>
           <p class="font-bold text-primary">V: $${fmt(precio)}</p>
         </td>
-        <td class="px-4 py-3 font-bold ${utilidad >= 0 ? 'text-green-600' : 'text-error'}">$${fmt(utilidad)}</td>
+        <td class="px-4 py-3 font-black ${utilidad >= 0 ? 'text-green-600' : 'text-red-600'}">$${fmt(utilidad)}</td>
         <td class="px-4 py-3 text-right">
-          ${isAdmin ? `<button onclick="window.pedDelete('${p.id}')" class="p-1.5 text-on-surface-variant hover:text-error rounded-lg">
+          ${isAdmin ? `<button onclick="window.pedDelete('${p.id}')" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors" title="Eliminar">
             <span class="material-symbols-outlined text-[18px]">delete</span>
           </button>` : ''}
         </td>

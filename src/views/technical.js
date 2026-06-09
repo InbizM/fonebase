@@ -1,10 +1,11 @@
-import { getTechnical, crearServicioTecnico, actualizarServicioTecnico, eliminarServicioTecnico } from "../api.js";
+import { getTechnical, crearServicioTecnico, actualizarServicioTecnico, eliminarServicioTecnico, uploadEvidencia } from "../api.js";
 import { showToast } from "../toast.js";
 
 let _servicios = [];
 let _isLoaded = false;
 let _isProcessing = false;
 let _editingId = null;
+let _evidencias = {}; // To track new image uploads
 
 export function initTechnical() {
   return async () => {
@@ -57,6 +58,8 @@ function renderGrid(lista) {
           <p class="text-[10px] uppercase font-bold text-on-surface-variant/60 mb-1">Falla Reportada</p>
           <p class="text-xs text-on-surface italic line-clamp-2">${s.falla}</p>
         </div>
+        
+        ${s.evidencias && s.evidencias !== "{}" && s.evidencias.length > 5 ? `<div class="flex items-center gap-1.5 mb-3 text-[10px] font-bold text-primary bg-primary/5 px-2 py-1 w-fit rounded-md"><span class="material-symbols-outlined text-[14px]">photo_camera</span> Evidencias Adjuntas</div>` : ''}
 
         <div class="grid grid-cols-2 gap-2 mb-4 border-t border-surface-variant/30 pt-3">
           <div>
@@ -111,6 +114,38 @@ function setupEvents() {
   document.getElementById("tech-modal-close")?.addEventListener("click", closeModal);
   document.getElementById("tech-modal-backdrop")?.addEventListener("click", closeModal);
   document.getElementById("tech-form")?.addEventListener("submit", saveService);
+
+  // Setup Image Previews
+  ['recepcion', 'resultado'].forEach(tipo => {
+    const btn = document.getElementById(`tech-preview-${tipo}-btn`);
+    const input = document.getElementById(`tech-img-${tipo}`);
+    const wrap = document.getElementById(`tech-preview-${tipo}-wrap`);
+    const img = document.getElementById(`tech-preview-${tipo}`);
+    const removeBtn = document.getElementById(`tech-remove-${tipo}`);
+
+    btn?.addEventListener("click", () => input?.click());
+    
+    input?.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        _evidencias[tipo] = { file, base64: ev.target.result.split(",")[1], mime: file.type };
+        img.src = ev.target.result;
+        btn.classList.add("hidden");
+        wrap.classList.remove("hidden");
+      };
+      reader.readAsDataURL(file);
+    });
+
+    removeBtn?.addEventListener("click", () => {
+      input.value = "";
+      delete _evidencias[tipo];
+      img.src = "";
+      wrap.classList.add("hidden");
+      btn.classList.remove("hidden");
+    });
+  });
 
   window.techEdit = (id) => {
     const s = _servicios.find(x => x.id_orden === id);
@@ -215,12 +250,34 @@ function openModal(s = null) {
   form.reset();
   document.getElementById("tech-modal-title").textContent = s ? "Editar Orden" : "Ingreso a Servicio Técnico";
   
+  _evidencias = {}; // Reset pending uploads
+  ['recepcion', 'resultado'].forEach(tipo => {
+    document.getElementById(`tech-preview-${tipo}-btn`)?.classList.remove("hidden");
+    document.getElementById(`tech-preview-${tipo}-wrap`)?.classList.add("hidden");
+    document.getElementById(`tech-preview-${tipo}`).src = "";
+  });
+  
   if (s) {
     document.getElementById("tech-cliente").value = s.cliente;
     document.getElementById("tech-equipo").value = s.equipo;
     document.getElementById("tech-falla").value = s.falla;
     document.getElementById("tech-costo").value = new Intl.NumberFormat("es-CO").format(s.precio_final || 0);
     document.getElementById("tech-estado").value = s.estado;
+
+    if (s.evidencias) {
+      try {
+        const evs = JSON.parse(s.evidencias);
+        ['recepcion', 'resultado'].forEach(tipo => {
+          if (evs[tipo]) {
+            document.getElementById(`tech-preview-${tipo}`).src = evs[tipo];
+            document.getElementById(`tech-preview-${tipo}-btn`).classList.add("hidden");
+            document.getElementById(`tech-preview-${tipo}-wrap`).classList.remove("hidden");
+            // Also store existing url to not lose it if we don't upload a new one
+            _evidencias[tipo] = { url: evs[tipo] };
+          }
+        });
+      } catch(e) {}
+    }
   }
   
   const modal = document.getElementById("tech-modal");
@@ -243,6 +300,23 @@ async function saveService(e) {
 
   const idOrden = _editingId || `ST-${Date.now().toString().slice(-6)}`;
   
+  // Procesar evidencias pendientes
+  btn.innerHTML = `<span class="material-symbols-outlined animate-spin">progress_activity</span> Subiendo...`;
+  
+  let finalEvidencias = {};
+  for (const tipo of ['recepcion', 'resultado']) {
+    if (_evidencias[tipo]) {
+      if (_evidencias[tipo].base64) {
+        try {
+          const url = await uploadEvidencia(_evidencias[tipo].base64, `${idOrden}_${tipo}`, _evidencias[tipo].mime);
+          if (url) finalEvidencias[tipo] = url;
+        } catch(e) { console.error("Error upload evidencia", e); }
+      } else if (_evidencias[tipo].url) {
+        finalEvidencias[tipo] = _evidencias[tipo].url;
+      }
+    }
+  }
+
   // Mapeamos a los 13 campos que pide la tabla en Turso
   const datos = [
     idOrden,
@@ -257,7 +331,7 @@ async function saveService(e) {
     0, // abono
     parseInt(document.getElementById("tech-costo").value.replace(/\D/g, "")) || 0,
     document.getElementById("tech-estado").value,
-    "" // evidencias
+    JSON.stringify(finalEvidencias) // evidencias
   ];
 
   try {
@@ -276,5 +350,6 @@ async function saveService(e) {
   } finally {
     _isProcessing = false;
     btn.disabled = false;
+    btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">save</span> Guardar`;
   }
 }

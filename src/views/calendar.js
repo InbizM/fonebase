@@ -53,7 +53,8 @@ async function loadGlobalActivity() {
         titulo: `Factura: ${v.id_factura || 'N/A'}`,
         subtitulo: `Cliente: ${v.cliente || 'Consumidor Final'}`,
         monto: v.total,
-        signo: "+"
+        signo: "+",
+        usuario: v.vendedor || "Admin"
       });
     });
 
@@ -69,7 +70,8 @@ async function loadGlobalActivity() {
         border: "border-indigo-200",
         titulo: t.tarea,
         subtitulo: `Resp: ${t.responsable || 'Sin asignar'}`,
-        monto: null
+        monto: null,
+        usuario: t.responsable || "Admin"
       });
     });
 
@@ -86,7 +88,8 @@ async function loadGlobalActivity() {
         titulo: `Reventa: ${r.producto}`,
         subtitulo: `Proveedor: ${r.proveedor || 'N/A'}`,
         monto: r.utilidad,
-        signo: "+"
+        signo: "+",
+        usuario: r.vendedor || "Admin"
       });
     });
 
@@ -126,6 +129,11 @@ async function loadGlobalActivity() {
 
     // Sort descending by date
     _events.sort((a, b) => b.fecha - a.fecha);
+
+    // Filter by user if not admin
+    if (!isAdmin) {
+      _events = _events.filter(e => e.usuario === user.nombre);
+    }
 
   } catch (err) {
     console.error(err);

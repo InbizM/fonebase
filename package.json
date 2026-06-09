@@ -18,6 +18,9 @@
     "vite": "^8.0.10"
   },
   "dependencies": {
-    "html5-qrcode": "^2.3.8"
+    "@point-of-sale/receipt-printer-encoder": "^3.0.3",
+    "html2canvas": "^1.4.1",
+    "tesseract.js": "^7.0.0",
+    "zxing-wasm": "^3.0.3"
   }
 }

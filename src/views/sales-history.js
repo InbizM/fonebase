@@ -1,5 +1,6 @@
 import { getVentas } from "../api.js";
 import { showToast } from "../toast.js";
+import { printBluetoothTicket, imageToCanvas } from "../bluetooth-printer.js";
 
 let _ventas = [];
 let _filteredVentas = [];
@@ -27,8 +28,208 @@ export function initSalesHistory() {
     document.getElementById("sale-detail-close")?.addEventListener("click", closeModal);
     document.getElementById("sale-detail-backdrop")?.addEventListener("click", closeModal);
 
+    const printBtn = document.getElementById("sale-detail-print-btn");
+    printBtn?.addEventListener("click", () => {
+      const id = document.querySelector("#sale-detail-content p.text-2xl")?.textContent;
+      const v = _ventas.find(x => x.id_factura === id);
+      if (v) imprimirTicketHistory(v);
+    });
+
+    const printBtBtn = document.getElementById("sale-detail-print-bt");
+    printBtBtn?.addEventListener("click", async () => {
+      const id = document.querySelector("#sale-detail-content p.text-2xl")?.textContent;
+      const v = _ventas.find(x => x.id_factura === id);
+      if (v) {
+        showToast("Preparando impresión...", "info");
+        const canC = v.id_firma_comprador ? await imageToCanvas(v.id_firma_comprador) : null;
+        const canV = v.id_firma_vendedor ? await imageToCanvas(v.id_firma_vendedor) : null;
+        await printBluetoothTicket(v, canC, canV);
+      }
+    });
+
     await loadSalesHistory();
   };
+}
+
+function imprimirTicketHistory(v) {
+  const printWindow = window.open('', '_blank', 'width=300,height=600');
+  const now = new Date(v.fecha);
+  const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
+  
+  const imeiText = v.imeis || "N/A";
+  
+  const emisor = {
+    nombre: "CLAROCELL.COM",
+    propietario: "Yeison Rangel Rangel",
+    nit: "1193400777-2",
+    direccion: "Calle 12 No. 10 - 108, Maicao - La Guajira",
+    contacto: "3016807310"
+  };
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          @page { size: 48mm auto; margin: 0; }
+          html, body { 
+            width: 48mm; 
+            margin: 0; 
+            padding: 0; 
+            background: #fff;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+          }
+          body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            padding: 2mm; 
+            font-size: 10px; 
+            color: #1e293b; /* slate-800 */
+            line-height: 1.3;
+          }
+          .bold { font-weight: 900; }
+          .text-xs { font-size: 8px; }
+          .text-sm { font-size: 11px; }
+          .text-lg { font-size: 14px; }
+          .text-xl { font-size: 18px; }
+          .text-slate-500 { color: #64748b; }
+          .text-slate-400 { color: #94a3b8; }
+          .text-primary { color: #020617; } /* using dark slate for primary on print */
+          
+          .card { 
+            border: 1px solid #e2e8f0; 
+            border-radius: 6px; 
+            padding: 4px; 
+            margin-bottom: 6px; 
+            background: #f8fafc;
+          }
+          .flex-between { display: flex; justify-content: space-between; align-items: flex-start; }
+          .badge { 
+            background: #dcfce7; color: #166534; 
+            padding: 2px 4px; border-radius: 8px; 
+            font-size: 8px; font-weight: 900; text-transform: uppercase;
+          }
+          
+          .section-title {
+            font-size: 7px;
+            font-weight: 900;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            margin-top: 4px;
+          }
+
+          .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+          
+          .product-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 4px;
+            margin-bottom: 4px;
+          }
+          
+          .summary-card {
+            background: #0f172a;
+            color: white;
+            border-radius: 6px;
+            padding: 6px;
+            margin-top: 6px;
+          }
+          
+          .legal { font-size: 7px; text-align: justify; margin-top: 8px; color: #64748b; }
+          .center { text-align: center; }
+        </style>
+      </head>
+      <body>
+        <!-- Header / Comprobante -->
+        <div class="card">
+          <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">COMPROBANTE DE VENTA</div>
+          <div class="flex-between" style="margin-top: 2px;">
+            <div class="text-lg bold" style="line-height: 1;">${v.id_factura}</div>
+            <div class="badge">PAGADO</div>
+          </div>
+          <div class="flex-between" style="margin-top: 2px;">
+            <div class="text-xs text-slate-500">${fechaStr}</div>
+            <div class="text-xs bold">${v.metodo || 'Efectivo'}</div>
+          </div>
+        </div>
+        
+        <!-- Info Cliente & Vendedor -->
+        <div class="grid-2">
+          <div>
+            <div class="section-title">INFORMACIÓN DEL CLIENTE</div>
+            <div class="bold text-sm">${v.cliente}</div>
+            <div class="text-xs text-slate-500">ID: ${v.cedula}</div>
+            <div class="text-xs text-slate-500"><span class="text-slate-400 bold">Tel:</span> ${v.telefono_cliente || 'N/A'}</div>
+            <div class="text-xs text-slate-500"><span class="text-slate-400 bold">Ubicación:</span> ${v.direccion || '—'}, ${v.ciudad || '—'}</div>
+          </div>
+          <div>
+            <div class="section-title">ATENDIDO POR</div>
+            <div class="bold text-sm">${v.vendedor || 'Vendedor'}</div>
+            <div class="text-xs text-slate-400" style="font-style: italic;">Vendedor Autorizado</div>
+            <div class="text-xs bold" style="color: #dc2626; background: #fef2f2; display: inline-block; padding: 1px 4px; border-radius: 4px; margin-top: 2px;">DIGITAL</div>
+          </div>
+        </div>
+        
+        <div style="border-top: 1px solid #f1f5f9; margin: 6px 0;"></div>
+        
+        <!-- Detalle Productos -->
+        <div class="section-title">DETALLE DE PRODUCTOS</div>
+        <div class="product-card">
+          <div class="flex-between">
+            <div class="bold text-sm" style="width: 80%;">${v.productos}</div>
+            <div class="bold text-sm">x${v.cantidad || 1}</div>
+          </div>
+        </div>
+        ${imeiText && imeiText !== 'N/A' ? `<div class="text-xs bold" style="color:#dc2626; margin-top: -2px; margin-bottom: 4px; margin-left: 4px;">IMEI/SERIE: ${imeiText}</div>` : ''}
+
+        <!-- Resumen Financiero -->
+        <div class="summary-card">
+          <div class="flex-between" style="align-items: flex-end;">
+            <div>
+              <div class="section-title" style="color: #94a3b8; margin-top: 0;">RESUMEN FINANCIERO</div>
+              <div class="text-xs" style="color: #cbd5e1;">Subtotal: $${new Intl.NumberFormat('es-CO').format(v.subtotal || v.total)}</div>
+              <div class="text-xs bold" style="color: #f87171;">Descuento: -$${new Intl.NumberFormat('es-CO').format(v.descuento || 0)}</div>
+            </div>
+            <div style="text-align: right;">
+              <div class="section-title" style="color: #94a3b8; margin-top: 0; margin-bottom: 0;">TOTAL COBRADO</div>
+              <div class="text-xl bold text-white" style="line-height: 1;">$${new Intl.NumberFormat('es-CO').format(v.total)}</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Firmas -->
+        <div class="grid-2" style="margin-top: 8px;">
+           <div class="center">
+             <div class="text-xs bold text-slate-400">FIRMA VEND.</div>
+             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px; display: flex; justify-content: center; align-items: center;">
+               ${v.id_firma_vendedor ? `<img src="${v.id_firma_vendedor}" style="height: 26px; max-width: 100%; object-fit: contain;">` : ''}
+             </div>
+           </div>
+           <div class="center">
+             <div class="text-xs bold text-slate-400">FIRMA CLI.</div>
+             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px; display: flex; justify-content: center; align-items: center;">
+               ${v.id_firma_comprador ? `<img src="${v.id_firma_comprador}" style="height: 26px; max-width: 100%; object-fit: contain;">` : ''}
+             </div>
+           </div>
+        </div>
+        
+        <!-- Footer Legal -->
+        <div class="center text-xs bold" style="margin-top: 10px;">${emisor.nombre}</div>
+        <div class="center text-xs text-slate-500">NIT: ${emisor.nit}</div>
+        <div class="legal">
+          GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.
+          Doc. asimilado a letra de cambio (Art. 774 C.Comercio).
+        </div>
+        <div class="center bold" style="margin-top: 8px; font-size: 11px;">¡GRACIAS POR SU COMPRA!</div>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  setTimeout(() => { printWindow.print(); printWindow.close(); }, 500);
 }
 
 async function loadSalesHistory() {
@@ -49,6 +250,14 @@ function renderTable() {
   const container = document.getElementById("sales-history-list");
   if (!container) return;
 
+  // Actualizar estadísticas
+  const totalFacturas = _filteredVentas.length;
+  const totalFacturado = _filteredVentas.reduce((sum, v) => sum + (v.total || 0), 0);
+  const elCount = document.getElementById("sales-stat-count");
+  const elAmount = document.getElementById("sales-stat-amount");
+  if (elCount) elCount.textContent = totalFacturas.toLocaleString();
+  if (elAmount) elAmount.textContent = "$" + new Intl.NumberFormat("es-CO").format(totalFacturado);
+
   if (_filteredVentas.length === 0) {
     container.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-on-surface-variant italic text-sm">No se encontraron ventas</td></tr>`;
     return;
@@ -60,7 +269,7 @@ function renderTable() {
 
     return `
       <tr class="hover:bg-surface-container-low transition-colors text-[13px]">
-        <td class="px-4 py-4 text-center text-on-surface-variant font-medium">${i + 1}</td>
+        <td class="px-4 py-4 text-center text-on-surface-variant font-medium hidden md:table-cell">${i + 1}</td>
         <td class="px-4 py-4">
           <div class="font-bold text-on-surface text-sm">${v.id_factura}</div>
           <div class="text-[10px] text-on-surface-variant uppercase">${fecha}</div>
@@ -69,7 +278,7 @@ function renderTable() {
           <div class="font-bold text-on-surface">${v.cliente || "Consumidor Final"}</div>
           <div class="text-[10px] text-on-surface-variant">CC: ${v.cedula || "N/A"}</div>
         </td>
-        <td class="px-4 py-4 font-medium text-on-surface-variant">${v.vendedor || "—"}</td>
+        <td class="px-4 py-4 font-medium text-on-surface-variant hidden md:table-cell">${v.vendedor || "—"}</td>
         <td class="px-4 py-4">
           <div class="text-xs text-on-surface font-semibold truncate max-w-[150px]">${v.productos}</div>
           <div class="text-[10px] text-primary font-bold">IMEI: ${v.imeis || 'N/A'}</div>
@@ -114,12 +323,14 @@ window.viewSaleDetail = (id) => {
           <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">Información del Cliente</p>
           <p class="text-sm font-black text-slate-900">${v.cliente}</p>
           <p class="text-xs text-slate-600">ID/Cédula: ${v.cedula || 'N/A'}</p>
-          <p class="text-xs text-slate-600 mt-1"><span class="font-bold text-slate-400">Dirección:</span> ${v.direccion || 'Sin dirección'}</p>
+          <p class="text-xs text-slate-600 mt-1"><span class="font-bold text-slate-400">Tel:</span> ${v.telefono_cliente || 'N/A'}</p>
+          <p class="text-xs text-slate-600 mt-0.5"><span class="font-bold text-slate-400">Ubicación:</span> ${v.direccion || '—'}, ${v.ciudad || '—'}</p>
         </div>
         <div>
           <p class="text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">Atendido por</p>
           <p class="text-sm font-black text-slate-900">${v.vendedor}</p>
           <p class="text-xs text-slate-500 italic">Vendedor Autorizado</p>
+          <p class="text-[10px] mt-2 font-bold text-primary uppercase bg-primary/5 inline-block px-2 py-0.5 rounded-full">${v.tipo_factura || 'física'}</p>
         </div>
       </div>
 

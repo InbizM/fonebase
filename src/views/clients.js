@@ -64,36 +64,48 @@ function renderTable(lista) {
   const isAdmin = user.rol === "Administrador";
 
   elTable.innerHTML = lista.map(c => {
-    const tipoColor = c.tipo === "VIP" ? "bg-amber-100 text-amber-800" 
-                    : c.tipo === "Empresa" ? "bg-blue-100 text-blue-800"
-                    : c.tipo === "Mayorista" ? "bg-purple-100 text-purple-800"
-                    : "bg-surface-container text-on-surface-variant";
+    const tipoColor = c.tipo === "VIP" ? "bg-amber-50 text-amber-700 border border-amber-100" 
+                    : c.tipo === "Empresa" ? "bg-blue-50 text-blue-700 border border-blue-100"
+                    : c.tipo === "Mayorista" ? "bg-purple-50 text-purple-700 border border-purple-100"
+                    : "bg-slate-50 text-slate-500 border border-slate-100";
     
+    const initials = (c.nombre || "C").split(" ").filter(Boolean).map(n => n[0]).join("").substring(0, 2).toUpperCase();
+
     return `
       <tr class="hover:bg-surface-container-low transition-colors">
-        <td class="px-4 py-3 font-mono text-xs font-bold text-on-surface">${c.cedula || '-'}</td>
+        <td class="px-4 py-3 font-mono text-xs font-bold text-on-surface hidden md:table-cell">${c.cedula || '-'}</td>
         <td class="px-4 py-3">
-          <p class="font-bold text-sm text-on-surface">${c.nombre || '-'}</p>
-        </td>
-        <td class="px-4 py-3">
-          <div class="flex items-center gap-1.5 text-sm text-on-surface-variant mb-0.5">
-            <span class="material-symbols-outlined text-[14px]">call</span> ${c.telefono || '-'}
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary/5 text-primary flex items-center justify-center font-black text-xs shrink-0 border border-primary/10">
+              ${initials}
+            </div>
+            <div>
+              <p class="font-black text-sm text-on-surface">${c.nombre || '-'}</p>
+              <p class="text-[10px] text-on-surface-variant font-mono md:hidden">Doc: ${c.cedula || '-'}</p>
+            </div>
           </div>
-          ${c.email ? `<div class="flex items-center gap-1.5 text-xs text-on-surface-variant"><span class="material-symbols-outlined text-[14px]">mail</span> ${c.email}</div>` : ''}
         </td>
-        <td class="px-4 py-3 text-sm text-on-surface-variant">${c.direccion || '-'}</td>
         <td class="px-4 py-3">
-          <span class="px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase ${tipoColor}">
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-on-surface-variant mb-0.5">
+            <span class="material-symbols-outlined text-[15px] text-primary/65">call</span> ${c.telefono || '-'}
+          </div>
+          ${c.email ? `<div class="flex items-center gap-1.5 text-[11px] text-on-surface-variant"><span class="material-symbols-outlined text-[15px] text-primary/45">mail</span> ${c.email}</div>` : ''}
+        </td>
+        <td class="px-4 py-3 text-sm text-on-surface-variant hidden md:table-cell">${c.direccion || '-'}</td>
+        <td class="px-4 py-3">
+          <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${tipoColor}">
             ${c.tipo || 'Normal'}
           </span>
         </td>
         <td class="px-4 py-3 text-right">
-          <button onclick="window.cliEdit('${c.cedula}')" class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-lg transition-colors" title="Editar">
-            <span class="material-symbols-outlined text-[18px]">edit</span>
-          </button>
-          ${isAdmin ? `<button onclick="window.cliDelete('${c.cedula}')" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-lg transition-colors" title="Eliminar">
-            <span class="material-symbols-outlined text-[18px]">delete</span>
-          </button>` : ''}
+          <div class="flex items-center justify-end gap-1">
+            ${isAdmin ? `<button onclick="window.cliEdit('${c.cedula}')" class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-full transition-colors" title="Editar">
+              <span class="material-symbols-outlined text-[18px]">edit</span>
+            </button>` : ''}
+            ${isAdmin ? `<button onclick="window.cliDelete('${c.cedula}')" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors" title="Eliminar">
+              <span class="material-symbols-outlined text-[18px]">delete</span>
+            </button>` : ''}
+          </div>
         </td>
       </tr>
     `;

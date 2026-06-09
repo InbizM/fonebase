@@ -35,7 +35,13 @@ function bindEvents() {
 async function loadTasks() {
   const container = document.getElementById("task-list");
   try {
-    _tareas = await getTareas();
+    let allTareas = await getTareas();
+    const user = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
+    if (user.rol === "Técnico de reparación" || user.rol === "Vendedor") {
+      _tareas = allTareas.filter(t => t.responsable === user.nombre);
+    } else {
+      _tareas = allTareas;
+    }
     renderTasks();
   } catch (err) {
     container.innerHTML = `<li class="p-8 text-center text-error">Error: ${err.message}</li>`;

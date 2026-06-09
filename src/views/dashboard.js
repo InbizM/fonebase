@@ -4,9 +4,52 @@ import { navigate } from "../router.js";
 let _isLoaded = false;
 let _eventsReady = false;
 
+function applyRoleLayout() {
+  const user = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
+  const rol = user.rol || "Vendedor";
+
+  const elEgresos = document.getElementById("dash-card-egresos");
+  const elUtilidad = document.getElementById("dash-card-utilidad");
+  const elKpiRow = document.getElementById("dash-kpi-row");
+  const qaTecnico = document.getElementById("dash-qa-tecnico");
+  const qaEgresos = document.getElementById("dash-qa-egresos");
+  const qaVender = document.getElementById("dash-qa-vender");
+  const qaCreditos = document.getElementById("dash-qa-creditos");
+  const sectionVentas = document.getElementById("dash-ventas-section");
+  const chartCard = document.getElementById("dash-chart-card");
+  const tecQueue = document.getElementById("dash-tec-queue-card");
+  const bottomRow = document.getElementById("dash-bottom-row");
+  const businessMetrics = document.getElementById("dash-business-metrics");
+
+  // Reset
+  [elEgresos, elUtilidad, elKpiRow, qaTecnico, qaEgresos, qaVender, qaCreditos, sectionVentas, chartCard, tecQueue, bottomRow, businessMetrics].forEach(el => {
+    if(el) el.style.display = ""; 
+  });
+  if(bottomRow) bottomRow.className = "grid grid-cols-1 lg:grid-cols-2 gap-5";
+
+  if (rol === "Vendedor") {
+    if (elEgresos) elEgresos.style.display = "none";
+    if (elUtilidad) elUtilidad.style.display = "none";
+    if (qaTecnico) qaTecnico.style.display = "none";
+    if (qaEgresos) qaEgresos.style.display = "none";
+    if (tecQueue) tecQueue.style.display = "none";
+    if (bottomRow) bottomRow.className = "grid grid-cols-1 gap-5";
+  } else if (rol === "Técnico de reparación") {
+    if (elKpiRow) elKpiRow.style.display = "none";
+    if (qaVender) qaVender.style.display = "none";
+    if (qaEgresos) qaEgresos.style.display = "none";
+    if (qaCreditos) qaCreditos.style.display = "none";
+    if (sectionVentas) sectionVentas.style.display = "none";
+    if (chartCard) chartCard.style.display = "none";
+    if (bottomRow) bottomRow.className = "grid grid-cols-1 gap-5";
+    if (businessMetrics) businessMetrics.style.display = "none";
+  }
+}
+
 export function initDashboard() {
   return async () => {
     setGreeting();
+    applyRoleLayout();
     if (!_eventsReady) {
       document.getElementById("dash-refresh-btn")?.addEventListener("click", loadDashboard);
       document.querySelectorAll("[data-goto]").forEach(btn => {
@@ -36,6 +79,13 @@ async function loadDashboard() {
     updateStat("dash-egresos-hoy", data.egresosHoy, true);
     updateStat("dash-utilidad", data.utilidad, true);
     updateStat("dash-stock-critico", data.stockCritico);
+
+    updateStat("dash-total-productos", data.totalProductos);
+    updateStat("dash-total-stock", data.totalStock);
+    updateStat("dash-total-equipos", data.totalEquipos);
+    updateStat("dash-total-clientes", data.totalClientes);
+    updateStat("dash-creditos-activos", data.creditosActivos);
+    updateStat("dash-total-reventas", data.totalReventas);
 
     renderVentasRecientes(data.ventasRecientes);
     renderTopProductos(data.topProductos);

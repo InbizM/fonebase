@@ -24,16 +24,26 @@ export async function navigate(viewId) {
     if (overrideView === false) return; // cancelled
     if (typeof overrideView === 'string') viewId = overrideView; // redirect
   }
+  
   // Hide all views
   document.querySelectorAll("[data-view]").forEach((el) => {
     el.classList.add("hidden");
   });
 
   const target = document.querySelector(`[data-view="${viewId}"]`);
-  if (!target) return console.warn("View not found:", viewId);
+  if (!target) {
+    console.warn("View not found:", viewId);
+    if (viewId !== 'dashboard') return navigate('dashboard');
+    return;
+  }
 
   target.classList.remove("hidden");
   activeViewId = viewId;
+
+  // Sync URL hash without triggering popstate
+  if (window.location.hash !== `#${viewId}`) {
+    window.history.pushState(null, '', `#${viewId}`);
+  }
 
   if (onChangeCallback) onChangeCallback(viewId);
 
@@ -46,3 +56,11 @@ export async function navigate(viewId) {
 export function getActiveView() {
   return activeViewId;
 }
+
+// Handle browser back/forward buttons and manual hash changes
+window.addEventListener('popstate', () => {
+  const hash = window.location.hash.replace('#', '');
+  if (hash && hash !== activeViewId) {
+    navigate(hash);
+  }
+});
