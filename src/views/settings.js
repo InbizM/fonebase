@@ -108,7 +108,7 @@ function setupEvents() {
   const actualLogoInput = document.getElementById("set-store-logo-file");
   const actualLogoError = document.getElementById("set-store-logo-error");
 
-  actualLogoBtn?.addEventListener("click", () => actualLogoInput?.click());
+  // The click is now handled natively by the label's for="set-store-logo-file" attribute
   
   actualLogoInput?.addEventListener("change", (e) => {
     const file = e.target.files[0];
