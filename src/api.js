@@ -1,10 +1,9 @@
 // ============================================================
-// api.js — AdminPro API Service (V12 EXPENSES ID FIX)
+// api.js — FoneBase API Service (V12 EXPENSES ID FIX)
 // ============================================================
 
 const TURSO_URL = "https://adminpro-adminpro.aws-us-west-2.turso.io/v2/pipeline";
 const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzcyOTIwOTMsImlkIjoiMDE5ZGNlZGItOTIwMS03NGVkLWIwZGYtZjg4MTQ3NjlhODcxIiwicmlkIjoiNWIwMWViNTctYTgxYS00OTI0LWIzMDUtZjk1Y2EwMjUzNmRkIn0.oruUZmv_ZLWlKA2ctQnghAD5PIiJSIeR4nzbZia-q-f1r12IHhLv1hDw9CsReABIceaVRHPS52JMZ4j3lcZ1Bw";
-const GAS_URL = "https://script.google.com/macros/s/AKfycbxxs-PUyNqqALN2-azEHaViv5PM1r5oteanvr2Sfydic-bBQJrGWj00R0FO7UAlP4Ug/exec";
 
 let _gasToken = localStorage.getItem("adminpro_gas_token") || "";
 
@@ -37,15 +36,127 @@ async function queryTurso(sqls) {
 }
 const mapArgs = (d) => d.map(v => ({ type: typeof v === 'number' ? 'float' : 'text', value: String(v) }));
 
-async function fetchGAS(payload) {
-  const res = await fetch(GAS_URL, { method: "POST", mode: "cors", body: JSON.stringify(payload) });
-  return await res.json();
+// ── COMPRESIÓN DE IMÁGENES POR CANVAS ──
+function compressImage(base64Data, maxWidth = 800, maxHeight = 800, quality = 0.6) {
+  return new Promise((resolve) => {
+    if (!base64Data || !base64Data.startsWith("data:")) {
+      resolve(base64Data || "");
+      return;
+    }
+    
+    const img = new Image();
+    img.src = base64Data;
+    img.onload = () => {
+      let width = img.width;
+      let height = img.height;
+      
+      if (width > height) {
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+      } else {
+        if (height > maxHeight) {
+          width = Math.round((width * maxHeight) / height);
+          height = maxHeight;
+        }
+      }
+      
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, width, height);
+      
+      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      resolve(dataUrl);
+    };
+    img.onerror = () => {
+      resolve(base64Data);
+    };
+  });
 }
 
-// ── DRIVE UPLOADS ──
-export const uploadFoto = async (base64, fileName, mimeType) => (await fetchGAS({ action: "uploadFoto", token: getToken(), base64Data: base64, fileName, mimeType })).url || "";
-export const uploadSignature = async (base64, fileName) => (await fetchGAS({ action: "uploadSignature", token: getToken(), base64Data: base64, fileName })).url || "";
-export const uploadEvidencia = async (base64, fileName, mimeType) => (await fetchGAS({ action: "uploadEvidencia", token: getToken(), base64Data: base64, fileName, mimeType })).url || "";
+// ── ALGORITMO TOTP 2FA (COMPATIBLE CON GOOGLE/MICROSOFT AUTHENTICATOR) ──
+function base32Decode(str) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let cleanStr = str.replace(/=+$/, "").toUpperCase();
+  let len = cleanStr.length;
+  let bits = 0;
+  let value = 0;
+  let bytes = [];
+  
+  for (let i = 0; i < len; i++) {
+    let val = alphabet.indexOf(cleanStr[i]);
+    if (val === -1) throw new Error("Invalid base32 character");
+    value = (value << 5) | val;
+    bits += 5;
+    if (bits >= 8) {
+      bytes.push((value >>> (bits - 8)) & 255);
+      bits -= 8;
+    }
+  }
+  return new Uint8Array(bytes);
+}
+
+async function generateTOTP(secretBase32, timeOffsetSteps = 0) {
+  try {
+    const keyBytes = base32Decode(secretBase32);
+    const epoch = Math.round(new Date().getTime() / 1000.0);
+    const timeStep = 30;
+    const counter = Math.floor(epoch / timeStep) + timeOffsetSteps;
+    
+    const msgBytes = new Uint8Array(8);
+    let temp = counter;
+    for (let i = 7; i >= 0; i--) {
+      msgBytes[i] = temp & 255;
+      temp = Math.floor(temp / 256);
+    }
+    
+    const cryptoKey = await window.crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      { name: "HMAC", hash: { name: "SHA-1" } },
+      false,
+      ["sign"]
+    );
+    
+    const signatureBuffer = await window.crypto.subtle.sign(
+      "HMAC",
+      cryptoKey,
+      msgBytes
+    );
+    
+    const hmac = new Uint8Array(signatureBuffer);
+    const offset = hmac[hmac.length - 1] & 15;
+    const binary = ((hmac[offset] & 127) << 24) |
+                   ((hmac[offset + 1] & 255) << 16) |
+                   ((hmac[offset + 2] & 255) << 8) |
+                   (hmac[offset + 3] & 255);
+    
+    const code = binary % 1000000;
+    return String(code).padStart(6, "0");
+  } catch (e) {
+    console.error("Error generating TOTP", e);
+    return null;
+  }
+}
+
+async function verifyTOTP(secretBase32, enteredCode) {
+  for (let offset = -1; offset <= 1; offset++) {
+    const generated = await generateTOTP(secretBase32, offset);
+    if (generated && generated === enteredCode) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// ── DRIVE UPLOADS (MIGRADOS A RETORNO LOCAL COMPRIMIDO) ──
+export const uploadFoto = async (base64, fileName, mimeType) => await compressImage(base64, 800, 800, 0.6);
+export const uploadSignature = async (base64, fileName) => base64;
+export const uploadEvidencia = async (base64, fileName, mimeType) => await compressImage(base64, 800, 800, 0.6);
 
 // ── BROWSER-DIRECT GEMINI API VISION CALL ──
 async function callGeminiDirect(base64Data, mimeType, isImei = false) {
@@ -245,7 +356,7 @@ async function callGeminiDirect(base64Data, mimeType, isImei = false) {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${openRouterApiKey}`,
           "HTTP-Referer": "https://adminpro.local",
-          "X-Title": "AdminPro Inventory AI Fallback"
+          "X-Title": "FoneBase Inventory AI Fallback"
         },
         body: JSON.stringify({
           model: modelName,
@@ -309,20 +420,77 @@ export const analyzeImeiLabel = async (base64Data, mimeType) => await callGemini
 
 // ── AUTH ──
 export const login = async (email, password) => {
-  const results = await queryTurso({ sql: "SELECT * FROM usuarios WHERE email = ? AND password = ? AND estado = 'Activo'", args: [{ type: "text", value: email.toLowerCase() }, { type: "text", value: password }] });
-  if (!results[0] || results[0].length === 0) return { success: false, mensaje: "Credenciales incorrectas" };
-  return await (await fetch(`${GAS_URL}?action=login&email=${encodeURIComponent(email)}&password=${password}`)).json();
+  try {
+    const results = await queryTurso({ 
+      sql: "SELECT email, nombre, rol, estado, totp_secret FROM usuarios WHERE email = ? AND password = ? AND estado = 'Activo'", 
+      args: [{ type: "text", value: email.toLowerCase() }, { type: "text", value: password }] 
+    });
+    
+    const user = results[0]?.[0];
+    if (!user) return { success: false, mensaje: "Credenciales incorrectas" };
+    
+    if (!user.totp_secret) {
+      // Generate a new 16-character base32 secret key
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+      let secret = "";
+      for (let i = 0; i < 16; i++) {
+        secret += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+      }
+      
+      // Save secret key in Turso DB
+      await queryTurso({
+        sql: "UPDATE usuarios SET totp_secret = ? WHERE email = ?",
+        args: [{ type: "text", value: secret }, { type: "text", value: email.toLowerCase() }]
+      });
+      
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`otpauth://totp/FoneBase:${email}?secret=${secret}&issuer=FoneBase`)}`;
+      
+      return { success: true, step: "setup-totp", secret, qrCodeUrl };
+    }
+    
+    return { success: true, step: "totp" };
+  } catch (err) {
+    return { success: false, mensaje: "Error en base de datos: " + err.message };
+  }
 };
+
 export const verifyPin = async (email, pin) => {
-  const res = await (await fetch(`${GAS_URL}?action=verifyPin&email=${encodeURIComponent(email)}&pin=${pin}`)).json();
-  if (res.success) {
-    setToken(res.token);
-    const results = await queryTurso({ sql: "SELECT nombre, rol, email FROM usuarios WHERE email = ?", args: [{ type: "text", value: email.toLowerCase() }] });
-    const fullUser = { ...(results[0]?.[0] || { nombre: 'Usuario' }), token: res.token };
+  try {
+    const results = await queryTurso({
+      sql: "SELECT nombre, rol, email, totp_secret FROM usuarios WHERE email = ?",
+      args: [{ type: "text", value: email.toLowerCase() }]
+    });
+    
+    const user = results[0]?.[0];
+    if (!user) return { success: false, mensaje: "Usuario no encontrado" };
+    
+    if (!user.totp_secret) return { success: false, mensaje: "2FA no configurado" };
+    
+    const isValid = await verifyTOTP(user.totp_secret, pin);
+    if (!isValid) return { success: false, mensaje: "Código 2FA incorrecto" };
+    
+    // Generate a simple client-side session token
+    const token = btoa(JSON.stringify({ email: user.email, nombre: user.nombre, rol: user.rol, exp: Date.now() + 24*60*60*1000 }));
+    setToken(token);
+    
+    const fullUser = { nombre: user.nombre, rol: user.rol, email: user.email, token };
     localStorage.setItem("adminpro_user", JSON.stringify(fullUser));
     return { success: true, ...fullUser };
+  } catch (err) {
+    return { success: false, mensaje: "Error de autenticación: " + err.message };
   }
-  return res;
+};
+
+export const reset2fa = async (email) => {
+  try {
+    await queryTurso({
+      sql: "UPDATE usuarios SET totp_secret = NULL WHERE email = ?",
+      args: [{ type: "text", value: email.toLowerCase() }]
+    });
+    return { success: true };
+  } catch (err) {
+    throw new Error("Error al restablecer 2FA: " + err.message);
+  }
 };
 
 // ── USUARIOS ──

@@ -176,7 +176,7 @@ function setupEvents() {
       </head>
       <body>
         <div class="center mb-2">
-          <h2 style="margin:0;">ADMINPRO</h2>
+          <h2 style="margin:0;">FONEBASE</h2>
           <p style="margin:3px 0;">Servicio Técnico</p>
         </div>
         

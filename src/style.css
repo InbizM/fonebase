@@ -194,6 +194,11 @@ html.dark .text-green-800 { color: #30d158 !important; }
 
 /* Specifications container transparent background override */
 html.dark .bg-slate-50\/50 { background-color: rgba(28, 28, 30, 0.5) !important; }
+html.dark .bg-slate-50\/30 { background-color: rgba(0, 0, 0, 0.25) !important; }
+
+/* Slate text color overrides for dark mode */
+html.dark .text-slate-900 { color: var(--color-slate-900) !important; }
+html.dark .text-slate-950 { color: var(--color-slate-950) !important; }
 
 html.dark aside,
 html.dark aside * {
@@ -320,5 +325,48 @@ body {
     align-items: center !important;
     gap: 0.5rem !important;
     margin-top: 0.25rem !important;
+  }
+}
+
+/* Rotación completa del modal de firma para móviles en portrait (vista horizontal en pantalla vertical) */
+@media (max-width: 1023px) and (orientation: portrait) {
+  #pos-signature-modal {
+    position: fixed !important;
+    top: 50% !important;
+    left: 50% !important;
+    width: 100vh !important; /* El ancho del modal es la altura de la pantalla */
+    height: 100vw !important; /* La altura del modal es el ancho de la pantalla */
+    transform: translate(-50%, -50%) rotate(90deg) !important;
+    transform-origin: center center !important;
+    z-index: 70 !important;
+  }
+
+  #pos-sig-modal-body {
+    padding: 0px !important; /* Quitar márgenes/padding para aprovechar al 100% el ancho visual */
+  }
+
+  #pos-sig-canvas-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    border-radius: 0px !important; /* Bordes rectos para fundirse con los límites físicos del dispositivo */
+    border-left: none !important;
+    border-right: none !important;
+  }
+}
+
+/* Estilo del contenedor de firma en móviles si ya está en landscape real */
+@media (max-width: 1023px) and (orientation: landscape) {
+  #pos-sig-modal-body {
+    padding: 0px !important;
+  }
+
+  #pos-sig-canvas-wrapper {
+    width: 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+    border-radius: 0px !important;
+    border-left: none !important;
+    border-right: none !important;
   }
 }

@@ -12,10 +12,11 @@ let _isProcessing = false;
 let _tipoVenta = null;
 
 let elSearch, elGrid, elCartItems, elSubtotal, elDescuento, elTotal, elBtnPay, elClienteDoc, elClienteNombre;
-let elModal, elModalClose, elModalCancel, elModalConfirm, elFile, elCanvasCliente, elCanvasVendedor, ctxCliente, ctxVendedor;
+let elModal, elModalClose, elModalCancel, elModalConfirm, elCanvasCliente, elCanvasVendedor, ctxCliente, ctxVendedor;
 let elDireccion, elCiudad, elTelefono, elDigitalFields, elSignaturesCont, elImeiContainer, elImeiList;
 let elSigModal, elSigModalClose, elSigModalClear, elSigModalSave, elCanvasFull, ctxFull, activeSigCanvas;
-let elBtnPrintBt;
+let elFileCamera, elFileGallery, elEvidenciaStatus, elEvidenciaFilename;
+let _evidenciaFile = null;
 
 // Mobile bottom sheet refs
 let elCartFab, elCartSheet, elSheetOverlay, elSheetClose;
@@ -45,8 +46,8 @@ export function initPOS() {
     if (!_isLoaded) {
       await loadProductos();
       setupEvents();
-      setupCanvas(elCanvasCliente, (c) => ctxCliente = c);
-      setupCanvas(elCanvasVendedor, (c) => ctxVendedor = c);
+      ctxCliente = elCanvasCliente.getContext("2d");
+      ctxVendedor = elCanvasVendedor.getContext("2d");
       setupCanvas(elCanvasFull, (c) => ctxFull = c);
       _isLoaded = true;
     }
@@ -69,7 +70,10 @@ function bindUIElements() {
   elModalClose = document.getElementById("pos-checkout-close");
   elModalCancel = document.getElementById("pos-checkout-cancel");
   elModalConfirm = document.getElementById("pos-checkout-confirm");
-  elFile = document.getElementById("pos-evidencia-file");
+  elFileCamera = document.getElementById("pos-evidencia-file-camera");
+  elFileGallery = document.getElementById("pos-evidencia-file-gallery");
+  elEvidenciaStatus = document.getElementById("pos-evidencia-status");
+  elEvidenciaFilename = document.getElementById("pos-evidencia-filename");
   elCanvasCliente = document.getElementById("pos-canvas-cliente");
   elCanvasVendedor = document.getElementById("pos-canvas-vendedor");
 
@@ -86,8 +90,6 @@ function bindUIElements() {
   elSigModalClear = document.getElementById("pos-sig-modal-clear");
   elSigModalSave = document.getElementById("pos-sig-modal-save");
   elCanvasFull = document.getElementById("pos-canvas-fullscreen");
-
-  elBtnPrintBt = document.getElementById("pos-print-bt-btn");
 
   // Mobile sheet refs
   elCartFab      = document.getElementById("pos-cart-fab");
@@ -158,11 +160,16 @@ function setupEvents() {
     }});
   });
 
-  document.getElementById("pos-reventa-btn")?.addEventListener("click", () => {
+  const handleReventa = () => {
     window.__posReventaMode = true;
+    if (isMobile()) {
+      closeSheet();
+    }
     navigate("inventory");
     setTimeout(() => { if (window.inventoryView && window.inventoryView.openNuevo) { window.inventoryView.openNuevo(true); } }, 150);
-  });
+  };
+  document.getElementById("pos-reventa-btn")?.addEventListener("click", handleReventa);
+  document.getElementById("pos-reventa-btn-mobile")?.addEventListener("click", handleReventa);
 
   document.getElementById("pos-select-client-btn")?.addEventListener("click", () => {
     openCustomerSelector((client) => {
@@ -191,12 +198,19 @@ function setupEvents() {
   });
 
   elSigModalClose.addEventListener("click", () => elSigModal.classList.add("hidden"));
+  document.getElementById("pos-sig-modal-cancel")?.addEventListener("click", () => elSigModal.classList.add("hidden"));
   elSigModalClear.addEventListener("click", () => ctxFull.clearRect(0, 0, elCanvasFull.width, elCanvasFull.height));
   elSigModalSave.addEventListener("click", () => {
     if (activeSigCanvas) {
       const targetCtx = activeSigCanvas.getContext("2d");
       targetCtx.clearRect(0, 0, activeSigCanvas.width, activeSigCanvas.height);
       targetCtx.drawImage(elCanvasFull, 0, 0, activeSigCanvas.width, activeSigCanvas.height);
+      
+      const isClient = activeSigCanvas.id === "pos-canvas-cliente";
+      const helper = document.getElementById(isClient ? "pos-sig-helper-cliente" : "pos-sig-helper-vendedor");
+      if (helper) helper.classList.add("hidden");
+      const cleanBtn = activeSigCanvas.parentElement.querySelector("button");
+      if (cleanBtn) cleanBtn.classList.remove("hidden");
     }
     elSigModal.classList.add("hidden");
   });
@@ -213,6 +227,42 @@ function setupEvents() {
 
   elCanvasCliente.parentElement.addEventListener("click", () => openSigFull(elCanvasCliente, "Firma del Comprador"));
   elCanvasVendedor.parentElement.addEventListener("click", () => openSigFull(elCanvasVendedor, "Firma del Vendedor"));
+
+  // Click-to-clear for small preview cards
+  [elCanvasCliente, elCanvasVendedor].forEach(canvas => {
+    const cleanBtn = canvas.parentElement.querySelector("button");
+    if (cleanBtn) {
+      cleanBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        const isClient = canvas.id === "pos-canvas-cliente";
+        const helper = document.getElementById(isClient ? "pos-sig-helper-cliente" : "pos-sig-helper-vendedor");
+        if (helper) helper.classList.remove("hidden");
+        cleanBtn.classList.add("hidden");
+      });
+    }
+  });
+
+  // IMEI scanner button delegation
+  elImeiList?.addEventListener("click", (e) => {
+    const btn = e.target.closest(".pos-imei-scan-btn");
+    if (!btn) return;
+    e.preventDefault();
+    openScanner({
+      title: "Escanear IMEI",
+      filter: /^\d{15}$/,
+      filterLabel: "IMEI",
+      onScan: (code) => {
+        const input = btn.previousElementSibling;
+        if (input) {
+          input.value = code;
+          input.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+      }
+    });
+  });
 
   window.posAddToCart = (id) => {
     const p = _productos.find(x => x.id === id);
@@ -253,31 +303,6 @@ function setupEvents() {
   elModalCancel.addEventListener("click", closeCheckoutModal);
   elModalConfirm.addEventListener("click", procesarVenta);
 
-  elBtnPrintBt?.addEventListener("click", async () => {
-    // Capturar datos actuales para imprimir
-    const sub = Number(elSubtotal.textContent.replace(/\D/g, ""));
-    const tot = Number(elTotal.textContent.replace(/\D/g, ""));
-    const imeiInputs = document.querySelectorAll(".pos-imei-input");
-    const imeis = {}; imeiInputs.forEach(inp => { const id = inp.dataset.id; if (inp.value.trim()) { if (!imeis[id]) imeis[id] = []; imeis[id].push(inp.value.trim()); } });
-
-    const vData = {
-      idFactura: "BORRADOR",
-      fecha: new Date().toISOString(),
-      cedula: elClienteDoc.value.trim(),
-      cliente: elClienteNombre.value.trim(),
-      direccion: elDireccion.value.trim(),
-      telefono: elTelefono.value.trim(),
-      productos: _carrito.map(i => `${i.nombre} (x${i.qty})`).join(", "),
-      items: _carrito.map(i => ({ nombre: i.nombre, qty: i.qty })),
-      subtotal: sub,
-      descuento: Number(elDescuento.value) || 0,
-      total: tot,
-      imeis: JSON.stringify(imeis),
-      emisor: { nombre: "CLAROCELL.COM", propietario: "Yeison Rangel Rangel", nit: "1193400777-2", direccion: "Calle 12 No. 10 - 108", contacto: "3016807310" }
-    };
-
-    await printBluetoothTicket(vData, elCanvasCliente, elCanvasVendedor);
-  });
   // Mobile sheet controls
   elCartFab?.addEventListener("click", openSheet);
   elSheetClose?.addEventListener("click", closeSheet);
@@ -315,6 +340,24 @@ function setupEvents() {
   document.getElementById("pos-pay-btn-venta-mobile")?.addEventListener("click", () => openCheckout("venta"));
   document.getElementById("pos-pay-btn-credito-mobile")?.addEventListener("click", () => openCheckout("credito"));
   document.getElementById("pos-pay-btn-separe-mobile")?.addEventListener("click", () => openCheckout("separe"));
+
+  // Evidence upload event listeners
+  document.getElementById("pos-evidencia-btn-camera")?.addEventListener("click", () => elFileCamera?.click());
+  document.getElementById("pos-evidencia-btn-gallery")?.addEventListener("click", () => elFileGallery?.click());
+
+  const handleEvidenceFileChange = (inputEl, otherInputEl) => {
+    if (inputEl.files && inputEl.files[0]) {
+      _evidenciaFile = inputEl.files[0];
+      otherInputEl.value = ""; // Clear other selection
+      if (elEvidenciaFilename && elEvidenciaStatus) {
+        elEvidenciaFilename.textContent = _evidenciaFile.name;
+        elEvidenciaStatus.classList.remove("hidden");
+      }
+    }
+  };
+
+  elFileCamera?.addEventListener("change", () => handleEvidenceFileChange(elFileCamera, elFileGallery));
+  elFileGallery?.addEventListener("change", () => handleEvidenceFileChange(elFileGallery, elFileCamera));
 }
 
 function renderCarrito() {
@@ -410,6 +453,9 @@ function updateImeiList() {
         <p class="text-[9px] font-black text-slate-500 uppercase mb-1">${p.nombre}</p>
         <div class="flex gap-1">
           <input type="text" placeholder="IMEI principal" data-id="${p.id}" class="pos-imei-input w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-primary">
+          <button type="button" class="pos-imei-scan-btn p-1 bg-amber-100 text-amber-800 rounded border border-amber-300 hover:bg-amber-200 transition-colors flex items-center justify-center" title="Escanear o Tomar foto de IMEI" data-prod-id="${p.id}">
+            <span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+          </button>
         </div>
       </div>
     `).join("");
@@ -428,7 +474,29 @@ function resizePosCanvases() {
 function setupCanvas(canvas, setCtx) {
   const c = canvas.getContext("2d");
   setCtx(c);
-  const getPos = (e) => { const r = canvas.getBoundingClientRect(); const x = (e.touches ? e.touches[0].clientX : e.clientX) - r.left; const y = (e.touches ? e.touches[0].clientY : e.clientY) - r.top; return { x: x * (canvas.width / r.width), y: y * (canvas.height / r.height) }; };
+  const getPos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const touch = e.touches && e.touches.length > 0 ? e.touches[0] : e;
+    const clientX = touch.clientX;
+    const clientY = touch.clientY;
+    
+    if (canvas.id === "pos-canvas-fullscreen" && window.innerHeight > window.innerWidth && window.innerWidth < 1024) {
+      // Rotación de 90 grados para encajar en visualización horizontal 16:9
+      const x = clientY - r.top;
+      const y = r.right - clientX;
+      return {
+        x: x * (canvas.width / r.height),
+        y: y * (canvas.height / r.width)
+      };
+    } else {
+      const x = clientX - r.left;
+      const y = clientY - r.top;
+      return {
+        x: x * (canvas.width / r.width),
+        y: y * (canvas.height / r.height)
+      };
+    }
+  };
   let drawing = false;
   const start = (e) => { drawing = true; c.beginPath(); const {x,y} = getPos(e); c.moveTo(x,y); e.preventDefault(); };
   const move = (e) => { if(!drawing) return; const {x,y} = getPos(e); c.lineTo(x,y); c.stroke(); e.preventDefault(); };
@@ -436,16 +504,30 @@ function setupCanvas(canvas, setCtx) {
   canvas.addEventListener("mouseup", () => drawing = false);
   canvas.addEventListener("touchstart", start, {passive:false}); canvas.addEventListener("touchmove", move, {passive:false});
   canvas.addEventListener("touchend", () => drawing = false);
-  canvas.nextElementSibling.addEventListener("click", (e) => { e.stopPropagation(); c.clearRect(0,0,canvas.width,canvas.height); });
 }
 
 function openCheckoutModal() { 
   elModal.classList.remove("hidden"); elModal.classList.add("flex"); 
-  [elCanvasCliente, elCanvasVendedor].forEach(c => { c.width = c.offsetWidth; c.height = c.offsetHeight; const ctx = c.getContext("2d"); ctx.lineWidth=4; ctx.lineCap='round'; ctx.clearRect(0,0,c.width,c.height); });
+  [elCanvasCliente, elCanvasVendedor].forEach(c => { 
+    c.width = c.offsetWidth; c.height = c.offsetHeight; 
+    const ctx = c.getContext("2d"); ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.clearRect(0,0,c.width,c.height); 
+    
+    // Reset visual helpers and hide clear buttons on start
+    const isClient = c.id === "pos-canvas-cliente";
+    const helper = document.getElementById(isClient ? "pos-sig-helper-cliente" : "pos-sig-helper-vendedor");
+    if (helper) helper.classList.remove("hidden");
+    const cleanBtn = c.parentElement.querySelector("button");
+    if (cleanBtn) cleanBtn.classList.add("hidden");
+  });
   elDireccion.value = ""; elCiudad.value = ""; elTelefono.value = "";
   document.querySelector('input[name="pos-billing-type"][value="fisica"]').checked = true;
   document.getElementById("pos-evidencia-container").classList.remove("hidden");
   elDigitalFields.classList.add("hidden"); elSignaturesCont.classList.add("hidden"); elImeiContainer.classList.add("hidden");
+
+  _evidenciaFile = null;
+  if (elFileCamera) elFileCamera.value = "";
+  if (elFileGallery) elFileGallery.value = "";
+  if (elEvidenciaStatus) elEvidenciaStatus.classList.add("hidden");
 }
 
 function closeCheckoutModal() { elModal.classList.add("hidden"); elModal.classList.remove("flex"); }
@@ -467,9 +549,9 @@ async function procesarVenta() {
     }
 
     if (billingType === "fisica") {
-      if (elFile.files[0]) {
+      if (_evidenciaFile) {
         elModalConfirm.textContent = "Subiendo evidencia...";
-        const file = elFile.files[0];
+        const file = _evidenciaFile;
         const base64 = await new Promise(r => { const rd = new FileReader(); rd.onload = e => r(e.target.result); rd.readAsDataURL(file); });
         const resImg = await uploadEvidencia(base64, file.name, file.type);
         evidenciaUrl = typeof resImg === 'string' ? resImg : (resImg?.url || "");

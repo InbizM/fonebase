@@ -286,6 +286,19 @@ function ensureDOM() {
           <p class="text-[11px] text-on-surface-variant font-medium uppercase tracking-wider mb-2">Selecciona el código correcto</p>
           <div id="scanner-pick-items" class="flex flex-col gap-1.5"></div>
         </div>
+
+        <!-- Tomar Foto / Subir Foto -->
+        <div class="px-5 py-3 border-t border-surface-variant bg-surface-container-lowest flex-shrink-0 flex items-center justify-between gap-3">
+          <div class="flex flex-col">
+            <span class="text-[10px] text-on-surface-variant font-bold uppercase tracking-wider">¿No lee en vivo?</span>
+            <span class="text-[9px] text-slate-400">Toma una foto de la etiqueta</span>
+          </div>
+          <button id="scanner-photo-btn" type="button" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-sm transition-all flex items-center gap-1.5 active:scale-95">
+            <span class="material-symbols-outlined text-[16px]">photo_camera</span>
+            <span>Tomar Foto / Subir</span>
+          </button>
+          <input id="scanner-file-input" type="file" accept="image/*" class="hidden" />
+        </div>
         
         <div class="px-5 py-4 border-t border-surface-variant flex-shrink-0">
           <p class="text-[11px] text-on-surface-variant font-medium uppercase tracking-wider mb-2">O ingresa manualmente</p>
@@ -321,6 +334,11 @@ function ensureDOM() {
   manualInput.addEventListener("keydown", (e) => { if (e.key === "Enter") handleManualInput(); });
   torchBtn.addEventListener("click", toggleTorch);
   switchBtn.addEventListener("click", switchCamera);
+
+  const photoBtn = document.getElementById("scanner-photo-btn");
+  const fileInput = document.getElementById("scanner-file-input");
+  photoBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", handlePhotoUpload);
 
   // Tabs event listeners
   document.getElementById("scanner-tab-barcode").addEventListener("click", () => setScannerMode("barcode"));
@@ -487,6 +505,78 @@ function initResizeHandles() {
       } catch {}
     }
   });
+}
+
+async function handlePhotoUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  statusEl.textContent = "Procesando foto...";
+  statusEl.className = "px-5 py-3 text-center text-sm text-indigo-800 bg-indigo-50 font-medium animate-pulse";
+  
+  stopStream();
+  
+  try {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+      img.src = url;
+    });
+    
+    URL.revokeObjectURL(url);
+    
+    const canvas = document.createElement("canvas");
+    let w = img.width;
+    let h = img.height;
+    
+    const maxDim = 1200;
+    if (w > maxDim || h > maxDim) {
+      if (w > h) {
+        h = Math.round((h * maxDim) / w);
+        w = maxDim;
+      } else {
+        w = Math.round((w * maxDim) / h);
+        h = maxDim;
+      }
+    }
+    
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    
+    if (_scannerMode === "ocr") {
+      ctx.filter = "grayscale(1) contrast(2) brightness(1.1)";
+    }
+    ctx.drawImage(img, 0, 0, w, h);
+    
+    let codes = [];
+    if (_scannerMode === "ocr") {
+      const worker = await getOCRWorker();
+      const { data: { text } } = await worker.recognize(canvas);
+      console.log("[Scanner Photo OCR Raw]:", text);
+      codes = extractIMEIs(text);
+    } else {
+      codes = await runDecoder(canvas, ctx);
+    }
+    
+    if (codes && codes.length > 0) {
+      handleDetectedCodes(codes);
+    } else {
+      statusEl.textContent = "⚠️ No se detectaron códigos válidos en la foto.";
+      statusEl.className = "px-5 py-3 text-center text-sm text-amber-800 bg-amber-50 font-semibold";
+      await startScannerFeed();
+    }
+  } catch (err) {
+    console.error("Error al procesar la foto:", err);
+    statusEl.textContent = "⚠️ Error al analizar la imagen.";
+    statusEl.className = "px-5 py-3 text-center text-sm text-red-800 bg-red-50 font-semibold";
+    await startScannerFeed();
+  } finally {
+    document.getElementById("scanner-file-input").value = "";
+  }
 }
 
 // ─── Manual input ─────────────────────────────────────────────────────────────

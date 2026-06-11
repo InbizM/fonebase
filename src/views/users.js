@@ -1,4 +1,4 @@
-import { getUsers, crearUsuario, actualizarUsuario, eliminarUsuario } from "../api.js";
+import { getUsers, crearUsuario, actualizarUsuario, eliminarUsuario, reset2fa } from "../api.js";
 import { showToast } from "../toast.js";
 
 let _usuarios = [];
@@ -68,6 +68,7 @@ function renderTable(lista) {
         </td>
         <td class="px-4 py-4 text-right">
           <div class="flex items-center justify-end gap-1">
+            <button onclick="window.userReset2FA('${u.email}')" class="p-1.5 text-amber-600 hover:bg-amber-50 rounded-full transition-colors" title="Restablecer 2FA"><span class="material-symbols-outlined text-[18px]">lock_reset</span></button>
             <button onclick="window.userEdit('${u.email}')" class="p-1.5 text-primary hover:bg-primary/10 rounded-full transition-colors" title="Editar"><span class="material-symbols-outlined text-[18px]">edit</span></button>
             <button onclick="window.userDelete('${u.email}')" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors" title="Eliminar"><span class="material-symbols-outlined text-[18px]">delete</span></button>
           </div>
@@ -104,6 +105,18 @@ function setupEvents() {
       await loadUsers();
       renderTable(_usuarios);
     } catch (err) { showToast(err.message, "error"); }
+  };
+
+  window.userReset2FA = async (email) => {
+    if (!confirm(`¿Restablecer el 2FA de ${email}? El usuario deberá escanear un nuevo código QR en su móvil en su próximo inicio de sesión.`)) return;
+    try {
+      await reset2fa(email);
+      showToast("2FA restablecido con éxito", "success");
+      await loadUsers();
+      renderTable(_usuarios);
+    } catch (err) {
+      showToast(err.message, "error");
+    }
   };
 }
 

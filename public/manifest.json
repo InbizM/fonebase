@@ -1,6 +1,6 @@
 {
-  "name": "AdminPro",
-  "short_name": "AdminPro",
+  "name": "FoneBase - Sistema de Gestión",
+  "short_name": "FoneBase",
   "description": "Sistema de Gestión Empresarial",
   "start_url": "/adminpro/",
   "scope": "/adminpro/",

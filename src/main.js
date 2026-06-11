@@ -346,7 +346,7 @@ function setActiveNav(viewId) {
   });
   
   // Header title update
-  let label = "AdminPro";
+  let label = "FoneBase";
   NAV_GROUPS.forEach(g => {
     const it = g.items.find(i => i.id === viewId);
     if (it) label = it.label;
@@ -465,13 +465,31 @@ async function handleLoginStep1(e) {
   btn.disabled = true; btn.textContent = "Verificando...";
   try {
     const res = await login(email, pwd);
-    if (res.success && res.step === "pin") {
+    if (res.success) {
       _pendingEmail = email;
-      document.getElementById("pin-hint").textContent = `Enviamos un PIN a ${email}`;
+      
+      const setupContainer = document.getElementById("totp-setup-container");
+      const pinHint = document.getElementById("pin-hint");
+      
+      if (res.step === "setup-totp") {
+        document.getElementById("totp-qr").src = res.qrCodeUrl;
+        document.getElementById("totp-secret-text").textContent = res.secret;
+        setupContainer.classList.remove("hidden");
+        pinHint.textContent = "Escanea el código QR en tu app autenticadora e ingresa el código de 6 dígitos.";
+      } else {
+        setupContainer.classList.add("hidden");
+        pinHint.textContent = "Ingresa el código de 6 dígitos de tu aplicación autenticadora.";
+      }
+      
       showStep("pin");
+      document.getElementById("login-pin").value = "";
       document.getElementById("login-pin").focus();
-    } else { showToast(res.mensaje || "Credenciales incorrectas", "error"); }
-  } catch (err) { showToast("Error de conexión", "error"); }
+    } else { 
+      showToast(res.mensaje || "Credenciales incorrectas", "error"); 
+    }
+  } catch (err) { 
+    showToast("Error de conexión: " + err.message, "error"); 
+  }
   finally { btn.disabled = false; btn.textContent = "Ingresar"; }
 }
 
@@ -485,8 +503,12 @@ async function handlePinStep(e) {
     if (res.success && res.token) {
       saveSession({ email: res.email, nombre: res.nombre, rol: res.rol }, res.token);
       showApp(res.nombre, res.rol);
-    } else { showToast(res.mensaje || "PIN incorrecto", "error"); }
-  } catch (err) { showToast("Error", "error"); }
+    } else { 
+      showToast(res.mensaje || "Código de verificación incorrecto", "error"); 
+    }
+  } catch (err) { 
+    showToast("Error de conexión: " + err.message, "error"); 
+  }
   finally { btn.disabled = false; btn.textContent = "Verificar"; }
 }
 
