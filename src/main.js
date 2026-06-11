@@ -451,8 +451,8 @@ function resetLoginAvatar() {
   const elAvatar = document.getElementById("login-user-avatar");
   const elName = document.getElementById("login-user-name");
   if (elAvatar) {
-    elAvatar.innerHTML = `<span class="material-symbols-outlined text-red-600 text-4xl" style="font-variation-settings:'FILL' 1">shield_lock</span>`;
-    elAvatar.className = "w-24 h-24 rounded-2xl bg-white border border-[#2c2c2e] flex items-center justify-center p-3.5 shadow-lg transition-all duration-300";
+    elAvatar.innerHTML = `<span class="material-symbols-outlined text-red-600 text-5xl" style="font-variation-settings:'FILL' 1">shield_lock</span>`;
+    elAvatar.className = "w-32 h-32 rounded-3xl bg-white border border-[#2c2c2e] flex items-center justify-center p-4 shadow-xl transition-all duration-300";
   }
   if (elName) {
     elName.textContent = "";
@@ -522,7 +522,7 @@ async function handleLoginStep1(e) {
 
         if (_companySettings?.logo) {
           elAvatar.innerHTML = `<img src="${_companySettings.logo}" class="max-h-full max-w-full object-contain" />`;
-          elAvatar.className = "w-24 h-24 rounded-2xl bg-white border border-[#2c2c2e] flex items-center justify-center p-3.5 shadow-lg transition-all duration-300";
+          elAvatar.className = "w-32 h-32 rounded-3xl bg-white border border-[#2c2c2e] flex items-center justify-center p-4 shadow-xl transition-all duration-300";
         } else {
           elAvatar.innerHTML = initials;
           const colors = [
@@ -535,7 +535,7 @@ async function handleLoginStep1(e) {
             'bg-sky-600/15 text-sky-400 border-sky-600/30'
           ];
           const colorIdx = (initials.charCodeAt(0) || 0) % colors.length;
-          elAvatar.className = `w-24 h-24 rounded-2xl flex items-center justify-center font-black text-2xl select-none uppercase tracking-wider shadow-inner transition-all duration-300 ${colors[colorIdx]}`;
+          elAvatar.className = `w-32 h-32 rounded-3xl flex items-center justify-center font-black text-3xl select-none uppercase tracking-wider shadow-inner transition-all duration-300 ${colors[colorIdx]}`;
         }
       }
       
