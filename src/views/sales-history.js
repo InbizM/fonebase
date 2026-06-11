@@ -47,9 +47,7 @@ export function initSalesHistory() {
       const v = _ventas.find(x => x.id_factura === id);
       if (v) {
         showToast("Preparando impresión...", "info");
-        const canC = v.id_firma_comprador ? await imageToCanvas(v.id_firma_comprador) : null;
-        const canV = v.id_firma_vendedor ? await imageToCanvas(v.id_firma_vendedor) : null;
-        await printBluetoothTicket(v, canC, canV);
+        await printBluetoothTicket(v, null, null, _ajustesEmpresa);
       }
     });
 
