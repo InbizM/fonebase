@@ -521,8 +521,8 @@ async function handleLoginStep1(e) {
         }
 
         if (_companySettings?.logo) {
-          elAvatar.innerHTML = `<img src="${_companySettings.logo}" class="max-h-full max-w-full object-contain" />`;
-          elAvatar.className = "w-16 h-16 rounded-xl bg-white border border-slate-700 flex items-center justify-center p-1.5 shadow-inner transition-all duration-300";
+          elAvatar.innerHTML = `<img src="${_companySettings.logo}" class="max-h-20 max-w-[220px] object-contain transition-all duration-300" />`;
+          elAvatar.className = "w-auto h-auto min-w-[140px] min-h-[70px] px-6 py-3 bg-[#111113] border border-slate-800 rounded-2xl flex items-center justify-center shadow-2xl transition-all duration-300";
         } else {
           elAvatar.innerHTML = initials;
           const colors = [
