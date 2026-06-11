@@ -193,7 +193,7 @@ function setupEvents() {
     
     try {
       const res = await saveAjustesEmpresa(c);
-      if (res && res[0] && res[0].type === "ok") {
+      if (res && res.success) {
         showToast("Datos de almacén guardados correctamente", "success");
       } else {
         showToast("Error al guardar en base de datos", "error");

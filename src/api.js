@@ -24,7 +24,7 @@ async function queryTurso(sqls) {
   const res = await fetch(TURSO_URL, { method: "POST", headers: { "Authorization": `Bearer ${TURSO_TOKEN}`, "Content-Type": "application/json" }, body: JSON.stringify({ requests }) });
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
-  return (data.results || []).map(r => {
+  const results = (data.results || []).map(r => {
     if (!r.response || !r.response.result) return [];
     const { cols, rows } = r.response.result;
     return rows.map(row => {
@@ -33,6 +33,8 @@ async function queryTurso(sqls) {
       return obj;
     });
   });
+  results.success = true;
+  return results;
 }
 const mapArgs = (d) => d.map(v => ({ type: typeof v === 'number' ? 'float' : 'text', value: String(v) }));
 

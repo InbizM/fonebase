@@ -27,8 +27,8 @@ self.addEventListener('activate', (event) => {
 
 // FETCH: Network-first strategy (siempre intenta red, si falla usa cache)
 self.addEventListener('fetch', (event) => {
-  // Solo manejar requests GET
-  if (event.request.method !== 'GET') return;
+  // Solo manejar requests GET con esquemas http o https
+  if (event.request.method !== 'GET' || !event.request.url.startsWith('http')) return;
 
   event.respondWith(
     fetch(event.request)
