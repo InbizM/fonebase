@@ -77,9 +77,9 @@ async function sendBytes(bytes) {
 }
 
 // ============================================================
-// TICKET HTML — Fuentes optimizadas para 203 DPI (48mm papel)
-// 1px CSS = 1 dot impresora = 0.125mm
-// Para texto legible: mínimo 20px (~2.5mm), ideal 24-28px (~3-3.5mm)
+// TICKET HTML — Optimizado para impresora térmica 203 DPI
+// REGLA: Solo usar #000 (negro) y #fff (blanco) — NO grises.
+// El threshold convierte todo a 1 bit: gris claro = blanco = invisible.
 // ============================================================
 function buildTicketHTML(v, ajustesEmpresa = null) {
   let imeiText = "N/A";
@@ -106,6 +106,18 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
 
   const fmt = (n) => '$' + new Intl.NumberFormat('es-CO').format(n || 0);
 
+  // Fallbacks para campos vacíos
+  const cliente = v.cliente || 'Sin nombre';
+  const cedula = v.cedula || 'N/A';
+  const telCliente = v.telefono_cliente || v.telefono || 'N/A';
+  const dirCliente = v.direccion || '—';
+  const ciudadCliente = v.ciudad || '—';
+  const vendedor = v.vendedor || 'Vendedor';
+  const productos = v.productos || 'Producto';
+  const cantidad = v.cantidad || 1;
+  const factura = v.id_factura || v.idFactura || 'S/N';
+  const metodo = v.metodo || 'Efectivo';
+
   return `
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -125,10 +137,10 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
 
       /* ---- Header empresa ---- */
       .header-box {
-        border: 2px solid #555;
+        border: 3px solid #000;
         border-radius: 8px;
         padding: 10px;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
         text-align: center;
         line-height: 1.3;
       }
@@ -139,15 +151,16 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
       }
       .header-box .info {
         font-size: 20px;
+        color: #000;
         margin-top: 2px;
       }
 
       /* ---- Card genérica ---- */
       .card {
-        border: 2px solid #555;
+        border: 3px solid #000;
         border-radius: 8px;
         padding: 10px;
-        margin-bottom: 10px;
+        margin-bottom: 12px;
       }
 
       .flex-between {
@@ -159,120 +172,123 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
       .badge {
         background: #000;
         color: #fff;
-        padding: 3px 10px;
+        padding: 4px 12px;
         border-radius: 6px;
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 900;
         text-transform: uppercase;
       }
 
       .section-label {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 900;
-        color: #666;
+        color: #000;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 4px;
-        margin-top: 10px;
-        border-bottom: 1px solid #ccc;
-        padding-bottom: 2px;
+        margin-top: 12px;
+        border-bottom: 2px solid #000;
+        padding-bottom: 3px;
       }
 
       .divider {
         border: none;
-        border-top: 2px dashed #999;
-        margin: 10px 0;
+        border-top: 3px dashed #000;
+        margin: 12px 0;
       }
 
       .data-row {
-        font-size: 20px;
-        margin-bottom: 2px;
+        font-size: 22px;
+        color: #000;
+        margin-bottom: 3px;
       }
       .data-label {
         font-weight: 900;
-        font-size: 18px;
-        color: #555;
+        font-size: 20px;
+        color: #000;
       }
 
       /* ---- Productos ---- */
       .product-card {
-        border: 2px solid #555;
+        border: 3px solid #000;
         border-radius: 6px;
-        padding: 8px;
-        margin-bottom: 8px;
+        padding: 10px;
+        margin-bottom: 10px;
       }
       .product-name {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 900;
+        color: #000;
       }
       .product-qty {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 900;
+        color: #000;
       }
 
-      /* ---- Resumen (fondo oscuro) ---- */
+      /* ---- Resumen (fondo negro) ---- */
       .summary-card {
         background: #000;
         color: #fff;
         border-radius: 8px;
-        padding: 12px;
-        margin-bottom: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
       }
       .summary-label {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 900;
-        color: #aaa;
+        color: #fff;
         text-transform: uppercase;
       }
       .summary-line {
-        font-size: 20px;
-        color: #ddd;
+        font-size: 22px;
+        color: #fff;
       }
       .summary-discount {
-        font-size: 20px;
+        font-size: 22px;
         font-weight: 900;
         color: #fff;
       }
       .total-label {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 900;
-        color: #aaa;
+        color: #fff;
         text-transform: uppercase;
       }
       .total-amount {
-        font-size: 40px;
+        font-size: 44px;
         font-weight: 900;
         color: #fff;
         line-height: 1;
       }
 
-      /* ---- Firmas ---- */
+      /* ---- Firmas GRANDES ---- */
       .firma-grid {
         display: flex;
-        gap: 8px;
-        margin-bottom: 10px;
+        gap: 10px;
+        margin-bottom: 12px;
       }
       .firma-col {
         flex: 1;
         text-align: center;
       }
       .firma-label {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 900;
-        color: #666;
+        color: #000;
       }
       .firma-box {
-        border: 2px solid #999;
+        border: 3px solid #000;
         border-radius: 6px;
-        height: 60px;
-        margin-top: 4px;
+        height: 100px;
+        margin-top: 6px;
         display: flex;
         justify-content: center;
         align-items: center;
         overflow: hidden;
       }
       .firma-box img {
-        height: 52px;
+        height: 90px;
         max-width: 100%;
         object-fit: contain;
       }
@@ -280,43 +296,48 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
       /* ---- Legal / Footer ---- */
       .legal {
         font-size: 16px;
-        color: #555;
+        color: #000;
         text-align: justify;
-        margin-top: 10px;
+        margin-top: 12px;
         line-height: 1.25;
       }
       .footer {
         text-align: center;
-        font-size: 26px;
+        font-size: 28px;
         font-weight: 900;
-        margin-top: 12px;
-        padding-bottom: 16px;
+        color: #000;
+        margin-top: 14px;
+        padding-bottom: 20px;
       }
 
       .imei-text {
-        font-size: 18px;
+        font-size: 20px;
         font-weight: 900;
-        margin-bottom: 8px;
+        color: #000;
+        margin-bottom: 10px;
         padding-left: 4px;
       }
 
       .comprobante-title {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 900;
         text-transform: uppercase;
+        color: #000;
       }
       .invoice-number {
-        font-size: 30px;
+        font-size: 32px;
         font-weight: 900;
         line-height: 1.1;
+        color: #000;
       }
       .invoice-meta {
-        font-size: 20px;
+        font-size: 22px;
+        color: #000;
       }
     </style>
 
     ${emisor.logo ? `
-    <div style="text-align:center; margin-bottom:10px;">
+    <div style="text-align:center; margin-bottom:12px;">
       <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 60)}px; max-width:90%; object-fit:contain;" crossorigin="anonymous">
     </div>` : ''}
 
@@ -330,32 +351,32 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
     <div class="card">
       <div class="comprobante-title">COMPROBANTE DE VENTA</div>
       <div class="flex-between" style="margin-top:6px;">
-        <div class="invoice-number">${v.id_factura || v.idFactura}</div>
+        <div class="invoice-number">${factura}</div>
         <div class="badge">PAGADO</div>
       </div>
       <div class="flex-between" style="margin-top:6px;">
         <div class="invoice-meta">${fechaStr}</div>
-        <div class="invoice-meta bold">${v.metodo || 'Efectivo'}</div>
+        <div class="invoice-meta bold">${metodo}</div>
       </div>
     </div>
 
     <div class="section-label">CLIENTE</div>
-    <div class="data-row bold">${v.cliente}</div>
-    <div class="data-row"><span class="data-label">ID:</span> ${v.cedula}</div>
-    <div class="data-row"><span class="data-label">Tel:</span> ${v.telefono_cliente || v.telefono || 'N/A'}</div>
-    <div class="data-row"><span class="data-label">Ubic:</span> ${v.direccion || '—'}, ${v.ciudad || '—'}</div>
+    <div class="data-row bold" style="font-size:24px;">${cliente}</div>
+    <div class="data-row"><span class="data-label">ID:</span> ${cedula}</div>
+    <div class="data-row"><span class="data-label">Tel:</span> ${telCliente}</div>
+    <div class="data-row"><span class="data-label">Ubic:</span> ${dirCliente}, ${ciudadCliente}</div>
 
     <div class="section-label">VENDEDOR</div>
-    <div class="data-row bold">${v.vendedor || 'Vendedor'}</div>
-    <div class="data-row" style="font-size:18px; color:#666; font-style:italic;">Vendedor Autorizado</div>
+    <div class="data-row bold" style="font-size:24px;">${vendedor}</div>
+    <div class="data-row" style="font-size:20px; font-style:italic;">Vendedor Autorizado</div>
 
     <hr class="divider">
 
     <div class="section-label">DETALLE DE PRODUCTOS</div>
     <div class="product-card">
       <div class="flex-between">
-        <div class="product-name" style="width:80%;">${v.productos}</div>
-        <div class="product-qty">x${v.cantidad || 1}</div>
+        <div class="product-name" style="width:78%;">${productos}</div>
+        <div class="product-qty">x${cantidad}</div>
       </div>
     </div>
 
@@ -378,13 +399,13 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
 
     <div class="firma-grid">
       <div class="firma-col">
-        <div class="firma-label">FIRMA VEND.</div>
+        <div class="firma-label">FIRMA VENDEDOR</div>
         <div class="firma-box">
           ${v.id_firma_vendedor ? `<img src="${v.id_firma_vendedor}" crossorigin="anonymous">` : ''}
         </div>
       </div>
       <div class="firma-col">
-        <div class="firma-label">FIRMA CLI.</div>
+        <div class="firma-label">FIRMA CLIENTE</div>
         <div class="firma-box">
           ${v.id_firma_comprador ? `<img src="${v.id_firma_comprador}" crossorigin="anonymous">` : ''}
         </div>
