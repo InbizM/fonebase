@@ -451,8 +451,10 @@ function resetLoginAvatar() {
   const elAvatar = document.getElementById("login-user-avatar");
   const elName = document.getElementById("login-user-name");
   if (elAvatar) {
-    elAvatar.innerHTML = `<span class="material-symbols-outlined text-red-600 text-5xl" style="font-variation-settings:'FILL' 1">shield_lock</span>`;
-    elAvatar.className = "w-32 h-32 rounded-3xl bg-white border border-[#2c2c2e] flex items-center justify-center p-4 shadow-xl transition-all duration-300";
+    elAvatar.innerHTML = `<span class="material-symbols-outlined text-red-400 text-3xl" style="font-variation-settings:'FILL' 1">shield_lock</span>`;
+    elAvatar.className = "w-16 h-16 rounded-full bg-red-600/10 border border-red-600/30 flex items-center justify-center font-black text-xl text-red-500 select-none uppercase tracking-wider shadow-inner transition-all duration-300";
+    elAvatar.style.backgroundColor = "";
+    elAvatar.style.padding = "";
   }
   if (elName) {
     elName.textContent = "";
@@ -522,9 +524,13 @@ async function handleLoginStep1(e) {
 
         if (_companySettings?.logo) {
           elAvatar.innerHTML = `<img src="${_companySettings.logo}" class="max-h-full max-w-full object-contain" />`;
-          elAvatar.className = "w-32 h-32 rounded-3xl bg-white border border-[#2c2c2e] flex items-center justify-center p-4 shadow-xl transition-all duration-300";
+          elAvatar.className = "w-64 h-32 rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-5 shadow-lg transition-all duration-300";
+          elAvatar.style.backgroundColor = "white";
+          elAvatar.style.padding = "1.25rem";
         } else {
           elAvatar.innerHTML = initials;
+          elAvatar.style.backgroundColor = "";
+          elAvatar.style.padding = "";
           const colors = [
             'bg-red-600/15 text-red-400 border-red-600/30',
             'bg-indigo-600/15 text-indigo-400 border-indigo-600/30',
@@ -535,7 +541,7 @@ async function handleLoginStep1(e) {
             'bg-sky-600/15 text-sky-400 border-sky-600/30'
           ];
           const colorIdx = (initials.charCodeAt(0) || 0) % colors.length;
-          elAvatar.className = `w-32 h-32 rounded-3xl flex items-center justify-center font-black text-3xl select-none uppercase tracking-wider shadow-inner transition-all duration-300 ${colors[colorIdx]}`;
+          elAvatar.className = `w-16 h-16 rounded-full flex items-center justify-center font-black text-xl select-none uppercase tracking-wider shadow-inner transition-all duration-300 ${colors[colorIdx]}`;
         }
       }
       
