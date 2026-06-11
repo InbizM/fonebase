@@ -37,7 +37,7 @@ async function queryTurso(sqls) {
 const mapArgs = (d) => d.map(v => ({ type: typeof v === 'number' ? 'float' : 'text', value: String(v) }));
 
 // ── COMPRESIÓN DE IMÁGENES POR CANVAS ──
-function compressImage(base64Data, maxWidth = 800, maxHeight = 800, quality = 0.6) {
+function compressImage(base64Data, maxWidth = 1024, maxHeight = 1024, quality = 0.8) {
   return new Promise((resolve) => {
     if (!base64Data || !base64Data.startsWith("data:")) {
       resolve(base64Data || "");
@@ -69,7 +69,7 @@ function compressImage(base64Data, maxWidth = 800, maxHeight = 800, quality = 0.
       const ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0, width, height);
       
-      const dataUrl = canvas.toDataURL("image/jpeg", quality);
+      const dataUrl = canvas.toDataURL("image/webp", quality);
       resolve(dataUrl);
     };
     img.onerror = () => {
@@ -154,9 +154,9 @@ async function verifyTOTP(secretBase32, enteredCode) {
 }
 
 // ── DRIVE UPLOADS (MIGRADOS A RETORNO LOCAL COMPRIMIDO) ──
-export const uploadFoto = async (base64, fileName, mimeType) => await compressImage(base64, 800, 800, 0.6);
+export const uploadFoto = async (base64, fileName, mimeType) => await compressImage(base64, 1024, 1024, 0.8);
 export const uploadSignature = async (base64, fileName) => base64;
-export const uploadEvidencia = async (base64, fileName, mimeType) => await compressImage(base64, 800, 800, 0.6);
+export const uploadEvidencia = async (base64, fileName, mimeType) => await compressImage(base64, 1024, 1024, 0.8);
 
 // ── BROWSER-DIRECT GEMINI API VISION CALL ──
 async function callGeminiDirect(base64Data, mimeType, isImei = false) {
