@@ -436,6 +436,19 @@ function showLoginScreen() {
   document.getElementById("app-shell").classList.add("hidden");
   document.getElementById("login-screen").classList.remove("hidden");
   showStep("credentials");
+  resetLoginAvatar();
+}
+
+function resetLoginAvatar() {
+  const elAvatar = document.getElementById("login-user-avatar");
+  const elName = document.getElementById("login-user-name");
+  if (elAvatar) {
+    elAvatar.innerHTML = `<span class="material-symbols-outlined text-red-400 text-3xl" style="font-variation-settings:'FILL' 1">shield_lock</span>`;
+    elAvatar.className = "w-16 h-16 rounded-full bg-red-600/10 border border-red-600/30 flex items-center justify-center font-black text-xl text-red-500 select-none uppercase tracking-wider shadow-inner transition-all duration-300";
+  }
+  if (elName) {
+    elName.textContent = "";
+  }
 }
 
 async function handleLogout() {
@@ -454,7 +467,10 @@ window.addEventListener("session-expired", () => {
 
 document.getElementById("login-form")?.addEventListener("submit", handleLoginStep1);
 document.getElementById("pin-form")?.addEventListener("submit", handlePinStep);
-document.getElementById("back-to-login")?.addEventListener("click", () => showStep("credentials"));
+document.getElementById("back-to-login")?.addEventListener("click", () => {
+  showStep("credentials");
+  resetLoginAvatar();
+});
 document.getElementById("logout-btn")?.addEventListener("click", handleLogout);
 
 async function handleLoginStep1(e) {
@@ -479,6 +495,32 @@ async function handleLoginStep1(e) {
       } else {
         setupContainer.classList.add("hidden");
         pinHint.textContent = "Ingresa el código de 6 dígitos de tu aplicación autenticadora.";
+      }
+      
+      // Mostrar iniciales y nombre del usuario en el avatar
+      const nombre = res.nombre || "Usuario";
+      const initials = nombre.split(" ").filter(Boolean).map(n => n[0]).join("").substring(0, 2).toUpperCase();
+      
+      const elAvatar = document.getElementById("login-user-avatar");
+      const elName = document.getElementById("login-user-name");
+      
+      if (elAvatar) {
+        elAvatar.innerHTML = initials;
+        const colors = [
+          'bg-red-600/15 text-red-400 border-red-600/30',
+          'bg-indigo-600/15 text-indigo-400 border-indigo-600/30',
+          'bg-emerald-600/15 text-emerald-400 border-emerald-600/30',
+          'bg-amber-600/15 text-amber-400 border-amber-600/30',
+          'bg-purple-600/15 text-purple-400 border-purple-600/30',
+          'bg-pink-600/15 text-pink-400 border-pink-600/30',
+          'bg-sky-600/15 text-sky-400 border-sky-600/30'
+        ];
+        const colorIdx = (initials.charCodeAt(0) || 0) % colors.length;
+        elAvatar.className = `w-16 h-16 rounded-full flex items-center justify-center font-black text-xl select-none uppercase tracking-wider shadow-inner transition-all duration-300 ${colors[colorIdx]}`;
+      }
+      
+      if (elName) {
+        elName.textContent = nombre;
       }
       
       showStep("pin");

@@ -447,10 +447,10 @@ export const login = async (email, password) => {
       
       const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`otpauth://totp/FoneBase:${email}?secret=${secret}&issuer=FoneBase`)}`;
       
-      return { success: true, step: "setup-totp", secret, qrCodeUrl };
+      return { success: true, step: "setup-totp", secret, qrCodeUrl, nombre: user.nombre };
     }
     
-    return { success: true, step: "totp" };
+    return { success: true, step: "totp", nombre: user.nombre };
   } catch (err) {
     return { success: false, mensaje: "Error en base de datos: " + err.message };
   }
