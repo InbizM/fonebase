@@ -319,9 +319,9 @@ body {
   /* Align action buttons */
   table.responsive-table td.text-right,
   table.responsive-table td.text-center {
-    text-align: left !important;
+    text-align: right !important;
     display: flex !important;
-    justify-content: flex-start !important;
+    justify-content: flex-end !important;
     align-items: center !important;
     gap: 0.5rem !important;
     margin-top: 0.25rem !important;
