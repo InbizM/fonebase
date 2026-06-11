@@ -96,19 +96,15 @@ function setupEvents() {
     }
   });
 
-  // Evento del botón de subir logo
-  const logoBtn = document.getElementById("set-store-logo-btn");
-  const logoInput = document.getElementById("set-store-logo-file");
-  const logoError = document.getElementById("set-store-logo-error");
+  // Eventos de configuración del almacén (clonamos el formulario primero para limpiar listeners antiguos)
+  const form = document.getElementById("store-settings-form");
+  if (form) form.replaceWith(form.cloneNode(true));
   
-  if (logoBtn) logoBtn.replaceWith(logoBtn.cloneNode(true));
-  if (logoInput) logoInput.replaceWith(logoInput.cloneNode(true));
-  
-  const actualLogoBtn = document.getElementById("set-store-logo-btn");
+  const actualForm = document.getElementById("store-settings-form");
   const actualLogoInput = document.getElementById("set-store-logo-file");
   const actualLogoError = document.getElementById("set-store-logo-error");
 
-  // The click is now handled natively by the label's for="set-store-logo-file" attribute
+  // El click del botón se maneja de forma nativa mediante el atributo for del <label>
   
   actualLogoInput?.addEventListener("change", (e) => {
     const file = e.target.files[0];
@@ -175,11 +171,6 @@ function setupEvents() {
     };
     reader.readAsDataURL(file);
   });
-  
-  // Evento de guardado
-  const form = document.getElementById("store-settings-form");
-  if (form) form.replaceWith(form.cloneNode(true));
-  const actualForm = document.getElementById("store-settings-form");
   
   actualForm?.addEventListener("submit", async (e) => {
     e.preventDefault();
