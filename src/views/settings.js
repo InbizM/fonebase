@@ -114,9 +114,9 @@ function setupEvents() {
     const file = e.target.files[0];
     if (!file) return;
     
-    // Validar tipo de archivo (solo PNG)
-    if (file.type !== "image/png") {
-      actualLogoError.textContent = "Error: El archivo debe ser un formato PNG válido.";
+    // Validar tipo de archivo (cualquier imagen)
+    if (!file.type.startsWith("image/")) {
+      actualLogoError.textContent = "Error: El archivo seleccionado no es una imagen válida.";
       actualLogoError.classList.remove("hidden");
       actualLogoInput.value = "";
       return;
@@ -130,38 +130,45 @@ function setupEvents() {
       const img = new Image();
       img.src = dataUrl;
       img.onload = function() {
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.min(img.width, 50);
-        canvas.height = Math.min(img.height, 50);
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Redimensionar el logotipo a un tamaño razonable (ej. máx 300px)
+        // para evitar guardar un archivo base64 gigante en la base de datos
+        const maxDim = 300;
+        let width = img.width;
+        let height = img.height;
         
-        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
-        let hasTransparency = false;
-        for (let i = 3; i < imgData.length; i += 4) {
-          if (imgData[i] < 255) {
-            hasTransparency = true;
-            break;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
           }
         }
         
-        if (!hasTransparency) {
-          actualLogoError.textContent = "Error: La imagen debe tener fondo transparente (no se aceptan imágenes completamente opacas).";
-          actualLogoError.classList.remove("hidden");
-          actualLogoInput.value = "";
-          return;
-        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
         
-        actualLogoError.classList.add("hidden");
-        _logoBase64 = dataUrl;
+        // Convertir a PNG para mantener la transparencia si existe
+        const compressedDataUrl = canvas.toDataURL("image/png");
+        
+        _logoBase64 = compressedDataUrl;
         const elImg = document.getElementById("set-store-logo-img");
         const elPlc = document.getElementById("set-store-logo-placeholder");
-        elImg.src = dataUrl;
-        elImg.classList.remove("hidden");
-        elPlc.classList.add("hidden");
+        if (elImg) {
+          elImg.src = compressedDataUrl;
+          elImg.classList.remove("hidden");
+        }
+        if (elPlc) {
+          elPlc.classList.add("hidden");
+        }
+        actualLogoError.classList.add("hidden");
       };
       img.onerror = function() {
-        actualLogoError.textContent = "Error al procesar la imagen PNG.";
+        actualLogoError.textContent = "Error al procesar la imagen.";
         actualLogoError.classList.remove("hidden");
         actualLogoInput.value = "";
       };
