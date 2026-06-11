@@ -1,4 +1,4 @@
-import { getInventario, registrarVenta, crearCredito, uploadFoto, uploadSignature, uploadEvidencia } from "../api.js";
+import { getInventario, registrarVenta, crearCredito, uploadFoto, uploadSignature, uploadEvidencia, getAjustesEmpresa } from "../api.js";
 import { showToast } from "../toast.js";
 import { openScanner } from "../scanner.js";
 import { openCustomerSelector } from "../customer-selector.js";
@@ -10,6 +10,7 @@ let _carrito = [];
 let _isLoaded = false;
 let _isProcessing = false;
 let _tipoVenta = null;
+let _ajustesEmpresa = null;
 
 let elSearch, elGrid, elCartItems, elSubtotal, elDescuento, elTotal, elBtnPay, elClienteDoc, elClienteNombre;
 let elModal, elModalClose, elModalCancel, elModalConfirm, elCanvasCliente, elCanvasVendedor, ctxCliente, ctxVendedor;
@@ -43,6 +44,11 @@ function closeSheet() {
 export function initPOS() {
   return async () => {
     bindUIElements();
+    try {
+      _ajustesEmpresa = await getAjustesEmpresa();
+    } catch (e) {
+      console.error("Error al cargar ajustes de empresa:", e);
+    }
     if (!_isLoaded) {
       await loadProductos();
       setupEvents();
@@ -585,7 +591,16 @@ async function procesarVenta() {
       evidencia: evidenciaUrl,
       tipoFactura: billingType,
       imeis: JSON.stringify(imeis),
-      emisor: { nombre: "CLAROCELL.COM", propietario: "Yeison Rangel Rangel", nit: "1193400777-2", direccion: "Calle 12 No. 10 - 108, Maicao - La Guajira", contacto: "3016807310", correo: "yeison0021@hotmail.com" }
+      emisor: {
+        nombre: _ajustesEmpresa?.nombre || "CLAROCELL.COM",
+        propietario: _ajustesEmpresa?.propietario || "Yeison Rangel Rangel",
+        nit: _ajustesEmpresa?.nit || "1193400777-2",
+        direccion: (_ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (_ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
+        contacto: _ajustesEmpresa?.contacto || "3016807310",
+        correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
+        condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
+        logo: _ajustesEmpresa?.logo || ""
+      }
     };
 
     const res = await registrarVenta(ventaData);
@@ -704,6 +719,19 @@ function imprimirTicket(v, firmaC, firmaV) {
         </style>
       </head>
       <body>
+        <!-- Logo de la Empresa -->
+        ${v.emisor.logo ? `
+        <div style="text-align: center; margin-bottom: 4px;">
+          <img src="${v.emisor.logo}" style="max-height: 40px; max-width: 100%; object-fit: contain;">
+        </div>
+        ` : ''}
+        <div class="center" style="margin-bottom: 6px; font-size: 8px; line-height: 1.2; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #f8fafc;">
+          <div class="bold text-sm" style="text-transform: uppercase; color: #000;">${v.emisor.nombre}</div>
+          <div>NIT: ${v.emisor.nit}</div>
+          <div>${v.emisor.direccion}</div>
+          <div>Tel: ${v.emisor.contacto}</div>
+        </div>
+
         <!-- Header / Comprobante -->
         <div class="card">
           <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">COMPROBANTE DE VENTA</div>
@@ -780,11 +808,8 @@ function imprimirTicket(v, firmaC, firmaV) {
         </div>
         
         <!-- Footer Legal -->
-        <div class="center text-xs bold" style="margin-top: 10px;">${v.emisor.nombre}</div>
-        <div class="center text-xs text-slate-500">NIT: ${v.emisor.nit}</div>
         <div class="legal">
-          GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.
-          Doc. asimilado a letra de cambio (Art. 774 C.Comercio).
+          ${v.emisor.condiciones || 'GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).'}
         </div>
         <div class="center bold" style="margin-top: 8px; font-size: 11px;">¡GRACIAS POR SU COMPRA!</div>
       </body>

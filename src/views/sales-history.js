@@ -1,12 +1,18 @@
-import { getVentas } from "../api.js";
+import { getVentas, getAjustesEmpresa } from "../api.js";
 import { showToast } from "../toast.js";
 import { printBluetoothTicket, imageToCanvas } from "../bluetooth-printer.js";
 
 let _ventas = [];
 let _filteredVentas = [];
+let _ajustesEmpresa = null;
 
 export function initSalesHistory() {
   return async () => {
+    try {
+      _ajustesEmpresa = await getAjustesEmpresa();
+    } catch(e) {
+      console.error("Error al cargar ajustes de empresa en historial:", e);
+    }
     // Configurar búsqueda
     const searchInput = document.getElementById("sales-search");
     searchInput?.addEventListener("input", (e) => {
@@ -66,11 +72,14 @@ function imprimirTicketHistory(v) {
   }
   
   const emisor = {
-    nombre: "CLAROCELL.COM",
-    propietario: "Yeison Rangel Rangel",
-    nit: "1193400777-2",
-    direccion: "Calle 12 No. 10 - 108, Maicao - La Guajira",
-    contacto: "3016807310"
+    nombre: _ajustesEmpresa?.nombre || "CLAROCELL.COM",
+    propietario: _ajustesEmpresa?.propietario || "Yeison Rangel Rangel",
+    nit: _ajustesEmpresa?.nit || "1193400777-2",
+    direccion: (_ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (_ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
+    contacto: _ajustesEmpresa?.contacto || "3016807310",
+    correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
+    condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
+    logo: _ajustesEmpresa?.logo || ""
   };
 
   printWindow.document.write(`
@@ -151,6 +160,19 @@ function imprimirTicketHistory(v) {
         </style>
       </head>
       <body>
+        <!-- Logo de la Empresa -->
+        ${emisor.logo ? `
+        <div style="text-align: center; margin-bottom: 4px;">
+          <img src="${emisor.logo}" style="max-height: 40px; max-width: 100%; object-fit: contain;">
+        </div>
+        ` : ''}
+        <div class="center" style="margin-bottom: 6px; font-size: 8px; line-height: 1.2; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #f8fafc;">
+          <div class="bold text-sm" style="text-transform: uppercase; color: #000;">${emisor.nombre}</div>
+          <div>NIT: ${emisor.nit}</div>
+          <div>${emisor.direccion}</div>
+          <div>Tel: ${emisor.contacto}</div>
+        </div>
+
         <!-- Header / Comprobante -->
         <div class="card">
           <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">COMPROBANTE DE VENTA</div>
@@ -225,11 +247,8 @@ function imprimirTicketHistory(v) {
         </div>
         
         <!-- Footer Legal -->
-        <div class="center text-xs bold" style="margin-top: 10px;">${emisor.nombre}</div>
-        <div class="center text-xs text-slate-500">NIT: ${emisor.nit}</div>
         <div class="legal">
-          GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.
-          Doc. asimilado a letra de cambio (Art. 774 C.Comercio).
+          ${emisor.condiciones}
         </div>
         <div class="center bold" style="margin-top: 8px; font-size: 11px;">¡GRACIAS POR SU COMPRA!</div>
       </body>

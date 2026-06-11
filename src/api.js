@@ -640,3 +640,13 @@ export const getTareas = async () => (await queryTurso("SELECT * FROM tareas ORD
 export const crearTarea = (t) => queryTurso({ sql: "INSERT INTO tareas VALUES (?,?,?,?,?,?,?,?,?)", args: mapArgs([`T-${Date.now()}`, t.tarea, t.fecha_inicio, t.fecha_vencimiento, t.prioridad, t.estado||'Pendiente', t.responsable, t.notas||'', t.color||'#4f46e5']) });
 export const updateTareaEstado = (id, est) => queryTurso({ sql: "UPDATE tareas SET estado = ? WHERE id = ?", args: [{type:"text", value:est}, {type:"text", value:id}] });
 export const eliminarTarea = (id) => queryTurso({ sql: "DELETE FROM tareas WHERE id = ?", args: [{type:"text", value:id}] });
+
+// ── CONFIGURACIÓN DE EMPRESA ──
+export const getAjustesEmpresa = async () => {
+  const results = await queryTurso("SELECT * FROM ajustes_empresa WHERE id = 1");
+  return results[0]?.[0] || null;
+};
+export const saveAjustesEmpresa = (c) => queryTurso({
+  sql: "UPDATE ajustes_empresa SET nombre=?, nit=?, propietario=?, telefono=?, direccion=?, ciudad=?, contacto=?, correo=?, condiciones=?, logo=? WHERE id=1",
+  args: mapArgs([c.nombre, c.nit, c.propietario, c.telefono, c.direccion, c.ciudad, c.contacto, c.correo, c.condiciones, c.logo || ''])
+});
