@@ -599,7 +599,8 @@ async function procesarVenta() {
         contacto: _ajustesEmpresa?.contacto || "3016807310",
         correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
         condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
-        logo: _ajustesEmpresa?.logo || ""
+        logo: _ajustesEmpresa?.logo || "",
+        logo_size: _ajustesEmpresa?.logo_size || 40
       }
     };
 
@@ -722,7 +723,7 @@ function imprimirTicket(v, firmaC, firmaV) {
         <!-- Logo de la Empresa -->
         ${v.emisor.logo ? `
         <div style="text-align: center; margin-bottom: 4px;">
-          <img src="${v.emisor.logo}" style="max-height: 40px; max-width: 100%; object-fit: contain;">
+          <img src="${v.emisor.logo}" style="max-height: ${v.emisor.logo_size || 40}px; max-width: 100%; object-fit: contain;">
         </div>
         ` : ''}
         <div class="center" style="margin-bottom: 6px; font-size: 8px; line-height: 1.2; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #f8fafc;">

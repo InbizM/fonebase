@@ -2759,6 +2759,15 @@
                     <span class="material-symbols-outlined text-[16px]">upload_file</span> Subir Logotipo (PNG)
                   </label>
                   <div id="set-store-logo-error" class="hidden text-red-500 text-[10px] font-bold"></div>
+                  
+                  <!-- Control de Tamaño del Logo -->
+                  <div class="space-y-1.5 pt-1.5 border-t border-slate-100">
+                    <div class="flex justify-between items-center">
+                      <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Tamaño del Logo (Alto)</label>
+                      <span id="set-store-logo-size-val" class="text-xs font-black text-primary">40px</span>
+                    </div>
+                    <input type="range" id="set-store-logo-size" min="20" max="120" step="5" value="40" class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-primary" />
+                  </div>
                 </div>
 
                 <div class="flex flex-col sm:flex-row gap-3 pt-2">

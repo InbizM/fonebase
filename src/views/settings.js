@@ -52,6 +52,12 @@ async function loadCompanySettings() {
       document.getElementById("set-store-contacto").value = config.contacto || "";
       document.getElementById("set-store-condiciones").value = config.condiciones || "";
       
+      const logoSize = config.logo_size || 40;
+      const elSizeSlider = document.getElementById("set-store-logo-size");
+      const elSizeVal = document.getElementById("set-store-logo-size-val");
+      if (elSizeSlider) elSizeSlider.value = logoSize;
+      if (elSizeVal) elSizeVal.textContent = logoSize + "px";
+      
       const elImg = document.getElementById("set-store-logo-img");
       const elPlc = document.getElementById("set-store-logo-placeholder");
       if (config.logo) {
@@ -103,6 +109,13 @@ function setupEvents() {
   const actualForm = document.getElementById("store-settings-form");
   const actualLogoInput = document.getElementById("set-store-logo-file");
   const actualLogoError = document.getElementById("set-store-logo-error");
+  
+  const actualSizeSlider = document.getElementById("set-store-logo-size");
+  const elSizeVal = document.getElementById("set-store-logo-size-val");
+  actualSizeSlider?.addEventListener("input", (e) => {
+    const val = e.target.value;
+    if (elSizeVal) elSizeVal.textContent = val + "px";
+  });
 
   // El click del botón se maneja de forma nativa mediante el atributo for del <label>
   
@@ -188,7 +201,8 @@ function setupEvents() {
       contacto: document.getElementById("set-store-contacto").value.trim(),
       correo: document.getElementById("set-store-correo").value.trim(),
       condiciones: document.getElementById("set-store-condiciones").value.trim(),
-      logo: _logoBase64
+      logo: _logoBase64,
+      logo_size: parseInt(document.getElementById("set-store-logo-size")?.value || "40", 10)
     };
     
     try {
@@ -229,6 +243,11 @@ function setupEvents() {
     
     if (_logoBase64) {
       logoImg.src = _logoBase64;
+      const chosenHeight = parseInt(document.getElementById("set-store-logo-size")?.value || "40", 10);
+      logoImg.style.width = "auto";
+      logoImg.style.height = "auto";
+      logoImg.style.maxHeight = chosenHeight + "px";
+      logoImg.style.maxWidth = "100%";
       logoBox.classList.add("hidden");
       logoImgBox.classList.remove("hidden");
     } else {
