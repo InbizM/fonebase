@@ -96,9 +96,16 @@ function renderTable(lista) {
         </td>
         <td class="px-4 py-3 font-black ${utilidad >= 0 ? 'text-green-600' : 'text-red-600'}">$${fmt(utilidad)}</td>
         <td class="px-4 py-3 text-right">
-          ${isAdmin ? `<button onclick="window.pedDelete('${p.id}')" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors" title="Eliminar">
-            <span class="material-symbols-outlined text-[18px]">delete</span>
-          </button>` : ''}
+          ${isAdmin ? `
+            <div class="flex items-center justify-end gap-1">
+              <button onclick="window.pedEdit('${p.id}')" class="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary/10 rounded-full transition-colors" title="Editar">
+                <span class="material-symbols-outlined text-[18px]">edit</span>
+              </button>
+              <button onclick="window.pedDelete('${p.id}')" class="p-1.5 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-full transition-colors" title="Eliminar">
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+              </button>
+            </div>
+          ` : ''}
         </td>
       </tr>
     `;
@@ -146,6 +153,11 @@ function setupEvents() {
       }
     } catch (err) { showToast(err.message, "error"); }
   };
+
+  window.pedEdit = (id) => {
+    const ped = _pedidos.find(p => p.id === id);
+    if (ped) openModal(ped);
+  };
 }
 
 function openModal(ped) {
@@ -154,8 +166,15 @@ function openModal(ped) {
   if (ped) {
     if (elId) elId.value = ped.id;
     if (elProducto) elProducto.value = ped.producto || "";
-    if (elCosto) elCosto.value = ped.costo || 0;
-    if (elPrecio) elPrecio.value = ped.precio || 0;
+    if (elCategoria) elCategoria.value = ped.categoria || "Celulares";
+    if (elProveedor) elProveedor.value = ped.proveedor || "";
+    if (elCosto) elCosto.value = new Intl.NumberFormat("es-CO").format(ped.costo || 0);
+    if (elPrecio) elPrecio.value = new Intl.NumberFormat("es-CO").format(ped.precio || 0);
+    if (elForm) elForm.dataset.fecha = ped.fecha || new Date().toISOString();
+  }
+  const elTitle = document.getElementById("ped-modal-title");
+  if (elTitle) {
+    elTitle.textContent = ped ? "Editar Reventa" : "Nueva Reventa";
   }
   elModal.classList.remove("hidden");
   elModal.classList.add("flex");
@@ -170,16 +189,38 @@ async function savePedido() {
   if (_isProcessing) return;
   _isProcessing = true;
   try {
+    const id = elId?.value;
+    const costoVal = parseInt(elCosto?.value.replace(/\D/g, "")) || 0;
+    const precioVal = parseInt(elPrecio?.value.replace(/\D/g, "")) || 0;
+
     const datos = {
       producto: elProducto?.value.trim(),
       categoria: elCategoria?.value,
       proveedor: elProveedor?.value.trim(),
-      costo: parseInt(elCosto?.value.replace(/\D/g, "")) || 0,
-      precio: parseInt(elPrecio?.value.replace(/\D/g, "")) || 0
+      costo: costoVal,
+      precio: precioVal
     };
-    const res = await crearReventa(datos);
-    if (res.success) {
-      showToast("Guardado", "success");
+
+    let res;
+    if (id) {
+      const fecha = elForm.dataset.fecha || new Date().toISOString();
+      const arrayDatos = [
+        id,
+        fecha,
+        datos.producto,
+        datos.categoria,
+        datos.costo,
+        datos.precio,
+        datos.proveedor,
+        datos.precio - datos.costo
+      ];
+      res = await actualizarReventa(id, arrayDatos);
+    } else {
+      res = await crearReventa(datos);
+    }
+
+    if (res && res.success) {
+      showToast(id ? "Actualizado" : "Guardado", "success");
       closeModal();
       await loadData();
       renderTable(_pedidos);
