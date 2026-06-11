@@ -72,7 +72,7 @@ function renderGrid(lista) {
           </div>
         </div>
 
-        <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div class="flex gap-2">
           <button onclick="window.techPrint('${s.id_orden}')" title="Imprimir Ticket" class="p-2 bg-surface border border-surface-variant rounded-xl text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors">
             <span class="material-symbols-outlined text-[18px]">print</span>
           </button>
