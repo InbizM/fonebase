@@ -112,7 +112,7 @@ async function generateReceiptCanvas(v, firmaC, firmaV) {
   // Header
   ctx.textAlign = 'center';
   ctx.font = '900 34px sans-serif';
-  ctx.fillText('CLAROCELL.COM', width/2, y); y += 40;
+  ctx.fillText('WAYIRA PHONE', width/2, y); y += 40;
   
   ctx.font = '22px sans-serif';
   ctx.fillText(v.emisor?.propietario || 'Yeison Rangel Rangel', width/2, y); y += 28;

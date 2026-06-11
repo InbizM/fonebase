@@ -72,7 +72,7 @@ function imprimirTicketHistory(v) {
   }
   
   const emisor = {
-    nombre: _ajustesEmpresa?.nombre || "CLAROCELL.COM",
+    nombre: _ajustesEmpresa?.nombre || "WAYIRA PHONE",
     propietario: _ajustesEmpresa?.propietario || "Yeison Rangel Rangel",
     nit: _ajustesEmpresa?.nit || "1193400777-2",
     direccion: (_ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (_ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
