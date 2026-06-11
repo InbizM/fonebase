@@ -462,7 +462,7 @@ export async function printBluetoothTicket(v, _canvasCliente = null, _canvasVend
 
     const encoder = new ReceiptPrinterEncoder({
       language: 'esc-pos',
-      width: PRINT_WIDTH_PX,  // 384 dots — ancho real del cabezal
+      width: 48,  // 48 columnas de texto para impresora 58mm
     });
 
     encoder
