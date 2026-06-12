@@ -50,12 +50,17 @@ function parseHistorial(raw) {
   if (!raw) return [];
   return raw.split(";").filter(Boolean).map(e => {
     const parts = e.split("|");
-    return { fecha: parts[0] || "", monto: parseFloat(parts[1]) || 0, nota: parts[2] || "" };
+    return { 
+      fecha: parts[0] || "", 
+      monto: parseFloat(parts[1]) || 0, 
+      nota: parts[2] || "", 
+      metodo: parts[3] || "Efectivo" 
+    };
   });
 }
 
 function serializeHistorial(list) {
-  return list.map(a => `${a.fecha}|${a.monto}|${a.nota}`).join(";");
+  return list.map(a => `${a.fecha}|${a.monto}|${a.nota}|${a.metodo || 'Efectivo'}`).join(";");
 }
 
 // ---- Stats ----
@@ -193,14 +198,21 @@ function setupEvents() {
       elHist.innerHTML = hist.length === 0
         ? `<p class="text-xs text-on-surface-variant">Sin abonos anteriores</p>`
         : hist.map(a => `
-            <div class="flex justify-between items-center py-1 border-b border-surface-variant text-xs">
-              <span class="text-on-surface-variant">${a.fecha}</span>
+            <div class="flex justify-between items-start py-2 border-b border-surface-variant/40 last:border-0 text-xs">
+              <div class="flex flex-col">
+                <span class="font-bold text-on-surface">${a.fecha}</span>
+                <span class="text-[10px] text-on-surface-variant mt-0.5">
+                  <span class="bg-primary/10 text-primary px-1.5 py-0.5 rounded font-black uppercase text-[8px]">${a.metodo || 'Efectivo'}</span>
+                  ${a.nota ? '• ' + a.nota : ''}
+                </span>
+              </div>
               <span class="font-bold text-green-600">${fmt(a.monto)}</span>
-              <span class="text-on-surface-variant">${a.nota || ''}</span>
             </div>`).join("");
     }
     document.getElementById("cred-monto-abono").value = "";
     document.getElementById("cred-nota-abono").value = "";
+    const elMetodoSelect = document.getElementById("cred-metodo-abono");
+    if (elMetodoSelect) elMetodoSelect.value = "Efectivo";
     elModal?.classList.remove("hidden"); elModal?.classList.add("flex");
     document.getElementById("cred-monto-abono")?.focus();
   };
@@ -209,6 +221,7 @@ function setupEvents() {
     const id = document.getElementById("cred-id").value;
     const monto = parseInt((document.getElementById("cred-monto-abono").value || "").replace(/\D/g, "")) || 0;
     const nota  = (document.getElementById("cred-nota-abono")?.value || "").trim();
+    const metodo = document.getElementById("cred-metodo-abono")?.value || "Efectivo";
 
     if (!monto || monto <= 0) { showToast("Ingresa un monto válido", "warning"); return; }
     if (_isProcessing) return;
@@ -224,7 +237,12 @@ function setupEvents() {
 
       // Append to historial
       const hist = parseHistorial(cred.historialAbonos);
-      hist.push({ fecha: new Date().toLocaleDateString("es-CO"), monto, nota });
+      const now = new Date();
+      const datePart = now.toLocaleDateString("es-CO");
+      const timePart = now.toLocaleTimeString("es-CO", { hour: '2-digit', minute: '2-digit', hour12: true });
+      const fechaStr = `${datePart} ${timePart}`;
+      
+      hist.push({ fecha: fechaStr, monto, nota, metodo });
 
       const isSepare = cred.tipo === "Plan Separe";
       const estadoActivo = isSepare ? "Separado" : "Activo";
@@ -235,7 +253,7 @@ function setupEvents() {
         abonado: nuevoAbonado,
         saldo: nuevoSaldo,
         estado: cancelado ? estadoFinal : (cred.estado === "Cancelado" || cred.estado === "Entregado" ? estadoFinal : estadoActivo),
-        fechaCancelacion: cancelado ? new Date().toLocaleDateString("es-CO") : (cred.fechaCancelacion || ""),
+        fechaCancelacion: cancelado ? fechaStr : (cred.fechaCancelacion || ""),
         historialAbonos: serializeHistorial(hist)
       };
 
@@ -292,8 +310,13 @@ function setupEvents() {
     btnSave.disabled = true; btnSave.textContent = "Guardando...";
 
     try {
+      const now = new Date();
+      const datePart = now.toLocaleDateString("es-CO");
+      const timePart = now.toLocaleTimeString("es-CO", { hour: '2-digit', minute: '2-digit', hour12: true });
+      const fechaStr = `${datePart} ${timePart}`;
+
       const histInicial = abono > 0
-        ? serializeHistorial([{ fecha: new Date().toLocaleDateString("es-CO"), monto: abono, nota: "Abono inicial" }])
+        ? serializeHistorial([{ fecha: fechaStr, monto: abono, nota: "Abono inicial", metodo: "Efectivo" }])
         : "";
       const res = await crearCredito({
         cliente: nombre, telefono: doc, total, detalle,
@@ -339,11 +362,14 @@ async function imprimirTicketAbono(cred, monto, nota) {
 
   let histHtml = hist.map((a, idx) => `
     <tr>
-      <td style="padding: 3px 0; border-bottom: 1px solid #eee; text-align: left;">
-        <div>#${idx + 1} - ${a.fecha}</div>
-        <div style="color: #666; font-size: 8px;">${a.nota || 'Abono'}</div>
+      <td style="padding: 4px 0; border-bottom: 1px solid #eee; text-align: left; vertical-align: top;">
+        <div style="font-weight: 800;">#${idx + 1} - ${a.fecha}</div>
+        <div style="color: #555; font-size: 8.5px; margin-top: 1px;">
+          <span style="background: #f1f5f9; padding: 1px 4px; border-radius: 3px; font-weight: 900; font-size: 7.5px; text-transform: uppercase;">${a.metodo || 'Efectivo'}</span>
+          ${a.nota ? '• ' + a.nota : ''}
+        </div>
       </td>
-      <td style="text-align: right; padding: 3px 0; border-bottom: 1px solid #eee; font-weight: 800;">
+      <td style="text-align: right; padding: 4px 0; border-bottom: 1px solid #eee; font-weight: 800; vertical-align: bottom;">
         $${new Intl.NumberFormat('es-CO').format(a.monto)}
       </td>
     </tr>

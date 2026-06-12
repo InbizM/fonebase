@@ -1826,9 +1826,7 @@
               <option value="Entregado">🟢 Entregados</option>
               <option value="En Mora">🔴 En Mora</option>
             </select>
-            <button id="cred-new-btn" class="flex items-center justify-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-xl text-sm font-bold shadow-md hover:bg-primary/95 transition-all cursor-pointer">
-              <span class="material-symbols-outlined text-[18px]">add</span> Nuevo Crédito
-            </button>
+
           </div>
         </div>
 
@@ -1897,6 +1895,17 @@
                   <span class="text-on-surface-variant font-bold text-lg shrink-0">$</span>
                   <input id="cred-monto-abono" type="text" required class="flex-1 py-3 bg-transparent outline-none text-lg font-bold text-on-surface" placeholder="0" />
                 </div>
+              </div>
+              <div>
+                <label class="field-label">Método de pago *</label>
+                <select id="cred-metodo-abono" class="field-input">
+                  <option value="Efectivo">Efectivo</option>
+                  <option value="Transferencia">Transferencia</option>
+                  <option value="Nequi">Nequi</option>
+                  <option value="Bancolombia">Bancolombia</option>
+                  <option value="Daviplata">Daviplata</option>
+                  <option value="Tarjeta">Tarjeta</option>
+                </select>
               </div>
               <div>
                 <label class="field-label">Nota (opcional)</label>
