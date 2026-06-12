@@ -8,6 +8,7 @@ import { showToast } from "./toast.js";
 let _clientes = [];
 let _isLoaded = false;
 let _onSelectCallback = null;
+let _currentFilter = "Todos";
 
 // DOM refs
 let modal, backdrop, closeBtn, searchInput, scanBtn, newBtn, resultsList, newFormContainer;
@@ -39,8 +40,8 @@ function ensureDOM() {
           </button>
         </div>
         
-        <!-- Search Area -->
-        <div id="cs-search-area" class="p-4 border-b border-surface-variant shrink-0">
+        <!-- Search & Filter Area -->
+        <div id="cs-search-area" class="p-4 border-b border-surface-variant shrink-0 flex flex-col gap-3">
           <div class="flex gap-2">
             <div class="relative flex-1">
               <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
@@ -51,6 +52,30 @@ function ensureDOM() {
               <span class="material-symbols-outlined text-[20px]">person_add</span>
             </button>
           </div>
+          
+          <!-- Scrollable M3 Filter Chips -->
+          <div class="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar scroll-smooth" style="scrollbar-width: none; -ms-overflow-style: none;">
+            <button type="button" data-filter="Todos" class="cs-filter-chip shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-primary bg-primary text-on-primary shadow-sm flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">checklist</span>
+              <span>Todos</span>
+            </button>
+            <button type="button" data-filter="General" class="cs-filter-chip shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-surface-variant bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">person</span>
+              <span>General</span>
+            </button>
+            <button type="button" data-filter="VIP" class="cs-filter-chip shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-surface-variant bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">star</span>
+              <span>VIP</span>
+            </button>
+            <button type="button" data-filter="Empresa" class="cs-filter-chip shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-surface-variant bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">domain</span>
+              <span>Empresa</span>
+            </button>
+            <button type="button" data-filter="Mayorista" class="cs-filter-chip shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold transition-all border border-surface-variant bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface flex items-center gap-1">
+              <span class="material-symbols-outlined text-[14px]">storefront</span>
+              <span>Mayorista</span>
+            </button>
+          </div>
         </div>
 
         <!-- New Client Form (Hidden by default) -->
@@ -58,20 +83,20 @@ function ensureDOM() {
           <p class="text-xs font-bold text-primary mb-3 uppercase tracking-wider">Crear Cliente Rápido</p>
           <div class="space-y-3">
              <div>
-                <input id="cs-new-doc" type="text" placeholder="Documento *" class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm focus:border-primary outline-none" />
+                <input id="cs-new-doc" type="text" placeholder="Documento *" class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary outline-none" />
              </div>
              <div>
-                <input id="cs-new-nom" type="text" placeholder="Nombre completo *" class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm focus:border-primary outline-none" />
+                <input id="cs-new-nom" type="text" placeholder="Nombre completo *" class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary outline-none" />
              </div>
              <div class="grid grid-cols-2 gap-2">
-                <input id="cs-new-tel" type="text" placeholder="Teléfono" class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm focus:border-primary outline-none" />
-                <input id="cs-new-email" type="email" placeholder="Email" class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm focus:border-primary outline-none" />
+                <input id="cs-new-tel" type="text" placeholder="Teléfono" class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary outline-none" />
+                <input id="cs-new-email" type="email" placeholder="Email" class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary outline-none" />
              </div>
              <div>
-                <input id="cs-new-dir" type="text" placeholder="Dirección" class="w-full bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm focus:border-primary outline-none" />
+                <input id="cs-new-dir" type="text" placeholder="Dirección" class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary outline-none" />
              </div>
              <div class="flex gap-2">
-                <select id="cs-new-tipo" class="flex-1 bg-white border border-surface-variant rounded-lg px-3 py-2 text-sm focus:border-primary outline-none">
+                <select id="cs-new-tipo" class="flex-1 bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary outline-none">
                   <option value="General">General</option>
                   <option value="VIP">VIP</option>
                   <option value="Empresa">Empresa</option>
@@ -85,7 +110,7 @@ function ensureDOM() {
 
         <!-- Results List -->
         <div class="flex-1 overflow-y-auto p-2 bg-surface-container-lowest">
-          <ul id="cs-results" class="divide-y divide-surface-variant">
+          <ul id="cs-results" class="divide-y divide-surface-variant/40">
             <li class="p-4 text-center text-sm text-on-surface-variant">Escribe para buscar o crea uno nuevo</li>
           </ul>
         </div>
@@ -116,6 +141,27 @@ function ensureDOM() {
 
   document.getElementById("cs-cancel-new").addEventListener("click", () => {
     newFormContainer.classList.add("hidden");
+  });
+
+  // Filter Chip Events
+  document.querySelectorAll(".cs-filter-chip").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const filter = chip.dataset.filter;
+      _currentFilter = filter;
+      
+      // Update UI active chip
+      document.querySelectorAll(".cs-filter-chip").forEach(c => {
+        if (c.dataset.filter === filter) {
+          c.classList.remove("bg-surface-container-low", "text-on-surface-variant", "hover:bg-surface-container-high", "hover:text-on-surface");
+          c.classList.add("bg-primary", "text-on-primary", "border-primary");
+        } else {
+          c.classList.add("bg-surface-container-low", "text-on-surface-variant", "hover:bg-surface-container-high", "hover:text-on-surface");
+          c.classList.remove("bg-primary", "text-on-primary", "border-primary");
+        }
+      });
+      
+      filterAndRenderClients();
+    });
   });
 
   document.getElementById("cs-save-new").addEventListener("click", async () => {
@@ -166,35 +212,86 @@ function ensureDOM() {
 }
 
 function handleSearch() {
-  const term = searchInput.value.toLowerCase().trim();
-  if (!term) {
-    resultsList.innerHTML = `<li class="p-4 text-center text-sm text-on-surface-variant">Escribe para buscar...</li>`;
-    return;
-  }
-
-  const filtered = _clientes.filter(c => {
-    const doc = c.cedula || c.documento || "";
-    return doc.toLowerCase().includes(term) ||
-           (c.nombre && c.nombre.toLowerCase().includes(term)) ||
-           (c.telefono && c.telefono.toLowerCase().includes(term));
-  }).slice(0, 20); // max 20 results for performance
-
-  renderResults(filtered);
+  filterAndRenderClients();
 }
 
-function renderResults(list) {
-  if (list.length === 0) {
+function filterAndRenderClients() {
+  const term = searchInput.value.toLowerCase().trim();
+  
+  let filtered = _clientes;
+  
+  // Filter by type
+  if (_currentFilter !== "Todos") {
+    filtered = filtered.filter(c => (c.tipo || "General") === _currentFilter);
+  }
+  
+  // Filter by search text
+  if (term) {
+    filtered = filtered.filter(c => {
+      const doc = c.cedula || c.documento || "";
+      return doc.toLowerCase().includes(term) ||
+             (c.nombre && c.nombre.toLowerCase().includes(term)) ||
+             (c.telefono && c.telefono.toLowerCase().includes(term));
+    });
+  }
+  
+  // Render results
+  if (filtered.length === 0) {
     resultsList.innerHTML = `<li class="p-4 text-center text-sm text-on-surface-variant">No se encontraron clientes.</li>`;
     return;
   }
+  
+  // If no search term and no type filter, show recent (last 20)
+  if (!term && _currentFilter === "Todos") {
+    const recent = [...filtered].reverse().slice(0, 20);
+    renderResults(recent);
+  } else {
+    // Show first 20 matching
+    renderResults(filtered.slice(0, 20));
+  }
+}
 
+function renderResults(list) {
   resultsList.innerHTML = list.map(c => {
     const doc = c.cedula || c.documento || "";
+    const tipo = c.tipo || "General";
+    
+    // Choose icon, badge style and colors based on client type
+    let avatarIcon = "person";
+    let avatarBg = "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400";
+    let badgeClass = "bg-slate-100 text-slate-700 border-slate-200";
+    
+    if (tipo === "VIP") {
+      avatarIcon = "star";
+      avatarBg = "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300";
+      badgeClass = "bg-purple-50 text-purple-700 border-purple-200";
+    } else if (tipo === "Empresa") {
+      avatarIcon = "domain";
+      avatarBg = "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300";
+      badgeClass = "bg-indigo-50 text-indigo-700 border-indigo-200";
+    } else if (tipo === "Mayorista") {
+      avatarIcon = "storefront";
+      avatarBg = "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300";
+      badgeClass = "bg-green-50 text-green-700 border-green-200";
+    }
+
     return `
     <li>
-      <button type="button" class="cs-item-btn w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex flex-col focus:bg-surface-container-low outline-none" data-doc="${doc}">
-        <span class="font-bold text-sm text-on-surface">${c.nombre}</span>
-        <span class="text-[11px] text-on-surface-variant mt-0.5">C.C: ${doc} ${c.telefono ? '• Tel: ' + c.telefono : ''}</span>
+      <button type="button" class="cs-item-btn w-full text-left px-4 py-3 hover:bg-surface-container-low transition-colors flex items-center gap-3 focus:bg-surface-container-low outline-none" data-doc="${doc}">
+        <!-- Avatar/Icon -->
+        <div class="w-9 h-9 rounded-full ${avatarBg} flex items-center justify-center shrink-0">
+          <span class="material-symbols-outlined text-[20px]">${avatarIcon}</span>
+        </div>
+        
+        <!-- Info -->
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between gap-2">
+            <span class="font-bold text-sm text-on-surface truncate">${c.nombre}</span>
+            <!-- Badge -->
+            <span class="px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border ${badgeClass} shrink-0">${tipo}</span>
+          </div>
+          <span class="text-[11px] text-on-surface-variant mt-0.5 block truncate">C.C: ${doc} ${c.telefono ? '• Tel: ' + c.telefono : ''}</span>
+        </div>
       </button>
     </li>
   `;
@@ -205,7 +302,6 @@ function renderResults(list) {
       const doc = btn.dataset.doc;
       const client = _clientes.find(c => (c.cedula || c.documento || "") === doc);
       if (client) {
-        // Ensure "documento" exists for the views that expect it
         client.documento = doc;
         selectClient(client);
       }
@@ -220,23 +316,26 @@ function selectClient(client) {
   closeSelector();
 }
 
-/**
- * Opens the universal customer selector.
- * @param {Function} onSelect Callback function receiving the selected client object.
- */
 export async function openCustomerSelector(onSelect) {
   await initCustomerSelector(); // ensure data is loaded
   _onSelectCallback = onSelect;
   searchInput.value = "";
   
-  // Show recent clients immediately
-  if (_clientes.length > 0) {
-    // Show the last 20 clients added (assuming they are at the end, or just slice)
-    const recent = [..._clientes].reverse().slice(0, 20);
-    renderResults(recent);
-  } else {
-    resultsList.innerHTML = `<li class="p-4 text-center text-sm text-on-surface-variant">No hay clientes. Crea uno nuevo.</li>`;
-  }
+  // Reset filter to Todos on open
+  _currentFilter = "Todos";
+  
+  // Reset UI filter chips active state
+  document.querySelectorAll(".cs-filter-chip").forEach(c => {
+    if (c.dataset.filter === "Todos") {
+      c.classList.remove("bg-surface-container-low", "text-on-surface-variant", "hover:bg-surface-container-high", "hover:text-on-surface");
+      c.classList.add("bg-primary", "text-on-primary", "border-primary");
+    } else {
+      c.classList.add("bg-surface-container-low", "text-on-surface-variant", "hover:bg-surface-container-high", "hover:text-on-surface");
+      c.classList.remove("bg-primary", "text-on-primary", "border-primary");
+    }
+  });
+
+  filterAndRenderClients();
   
   newFormContainer.classList.add("hidden");
   
