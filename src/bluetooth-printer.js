@@ -127,6 +127,7 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
         background: #fff;
         padding: 8px;
         font-size: 24px;
+        font-weight: 700;
         color: #000;
         line-height: 1.35;
         -webkit-print-color-adjust: exact;
@@ -150,7 +151,8 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
         text-transform: uppercase;
       }
       .header-box .info {
-        font-size: 20px;
+        font-size: 22px;
+        font-weight: 900;
         color: #000;
         margin-top: 2px;
       }
@@ -199,12 +201,13 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
 
       .data-row {
         font-size: 22px;
+        font-weight: 700;
         color: #000;
         margin-bottom: 3px;
       }
       .data-label {
         font-weight: 900;
-        font-size: 20px;
+        font-size: 22px;
         color: #000;
       }
 
@@ -280,7 +283,7 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
       .firma-box {
         border: 3px solid #000;
         border-radius: 6px;
-        height: 100px;
+        height: 140px;
         margin-top: 6px;
         display: flex;
         justify-content: center;
@@ -288,18 +291,19 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
         overflow: hidden;
       }
       .firma-box img {
-        height: 90px;
+        height: 130px;
         max-width: 100%;
         object-fit: contain;
       }
 
       /* ---- Legal / Footer ---- */
       .legal {
-        font-size: 16px;
+        font-size: 18px;
+        font-weight: 900;
         color: #000;
         text-align: justify;
         margin-top: 12px;
-        line-height: 1.25;
+        line-height: 1.3;
       }
       .footer {
         text-align: center;
@@ -338,7 +342,7 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
 
     ${emisor.logo ? `
     <div style="text-align:center; margin-bottom:12px;">
-      <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 60)}px; max-width:90%; object-fit:contain;" crossorigin="anonymous">
+      <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 100)}px; max-width:90%; object-fit:contain;" crossorigin="anonymous">
     </div>` : ''}
 
     <div class="header-box">
