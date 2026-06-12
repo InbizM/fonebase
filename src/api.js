@@ -590,8 +590,18 @@ export const registrarVenta = async (v) => {
 };
 
 // ── CRÉDITOS ──
-export const getCreditos = async () => (await queryTurso("SELECT * FROM creditos"))[0].map(r => ({ ...r, id: r.id_credito, idFactura: r.id_factura_ref, abonado: r.total_abonado, saldo: r.saldo_pendiente, total: r.valor_total }));
-export const crearCredito = (d) => queryTurso({ sql: "INSERT INTO creditos (id_credito, cliente, telefono, id_factura_ref, fecha_deuda, tipo, valor_total, total_abonado, saldo_pendiente, estado, detalle) VALUES (?,?,?,?,?,?,?,?,?,?,?)", args: mapArgs([Date.now().toString(), d.cliente, d.telefono, d.idFactura, new Date().toISOString(), d.tipo||'Crédito', d.total, 0, d.total, 'Activo', d.detalle]) });
+export const getCreditos = async () => (await queryTurso("SELECT * FROM creditos"))[0].map(r => ({ 
+  ...r, 
+  id: r.id_credito, 
+  idFactura: r.id_factura_ref, 
+  fecha: r.fecha_deuda,
+  abonado: r.total_abonado, 
+  saldo: r.saldo_pendiente, 
+  total: r.valor_total,
+  fechaCancelacion: r.fecha_cancelacion,
+  historialAbonos: r.historial_abonos
+}));
+export const crearCredito = (d) => queryTurso({ sql: "INSERT INTO creditos (id_credito, cliente, telefono, id_factura_ref, fecha_deuda, tipo, valor_total, total_abonado, saldo_pendiente, estado, detalle, historial_abonos) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", args: mapArgs([Date.now().toString(), d.cliente, d.telefono, d.idFactura || "", new Date().toISOString(), d.tipo||'Crédito', d.total, 0, d.total, 'Activo', d.detalle || "", d.historialAbonos || ""]) });
 export const actualizarCredito = (id, d) => queryTurso({ 
   sql: "UPDATE creditos SET id_credito=?, cliente=?, telefono=?, id_factura_ref=?, fecha_deuda=?, tipo=?, valor_total=?, total_abonado=?, saldo_pendiente=?, estado=?, fecha_cancelacion=?, detalle=?, historial_abonos=? WHERE id_credito=?", 
   args: [...mapArgs([
@@ -601,13 +611,13 @@ export const actualizarCredito = (id, d) => queryTurso({
     d.id_factura_ref || d.idFactura || "",
     d.fecha_deuda || d.fecha || "",
     d.tipo || "Crédito",
-    d.valor_total !== undefined ? d.valor_total : d.total,
-    d.total_abonado !== undefined ? d.total_abonado : d.abonado,
-    d.saldo_pendiente !== undefined ? d.saldo_pendiente : d.saldo,
+    d.total !== undefined ? d.total : d.valor_total,
+    d.abonado !== undefined ? d.abonado : d.total_abonado,
+    d.saldo !== undefined ? d.saldo : d.saldo_pendiente,
     d.estado,
-    d.fecha_cancelacion || d.fechaCancelacion || "",
+    d.fechaCancelacion !== undefined ? d.fechaCancelacion : d.fecha_cancelacion || "",
     d.detalle || "",
-    d.historial_abonos || d.historialAbonos || ""
+    d.historialAbonos !== undefined ? d.historialAbonos : d.historial_abonos || ""
   ]), { type: "text", value: id }] 
 });
 
