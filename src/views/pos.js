@@ -217,6 +217,11 @@ function setupEvents() {
       if (helper) helper.classList.add("hidden");
       const cleanBtn = activeSigCanvas.parentElement.querySelector("button");
       if (cleanBtn) cleanBtn.classList.remove("hidden");
+
+      if (isClient) {
+        openSigFull(elCanvasVendedor, "Firma del Vendedor");
+        return;
+      }
     }
     elSigModal.classList.add("hidden");
   });
@@ -229,6 +234,13 @@ function setupEvents() {
     elCanvasFull.height = elCanvasFull.offsetHeight;
     ctxFull.lineWidth = 8; ctxFull.lineCap = "round"; ctxFull.strokeStyle = "#000";
     ctxFull.clearRect(0, 0, elCanvasFull.width, elCanvasFull.height);
+
+    const isClient = activeSigCanvas.id === "pos-canvas-cliente";
+    if (isClient) {
+      elSigModalSave.innerHTML = `<span class="material-symbols-outlined text-[18px]">arrow_forward</span> Siguiente`;
+    } else {
+      elSigModalSave.innerHTML = `<span class="material-symbols-outlined text-[18px]">check_circle</span> Guardar Firma`;
+    }
   };
 
   elCanvasCliente.parentElement.addEventListener("click", () => openSigFull(elCanvasCliente, "Firma del Comprador"));
@@ -364,6 +376,7 @@ function setupEvents() {
 
   elFileCamera?.addEventListener("change", () => handleEvidenceFileChange(elFileCamera, elFileGallery));
   elFileGallery?.addEventListener("change", () => handleEvidenceFileChange(elFileGallery, elFileCamera));
+  initCustomSelects();
 }
 
 function renderCarrito() {
@@ -619,7 +632,18 @@ async function procesarVenta() {
         imprimirTicket({ ...ventaData, idFactura: res.idFactura }, elCanvasCliente.toDataURL(), elCanvasVendedor.toDataURL());
       }
 
-      _carrito = []; renderCarrito(); elClienteDoc.value=""; elClienteNombre.value=""; closeCheckoutModal();
+      _carrito = []; renderCarrito(); elClienteDoc.value=""; elClienteNombre.value=""; 
+      const desktopSelect = document.getElementById("pos-metodo-pago");
+      if (desktopSelect) {
+        desktopSelect.value = "Efectivo";
+        syncCustomSelectUI("pos-metodo-pago-container", "Efectivo");
+      }
+      const mobileSelect = document.getElementById("pos-metodo-pago-mobile");
+      if (mobileSelect) {
+        mobileSelect.value = "Efectivo";
+        syncCustomSelectUI("pos-metodo-pago-container-mobile", "Efectivo");
+      }
+      closeCheckoutModal();
       loadProductos().then(() => renderProductos(_productos));
     } else { showToast("Error al guardar", "error"); }
   } catch (err) { showToast(err.message, "error"); }
@@ -825,4 +849,83 @@ function imprimirTicket(v, firmaC, firmaV) {
     printWindow.print();
     printWindow.close();
   }, 500);
+}
+
+function initCustomSelects() {
+  const setupCustomSelect = (containerId, hiddenInputId, onSelectChange) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const trigger = container.querySelector(".custom-select-trigger");
+    const optionsMenu = container.querySelector(".custom-select-options");
+    const hiddenInput = document.getElementById(hiddenInputId);
+    const options = container.querySelectorAll(".custom-option");
+    
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.querySelectorAll(".custom-select-options").forEach(menu => {
+        if (menu !== optionsMenu) menu.classList.add("hidden");
+      });
+      optionsMenu.classList.toggle("hidden");
+    });
+    
+    options.forEach(opt => {
+      opt.addEventListener("click", () => {
+        const val = opt.dataset.value;
+        const iconName = opt.querySelector(".material-symbols-outlined").textContent;
+        const labelText = opt.querySelector(".flex-1").textContent;
+        
+        trigger.querySelector(".selected-label").textContent = labelText;
+        trigger.querySelector(".material-symbols-outlined").textContent = iconName;
+        
+        options.forEach(o => {
+          const check = o.querySelector(".check-icon");
+          if (o === opt) check.classList.remove("hidden");
+          else check.classList.add("hidden");
+        });
+        
+        if (hiddenInput) {
+          hiddenInput.value = val;
+          hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+        
+        optionsMenu.classList.add("hidden");
+        if (onSelectChange) onSelectChange(val);
+      });
+    });
+  };
+
+  setupCustomSelect("pos-metodo-pago-container", "pos-metodo-pago", (val) => {
+    syncCustomSelectUI("pos-metodo-pago-container-mobile", val);
+  });
+
+  setupCustomSelect("pos-metodo-pago-container-mobile", "pos-metodo-pago-mobile", (val) => {
+    syncCustomSelectUI("pos-metodo-pago-container", val);
+    const dest = document.getElementById("pos-metodo-pago");
+    if (dest) dest.value = val;
+  });
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".custom-select-options").forEach(menu => {
+      menu.classList.add("hidden");
+    });
+  });
+}
+
+function syncCustomSelectUI(containerId, value) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const trigger = container.querySelector(".custom-select-trigger");
+  const options = container.querySelectorAll(".custom-option");
+  const targetOption = Array.from(options).find(o => o.dataset.value === value);
+  if (targetOption) {
+    const iconName = targetOption.querySelector(".material-symbols-outlined").textContent;
+    const labelText = targetOption.querySelector(".flex-1").textContent;
+    trigger.querySelector(".selected-label").textContent = labelText;
+    trigger.querySelector(".material-symbols-outlined").textContent = iconName;
+    options.forEach(o => {
+      const check = o.querySelector(".check-icon");
+      if (o === targetOption) check.classList.remove("hidden");
+      else check.classList.add("hidden");
+    });
+  }
 }
