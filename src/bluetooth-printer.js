@@ -122,7 +122,7 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
   return `
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
+      .ticket-container {
         font-family: Arial, Helvetica, sans-serif;
         width: ${PRINT_WIDTH_PX}px;
         background: #fff;
@@ -343,11 +343,12 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
       }
     </style>
 
+    ${emisor.logo ? `
+    <div style="text-align:center; margin-bottom:12px;">
+      <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 160)}px; max-width:80%; object-fit:contain; display:inline-block;" crossorigin="anonymous">
+    </div>` : ''}
+
     <div class="header-box">
-      ${emisor.logo ? `
-      <div style="text-align:center; margin-bottom:8px;">
-        <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 160)}px; max-width:80%; object-fit:contain; display:inline-block;" crossorigin="anonymous">
-      </div>` : ''}
       ${emisor.mostrar_nombre ? `<div class="name">${emisor.nombre}</div>` : ''}
       <div class="info">NIT: ${emisor.nit}</div>
       <div class="info">${emisor.direccion}</div>
@@ -425,6 +426,7 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
 
 async function htmlToCanvas(v, ajustesEmpresa) {
   const wrapper = document.createElement('div');
+  wrapper.className = 'ticket-container';
   wrapper.style.cssText = `
     position: fixed;
     left: -9999px;
