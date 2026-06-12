@@ -1,4 +1,4 @@
-import { getCreditos, actualizarCredito, crearCredito } from "../api.js";
+import { getCreditos, actualizarCredito, crearCredito, getAjustesEmpresa } from "../api.js";
 import { showToast } from "../toast.js";
 import { openCustomerSelector } from "../customer-selector.js";
 
@@ -122,6 +122,10 @@ function renderTable(lista) {
                 class="p-2 text-green-600 hover:bg-green-50 rounded-full transition-colors flex items-center justify-center" title="Enviar WhatsApp">
                 <span class="material-symbols-outlined text-[20px]">chat</span>
               </a>` : ''}
+            <button onclick="window.credImprimirTicket('${c.id}')"
+                class="p-2 text-primary hover:bg-surface-container rounded-full transition-colors flex items-center justify-center" title="Imprimir Comprobante/Historial">
+                <span class="material-symbols-outlined text-[20px]">print</span>
+            </button>
             ${!cancelado ? `<button onclick="window.credAddAbono('${c.id}')"
                 class="px-3.5 py-1.5 bg-primary text-on-primary hover:bg-primary/95 rounded-xl text-xs font-bold transition-all shadow-sm">
                 Abonar
@@ -239,6 +243,7 @@ function setupEvents() {
       if (res?.success) {
         showToast(cancelado ? "✅ ¡Crédito cancelado!" : "Abono registrado", "success");
         closeModal();
+        imprimirTicketAbono(d, monto, nota);
         _isLoaded = false;
         await loadData();
         renderTable(_creditos);
@@ -310,4 +315,198 @@ function setupEvents() {
       btnSave.innerHTML = `<span class="material-symbols-outlined text-[18px]">save</span> Guardar`;
     }
   });
+
+  window.credImprimirTicket = (id) => {
+    const cred = _creditos.find(c => c.id == id);
+    if (!cred) return;
+    imprimirTicketAbono(cred, 0, "");
+  };
+}
+
+async function imprimirTicketAbono(cred, monto, nota) {
+  let ajustes = null;
+  try {
+    ajustes = await getAjustesEmpresa();
+  } catch (e) {
+    console.error("Error al cargar ajustes de empresa:", e);
+  }
+
+  const printWindow = window.open('', '_blank', 'width=300,height=600');
+  const now = new Date();
+  const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
+  
+  const hist = parseHistorial(cred.historialAbonos);
+
+  let histHtml = hist.map((a, idx) => `
+    <tr>
+      <td style="padding: 3px 0; border-bottom: 1px solid #eee; text-align: left;">
+        <div>#${idx + 1} - ${a.fecha}</div>
+        <div style="color: #666; font-size: 8px;">${a.nota || 'Abono'}</div>
+      </td>
+      <td style="text-align: right; padding: 3px 0; border-bottom: 1px solid #eee; font-weight: 800;">
+        $${new Intl.NumberFormat('es-CO').format(a.monto)}
+      </td>
+    </tr>
+  `).join("");
+
+  const emisor = {
+    nombre: ajustes?.nombre || "WAYIRA PHONE",
+    propietario: ajustes?.propietario || "Yeison Rangel Rangel",
+    nit: ajustes?.nit || "1193400777-2",
+    direccion: (ajustes?.direccion || "Calle 12 No. 10 - 108") + ", " + (ajustes?.ciudad || "Maicao - La Guajira"),
+    contacto: ajustes?.contacto || "3016807310",
+    correo: ajustes?.correo || "yeison0021@hotmail.com",
+    condiciones: ajustes?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.",
+    logo: ajustes?.logo || "",
+    logo_size: ajustes?.logo_size || 40,
+    mostrar_nombre: ajustes?.mostrar_nombre !== 0
+  };
+
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          @page { size: 48mm auto; margin: 0; }
+          html, body { 
+            width: 48mm; 
+            margin: 0; 
+            padding: 0; 
+            background: #fff;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+          }
+          body { 
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+            padding: 2mm; 
+            font-size: 10px; 
+            color: #1e293b;
+            line-height: 1.3;
+          }
+          .bold { font-weight: 900; }
+          .text-xs { font-size: 8px; }
+          .text-sm { font-size: 11px; }
+          .text-lg { font-size: 14px; }
+          .text-xl { font-size: 18px; }
+          .text-slate-500 { color: #64748b; }
+          .text-slate-400 { color: #94a3b8; }
+          
+          .card { 
+            border: 1px solid #e2e8f0; 
+            border-radius: 6px; 
+            padding: 4px; 
+            margin-bottom: 6px; 
+            background: #f8fafc;
+          }
+          .flex-between { display: flex; justify-content: space-between; align-items: flex-start; }
+          .badge { 
+            background: #dcfce7; color: #166534; 
+            padding: 2px 4px; border-radius: 8px; 
+            font-size: 8px; font-weight: 900; text-transform: uppercase;
+          }
+          .badge-error {
+            background: #fee2e2; color: #991b1b;
+            padding: 2px 4px; border-radius: 8px;
+            font-size: 8px; font-weight: 900; text-transform: uppercase;
+          }
+          
+          .section-title {
+            font-size: 7px;
+            font-weight: 900;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+            margin-top: 4px;
+          }
+          
+          .summary-card {
+            background: #0f172a;
+            color: white;
+            border-radius: 6px;
+            padding: 6px;
+            margin-top: 6px;
+          }
+          .center { text-align: center; }
+        </style>
+      </head>
+      <body>
+        <!-- Logo -->
+        ${emisor.logo ? `
+        <div style="text-align: center; margin-bottom: 4px;">
+          <img src="${emisor.logo}" style="max-height: ${emisor.logo_size || 40}px; max-width: 100%; object-fit: contain;">
+        </div>
+        ` : ''}
+        <div class="center" style="margin-bottom: 6px; font-size: 8px; line-height: 1.2; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #f8fafc;">
+          ${emisor.mostrar_nombre ? `<div class="bold text-sm" style="text-transform: uppercase; color: #000;">${emisor.nombre}</div>` : ''}
+          <div>NIT: ${emisor.nit}</div>
+          <div>${emisor.direccion}</div>
+          <div>Tel: ${emisor.contacto}</div>
+        </div>
+
+        <!-- Header / Comprobante -->
+        <div class="card">
+          <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">RECIBO DE ABONO</div>
+          <div class="flex-between" style="margin-top: 2px;">
+            <div class="text-xs bold">${cred.tipo === 'Plan Separe' ? 'PLAN SEPARE' : 'CRÉDITO'}</div>
+            <div class="${cred.saldo <= 0 ? 'badge' : 'badge-error'}">${cred.saldo <= 0 ? (cred.tipo === 'Plan Separe' ? 'ENTREGADO' : 'PAGADO') : 'PENDIENTE'}</div>
+          </div>
+          <div class="flex-between" style="margin-top: 2px;">
+            <div class="text-xs text-slate-500">${fechaStr}</div>
+            <div class="text-xs text-slate-500">Factura Ref: ${cred.idFactura || 'S/N'}</div>
+          </div>
+        </div>
+
+        <!-- Info Cliente -->
+        <div>
+          <div class="section-title">INFORMACIÓN DEL CLIENTE</div>
+          <div class="bold text-sm">${cred.cliente}</div>
+          <div class="text-xs text-slate-500">ID: ${cred.telefono || ''}</div>
+        </div>
+        
+        <div style="border-top: 1px solid #f1f5f9; margin: 6px 0;"></div>
+        
+        <!-- Detalle Producto -->
+        <div>
+          <div class="section-title">DETALLE PRODUCTO</div>
+          <div class="bold text-sm" style="margin-bottom: 4px;">${cred.detalle || 'Pago de deuda'}</div>
+        </div>
+
+        <div style="border-top: 1px solid #f1f5f9; margin: 6px 0;"></div>
+
+        <!-- Historial de Abonos -->
+        <div class="section-title">HISTORIAL DE PAGOS</div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 8px;">
+          ${histHtml}
+        </table>
+
+        <!-- Resumen Financiero -->
+        <div class="summary-card">
+          <div class="flex-between">
+            <span class="text-xs">Valor Total:</span>
+            <span class="text-xs font-bold">$${new Intl.NumberFormat('es-CO').format(cred.total)}</span>
+          </div>
+          <div class="flex-between" style="color: #4ade80;">
+            <span class="text-xs">Abonado:</span>
+            <span class="text-xs font-bold">$${new Intl.NumberFormat('es-CO').format(cred.abonado)}</span>
+          </div>
+          <div class="flex-between" style="border-top: 1px solid #334155; margin-top: 4px; pt-2; color: #f87171;">
+            <span class="text-xs bold">Saldo Pendiente:</span>
+            <span class="text-sm font-black">$${new Intl.NumberFormat('es-CO').format(cred.saldo)}</span>
+          </div>
+        </div>
+
+        <div class="center bold text-xs text-slate-500" style="margin-top: 10px; font-style: italic;">
+          ${cred.tipo === 'Plan Separe' ? 'El producto se entregará al completar el pago total.' : 'Conserve este recibo como soporte de pago.'}
+        </div>
+        <div class="center bold" style="margin-top: 8px; font-size: 9px;">¡GRACIAS POR SU PAGO!</div>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  setTimeout(() => {
+    printWindow.print();
+    printWindow.close();
+  }, 500);
 }

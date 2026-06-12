@@ -606,6 +606,7 @@ async function procesarVenta() {
       firmaVendedor: firmaVendedorUrl,
       evidencia: evidenciaUrl,
       tipoFactura: billingType,
+      tipoVenta: _tipoVenta,
       imeis: JSON.stringify(imeis),
       emisor: {
         nombre: _ajustesEmpresa?.nombre || "WAYIRA PHONE",
@@ -651,6 +652,19 @@ async function procesarVenta() {
 }
 
 function imprimirTicket(v, firmaC, firmaV) {
+  let title = "COMPROBANTE DE VENTA";
+  let badgeText = "PAGADO";
+  let badgeStyle = "background: #dcfce7; color: #166534;"; // green
+  if (v.tipoVenta === "credito") {
+    title = "COMPROBANTE DE CRÉDITO";
+    badgeText = "CRÉDITO";
+    badgeStyle = "background: #fee2e2; color: #991b1b;"; // red
+  } else if (v.tipoVenta === "separe") {
+    title = "COMPROBANTE PLAN SEPARE";
+    badgeText = "SEPARADO";
+    badgeStyle = "background: #fef3c7; color: #92400e;"; // amber/orange
+  }
+
   const printWindow = window.open('', '_blank', 'width=300,height=600');
   const now = new Date();
   const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
@@ -763,10 +777,10 @@ function imprimirTicket(v, firmaC, firmaV) {
 
         <!-- Header / Comprobante -->
         <div class="card">
-          <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">COMPROBANTE DE VENTA</div>
+          <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">${title}</div>
           <div class="flex-between" style="margin-top: 2px;">
             <div class="text-lg bold" style="line-height: 1;">${v.idFactura || v.id_factura}</div>
-            <div class="badge">PAGADO</div>
+            <div style="padding: 2px 4px; border-radius: 8px; font-size: 8px; font-weight: 900; text-transform: uppercase; ${badgeStyle}">${badgeText}</div>
           </div>
           <div class="flex-between" style="margin-top: 2px;">
             <div class="text-xs text-slate-500">${fechaStr}</div>
@@ -929,3 +943,37 @@ function syncCustomSelectUI(containerId, value) {
     });
   }
 }
+
+window.__posAddReventaToCart = (p) => {
+  const existProd = _productos.find(x => x.id === p.id);
+  if (!existProd) {
+    _productos.unshift({
+      id: p.id,
+      nombre: p.nombre,
+      sku: p.id,
+      marca: p.marca || "GENERICO",
+      categoria: p.categoria || "Celulares",
+      precioVenta: p.precioVenta || 0,
+      costo: p.costo || 0,
+      stockActual: 999
+    });
+  } else {
+    existProd.stockActual = Math.max(existProd.stockActual, 999);
+  }
+  
+  const existCart = _carrito.find(i => i.id === p.id);
+  if (existCart) {
+    existCart.qty++;
+  } else {
+    _carrito.push({
+      id: p.id,
+      nombre: p.nombre,
+      qty: 1,
+      precioManual: p.precioVenta || 0
+    });
+  }
+  renderProductos(_productos);
+  renderCarrito();
+  navigate("pos");
+  showToast(`Reventa de ${p.nombre} agregada al carrito`, "success");
+};
