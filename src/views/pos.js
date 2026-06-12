@@ -642,10 +642,10 @@ async function procesarVenta() {
       
       showToast("Venta Exitosa", "success");
 
-      // Si es digital, ofrecer imprimir ticket de 48mm
-      if (billingType === "digital") {
-        imprimirTicket({ ...ventaData, idFactura: res.idFactura }, elCanvasCliente.toDataURL(), elCanvasVendedor.toDataURL());
-      }
+      // Imprimir ticket de 48mm para todas las ventas
+      const sigC = billingType === "digital" ? elCanvasCliente.toDataURL() : "";
+      const sigV = billingType === "digital" ? elCanvasVendedor.toDataURL() : "";
+      imprimirTicket({ ...ventaData, idFactura: res.idFactura }, sigC, sigV);
 
       _carrito = []; renderCarrito(); elClienteDoc.value=""; elClienteNombre.value=""; 
       const desktopSelect = document.getElementById("pos-metodo-pago");
@@ -679,7 +679,6 @@ function imprimirTicket(v, firmaC, firmaV) {
     badgeStyle = "background: #fef3c7; color: #92400e;"; // amber/orange
   }
 
-  const printWindow = window.open('', '_blank', 'width=300,height=600');
   const now = new Date();
   const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
   
@@ -698,7 +697,7 @@ function imprimirTicket(v, firmaC, firmaV) {
     </tr>
   `).join("");
 
-  printWindow.document.write(`
+  const htmlContent = `
     <!DOCTYPE html>
     <html>
       <head>
@@ -717,7 +716,7 @@ function imprimirTicket(v, firmaC, firmaV) {
             font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
             padding: 2mm; 
             font-size: 10px; 
-            color: #1e293b; /* slate-800 */
+            color: #1e293b;
             line-height: 1.3;
           }
           .bold { font-weight: 900; }
@@ -727,7 +726,6 @@ function imprimirTicket(v, firmaC, firmaV) {
           .text-xl { font-size: 18px; }
           .text-slate-500 { color: #64748b; }
           .text-slate-400 { color: #94a3b8; }
-          .text-primary { color: #020617; } /* using dark slate for primary on print */
           
           .card { 
             border: 1px solid #e2e8f0; 
@@ -737,11 +735,6 @@ function imprimirTicket(v, firmaC, firmaV) {
             background: #f8fafc;
           }
           .flex-between { display: flex; justify-content: space-between; align-items: flex-start; }
-          .badge { 
-            background: #dcfce7; color: #166534; 
-            padding: 2px 4px; border-radius: 8px; 
-            font-size: 8px; font-weight: 900; text-transform: uppercase;
-          }
           
           .section-title {
             font-size: 7px;
@@ -752,9 +745,7 @@ function imprimirTicket(v, firmaC, firmaV) {
             margin-bottom: 2px;
             margin-top: 4px;
           }
-
           .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-          
           .product-card {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
@@ -762,7 +753,6 @@ function imprimirTicket(v, firmaC, firmaV) {
             padding: 4px;
             margin-bottom: 4px;
           }
-          
           .summary-card {
             background: #0f172a;
             color: white;
@@ -770,26 +760,18 @@ function imprimirTicket(v, firmaC, firmaV) {
             padding: 6px;
             margin-top: 6px;
           }
-          
           .legal { font-size: 7px; text-align: justify; margin-top: 8px; color: #64748b; }
           .center { text-align: center; }
         </style>
       </head>
       <body>
-        <!-- Logo de la Empresa -->
-        ${v.emisor.logo ? `
-        <div style="text-align: center; margin-bottom: 4px;">
-          <img src="${v.emisor.logo}" style="max-height: ${v.emisor.logo_size || 40}px; max-width: 100%; object-fit: contain;">
-        </div>
-        ` : ''}
+        ${v.emisor.logo ? `<div style="text-align: center; margin-bottom: 4px;"><img src="${v.emisor.logo}" style="max-height: ${v.emisor.logo_size || 40}px; max-width: 100%; object-fit: contain;"></div>` : ''}
         <div class="center" style="margin-bottom: 6px; font-size: 8px; line-height: 1.2; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #f8fafc;">
           ${v.emisor.mostrar_nombre ? `<div class="bold text-sm" style="text-transform: uppercase; color: #000;">${v.emisor.nombre}</div>` : ''}
           <div>NIT: ${v.emisor.nit}</div>
           <div>${v.emisor.direccion}</div>
           <div>Tel: ${v.emisor.contacto}</div>
         </div>
-
-        <!-- Header / Comprobante -->
         <div class="card">
           <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">${title}</div>
           <div class="flex-between" style="margin-top: 2px;">
@@ -801,8 +783,6 @@ function imprimirTicket(v, firmaC, firmaV) {
             <div class="text-xs bold">${v.metodo || 'Efectivo'}</div>
           </div>
         </div>
-        
-        <!-- Info Cliente & Vendedor -->
         <div class="grid-2">
           <div>
             <div class="section-title">INFORMACIÓN DEL CLIENTE</div>
@@ -818,22 +798,10 @@ function imprimirTicket(v, firmaC, firmaV) {
             <div class="text-xs bold" style="color: #dc2626; background: #fef2f2; display: inline-block; padding: 1px 4px; border-radius: 4px; margin-top: 2px;">DIGITAL</div>
           </div>
         </div>
-        
         <div style="border-top: 1px solid #f1f5f9; margin: 6px 0;"></div>
-        
-        <!-- Detalle Productos -->
         <div class="section-title">DETALLE DE PRODUCTOS</div>
-        ${_carrito.map(i => `
-          <div class="product-card">
-            <div class="flex-between">
-              <div class="bold text-sm" style="width: 80%;">${i.nombre}</div>
-              <div class="bold text-sm">x${i.qty}</div>
-            </div>
-          </div>
-        `).join("")}
-        ${imeiText && imeiText !== '{}' ? `<div class="text-xs bold" style="color:#dc2626; margin-top: -2px; margin-bottom: 4px; margin-left: 4px;">IMEI/SERIE: ${imeiText}</div>` : ''}
-
-        <!-- Resumen Financiero -->
+        <table style="width: 100%; border-collapse: collapse;">${itemsHtml}</table>
+        ${imeiText && imeiText !== '{}' ? `<div class="text-xs bold" style="color:#dc2626; margin-top: 4px; margin-bottom: 4px;">IMEI/SERIE: ${imeiText}</div>` : ''}
         <div class="summary-card">
           <div class="flex-between" style="align-items: flex-end;">
             <div>
@@ -847,36 +815,47 @@ function imprimirTicket(v, firmaC, firmaV) {
             </div>
           </div>
         </div>
-
-        <!-- Firmas -->
-        <div class="grid-2" style="margin-top: 8px;">
+        <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
            <div class="center">
-             <div class="text-xs bold text-slate-400">FIRMA VEND.</div>
-             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px; display: flex; justify-content: center; align-items: center;">
-               ${firmaV ? `<img src="${firmaV}" style="height: 26px; max-width: 100%; object-fit: contain;">` : ''}
+             <div class="text-xs bold text-slate-400">FIRMA COMPRADOR</div>
+             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 45px; margin-top: 2px; display: flex; justify-content: center; align-items: center; width: 100%;">
+               ${firmaC ? `<img src="${firmaC}" style="height: 40px; max-width: 100%; object-fit: contain;">` : ''}
              </div>
            </div>
            <div class="center">
-             <div class="text-xs bold text-slate-400">FIRMA CLI.</div>
-             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px; display: flex; justify-content: center; align-items: center;">
-               ${firmaC ? `<img src="${firmaC}" style="height: 26px; max-width: 100%; object-fit: contain;">` : ''}
+             <div class="text-xs bold text-slate-400">FIRMA VENDEDOR</div>
+             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 45px; margin-top: 2px; display: flex; justify-content: center; align-items: center; width: 100%;">
+               ${firmaV ? `<img src="${firmaV}" style="height: 40px; max-width: 100%; object-fit: contain;">` : ''}
              </div>
            </div>
         </div>
-        
-        <!-- Footer Legal -->
         <div class="legal">
           ${v.emisor.condiciones || 'GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).'}
         </div>
         <div class="center bold" style="margin-top: 8px; font-size: 11px;">¡GRACIAS POR SU COMPRA!</div>
       </body>
     </html>
-  `);
-  printWindow.document.close();
+  `;
+
+  // Print using hidden iframe (bypasses browser pop-up blockers)
+  let iframe = document.getElementById("print-iframe");
+  if (iframe) iframe.remove();
+  iframe = document.createElement("iframe");
+  iframe.id = "print-iframe";
+  iframe.style.position = "absolute";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "none";
+  iframe.style.visibility = "hidden";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(htmlContent);
+  doc.close();
   setTimeout(() => {
-    printWindow.print();
-    printWindow.close();
-  }, 500);
+    iframe.contentWindow.focus();
+    iframe.contentWindow.print();
+  }, 250);
 }
 
 function initCustomSelects() {

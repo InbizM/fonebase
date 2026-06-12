@@ -231,17 +231,17 @@ function imprimirTicketHistory(v) {
         </div>
 
         <!-- Firmas -->
-        <div class="grid-2" style="margin-top: 8px;">
+        <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 6px;">
            <div class="center">
-             <div class="text-xs bold text-slate-400">FIRMA VEND.</div>
-             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px; display: flex; justify-content: center; align-items: center;">
-               ${v.id_firma_vendedor ? `<img src="${v.id_firma_vendedor}" style="height: 26px; max-width: 100%; object-fit: contain;">` : ''}
+             <div class="text-xs bold text-slate-400">FIRMA COMPRADOR</div>
+             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 45px; margin-top: 2px; display: flex; justify-content: center; align-items: center; width: 100%;">
+               ${v.id_firma_comprador ? `<img src="${v.id_firma_comprador}" style="height: 40px; max-width: 100%; object-fit: contain;">` : ''}
              </div>
            </div>
            <div class="center">
-             <div class="text-xs bold text-slate-400">FIRMA CLI.</div>
-             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px; display: flex; justify-content: center; align-items: center;">
-               ${v.id_firma_comprador ? `<img src="${v.id_firma_comprador}" style="height: 26px; max-width: 100%; object-fit: contain;">` : ''}
+             <div class="text-xs bold text-slate-400">FIRMA VENDEDOR</div>
+             <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 45px; margin-top: 2px; display: flex; justify-content: center; align-items: center; width: 100%;">
+               ${v.id_firma_vendedor ? `<img src="${v.id_firma_vendedor}" style="height: 40px; max-width: 100%; object-fit: contain;">` : ''}
              </div>
            </div>
         </div>
