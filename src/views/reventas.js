@@ -1,5 +1,5 @@
 import { getReventas, crearReventa, actualizarReventa, eliminarReventa } from "../api.js";
-import { showToast } from "../toast.js";
+import { showToast, showConfirm } from "../toast.js";
 
 let _pedidos = [];
 let _isLoaded = false;
@@ -143,7 +143,8 @@ function setupEvents() {
   elBtnSave?.addEventListener("click", savePedido);
 
   window.pedDelete = async (id) => {
-    if (!confirm(`¿Eliminar la reventa ${id}?`)) return;
+    const ok = await showConfirm("Confirmación", `¿Eliminar la reventa ${id}?`);
+    if (!ok) return;
     try {
       const res = await eliminarReventa(id);
       if (res && res.success) {

@@ -1,6 +1,6 @@
 import { getTechnical, crearServicioTecnico, actualizarServicioTecnico, eliminarServicioTecnico, uploadEvidencia, getAjustesEmpresa } from "../api.js";
 import { printBluetoothTechnicalTicket } from "../bluetooth-printer.js";
-import { showToast } from "../toast.js";
+import { showToast, showConfirm } from "../toast.js";
 
 let _servicios = [];
 let _isLoaded = false;
@@ -390,7 +390,8 @@ function setupEvents() {
   };
 
   window.techDelete = async (id) => {
-    if (!confirm(`¿Eliminar orden ${id}?`)) return;
+    const ok = await showConfirm("Confirmación", `¿Eliminar orden ${id}?`);
+    if (!ok) return;
     try {
       const res = await eliminarServicioTecnico(id);
       if (res.success) { 

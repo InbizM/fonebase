@@ -1,5 +1,5 @@
 import { getTareas, crearTarea, updateTareaEstado, eliminarTarea } from "../api.js";
-import { showToast } from "../toast.js";
+import { showToast, showConfirm } from "../toast.js";
 
 let _tareas = [];
 let _isLoaded = false;
@@ -152,7 +152,8 @@ window.toggleTaskStatus = async (id, current) => {
 };
 
 window.deleteTask = async (id) => {
-  if (!confirm("¿Eliminar tarea?")) return;
+  const ok = await showConfirm("Confirmación", "¿Eliminar tarea?");
+  if (!ok) return;
   try {
     await eliminarTarea(id);
     await loadTasks();

@@ -1,5 +1,5 @@
 import { getClientes, crearCliente, actualizarCliente, eliminarCliente } from "../api.js";
-import { showToast } from "../toast.js";
+import { showToast, showConfirm } from "../toast.js";
 
 let _clientes = [];
 let _isLoaded = false;
@@ -137,7 +137,8 @@ function setupEvents() {
   };
 
   window.cliDelete = async (cedula) => {
-    if (!confirm(`¿Eliminar al cliente con documento ${cedula}?`)) return;
+    const ok = await showConfirm("Confirmación", `¿Eliminar al cliente con documento ${cedula}?`);
+    if (!ok) return;
     try {
       showToast("Eliminando...", "info");
       const res = await eliminarCliente(cedula);

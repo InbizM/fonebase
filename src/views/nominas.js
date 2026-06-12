@@ -1,5 +1,5 @@
 import { getNominas, crearNomina, eliminarNomina, getUsers } from "../api.js";
-import { showToast } from "../toast.js";
+import { showToast, showConfirm } from "../toast.js";
 
 let _nominas = [];
 let _usuarios = [];
@@ -84,7 +84,8 @@ function renderList(data) {
   document.querySelectorAll(".nom-del-btn").forEach(btn => {
     btn.addEventListener("click", async (e) => {
       const id = e.currentTarget.dataset.id;
-      if (confirm("¿Estás seguro de eliminar este registro de nómina?")) {
+      const ok = await showConfirm("Confirmación", "¿Estás seguro de eliminar este registro de nómina?");
+      if (ok) {
         try {
           await eliminarNomina(id);
           showToast("Nómina eliminada", "success");

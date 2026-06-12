@@ -31,7 +31,7 @@ async function compressImage(base64Str, maxWidth = 1024, maxHeight = 1024, quali
     img.src = base64Str;
   });
 }
-import { showToast } from "../toast.js";
+import { showToast, showConfirm } from "../toast.js";
 import { openScanner } from "../scanner.js";
 
 function parseInventoryOCR(text) {
@@ -673,7 +673,8 @@ window.inventoryView = {
     toggleSpecsContainer();
   },
   async deleteProduct(id) {
-    if (!confirm("¿Eliminar este producto?")) return;
+    const ok = await showConfirm("Confirmación", "¿Eliminar este producto?");
+    if (!ok) return;
     try {
       const res = await eliminarProducto(id);
       showToast(res.mensaje || "Eliminado", res.success ? "success" : "error");

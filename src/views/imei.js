@@ -1,5 +1,5 @@
 import { getEquipos, crearEquipo, actualizarEquipo, eliminarEquipo, getInventario, crearProducto, analyzeImeiLabel } from "../api.js";
-import { showToast } from "../toast.js";
+import { showToast, showConfirm } from "../toast.js";
 import { openScanner } from "../scanner.js";
 import { createWorker } from "tesseract.js";
 
@@ -511,7 +511,8 @@ function setupEvents() {
   };
 
   window.imeiDelete = async (imei) => {
-    if (!confirm(`¿Eliminar el equipo con IMEI ${imei}?`)) return;
+    const ok = await showConfirm("Confirmación", `¿Eliminar el equipo con IMEI ${imei}?`);
+    if (!ok) return;
     try {
       showToast("Eliminando...", "info");
       const res = await eliminarEquipo(imei);

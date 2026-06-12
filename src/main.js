@@ -47,7 +47,7 @@ import { initTechnical } from "./views/technical.js";
 import { initExpenses } from "./views/expenses.js";
 import { initNominas } from "./views/nominas.js";
 import { initSettings } from "./views/settings.js";
-import { showToast } from "./toast.js";
+import { showToast, showConfirm } from "./toast.js";
 import { login, verifyPin, logout, setToken, getToken, getAjustesEmpresa } from "./api.js";
 
 let _pendingEmail = "";
@@ -467,7 +467,8 @@ function resetLoginAvatar() {
 }
 
 async function handleLogout() {
-  if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
+  const ok = await showConfirm("Confirmación", "¿Estás seguro de que deseas cerrar sesión?");
+  if (ok) {
     await logout();
     clearSession();
     showLoginScreen();

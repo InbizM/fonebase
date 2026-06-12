@@ -1,5 +1,5 @@
 import { getUsers, crearUsuario, actualizarUsuario, eliminarUsuario, reset2fa } from "../api.js";
-import { showToast } from "../toast.js";
+import { showToast, showConfirm } from "../toast.js";
 
 let _usuarios = [];
 let _isLoaded = false;
@@ -98,7 +98,8 @@ function setupEvents() {
     const me = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
     if (email === me.email) return showToast("No puedes eliminarte a ti mismo", "warning");
     
-    if (!confirm(`¿Eliminar al usuario ${email}?`)) return;
+    const ok = await showConfirm("Confirmación", `¿Eliminar al usuario ${email}?`);
+    if (!ok) return;
     try {
       await eliminarUsuario(email);
       showToast("Usuario eliminado", "success");
@@ -108,7 +109,8 @@ function setupEvents() {
   };
 
   window.userReset2FA = async (email) => {
-    if (!confirm(`¿Restablecer el 2FA de ${email}? El usuario deberá escanear un nuevo código QR en su móvil en su próximo inicio de sesión.`)) return;
+    const ok = await showConfirm("Confirmación", `¿Restablecer el 2FA de ${email}? El usuario deberá escanear un nuevo código QR en su móvil en su próximo inicio de sesión.`);
+    if (!ok) return;
     try {
       await reset2fa(email);
       showToast("2FA restablecido con éxito", "success");
