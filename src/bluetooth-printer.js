@@ -342,12 +342,11 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
       }
     </style>
 
-    ${emisor.logo ? `
-    <div style="text-align:center; margin-bottom:14px;">
-      <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 140)}px; max-width:95%; object-fit:contain;" crossorigin="anonymous">
-    </div>` : ''}
-
     <div class="header-box">
+      ${emisor.logo ? `
+      <div style="text-align:center; margin-bottom:8px;">
+        <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 160)}px; max-width:80%; object-fit:contain; display:inline-block;" crossorigin="anonymous">
+      </div>` : ''}
       <div class="name">${emisor.nombre}</div>
       <div class="info">NIT: ${emisor.nit}</div>
       <div class="info">${emisor.direccion}</div>
