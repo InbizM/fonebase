@@ -112,14 +112,23 @@ function getStatusCls(st) {
 }
 
 function setupEvents() {
-  document.getElementById("tech-search")?.addEventListener("input", (e) => {
-    const q = e.target.value.toLowerCase().trim();
-    renderGrid(_servicios.filter(s => 
-      s.cliente.toLowerCase().includes(q) || 
-      s.id_orden.toLowerCase().includes(q) || 
-      s.equipo.toLowerCase().includes(q)
-    ));
-  });
+  const applyFilter = () => {
+    const q = document.getElementById("tech-search")?.value.toLowerCase().trim() || "";
+    const status = document.getElementById("tech-filter-status")?.value || "";
+    renderGrid(_servicios.filter(s => {
+      const matchQuery = s.cliente.toLowerCase().includes(q) || 
+                         s.id_orden.toLowerCase().includes(q) || 
+                         s.equipo.toLowerCase().includes(q);
+      const matchStatus = !status || s.estado === status;
+      return matchQuery && matchStatus;
+    }));
+  };
+
+  document.getElementById("tech-search")?.addEventListener("input", applyFilter);
+  
+  if (window.setupCustomSelect) {
+    window.setupCustomSelect("tech-filter-status-container", "tech-filter-status", applyFilter);
+  }
 
   document.getElementById("tech-new-btn")?.addEventListener("click", () => openModal());
   document.getElementById("tech-modal-close")?.addEventListener("click", closeModal);

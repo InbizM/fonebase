@@ -113,6 +113,8 @@ function renderTable(lista) {
 }
 
 function setupEvents() {
+  window.setupCustomSelect("ped-categoria-container", "ped-categoria");
+
   const filterData = () => {
     if (!elSearch) return;
     const q = elSearch.value.toLowerCase().trim();
@@ -173,6 +175,9 @@ function openModal(ped) {
     if (elPrecio) elPrecio.value = new Intl.NumberFormat("es-CO").format(ped.precio || 0);
     if (elForm) elForm.dataset.fecha = ped.fecha || new Date().toISOString();
   }
+  
+  window.syncCustomSelectUI("ped-categoria-container", elCategoria ? elCategoria.value : "Celulares");
+
   const elTitle = document.getElementById("ped-modal-title");
   if (elTitle) {
     elTitle.textContent = ped ? "Editar Reventa" : "Nueva Reventa";

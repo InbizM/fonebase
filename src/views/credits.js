@@ -162,8 +162,11 @@ function setupEvents() {
   };
 
   elSearch?.addEventListener("input", filterData);
-  elFilter?.addEventListener("change", filterData);
-  elFilterTipo?.addEventListener("change", filterData);
+  if (window.setupCustomSelect) {
+    window.setupCustomSelect("cred-filter-tipo-container", "cred-filter-tipo", filterData);
+    window.setupCustomSelect("cred-filter-status-container", "cred-filter-status", filterData);
+    window.setupCustomSelect("cred-metodo-abono-container", "cred-metodo-abono");
+  }
 
   // Format number inputs
   const fmtInput = (e) => {
@@ -212,7 +215,12 @@ function setupEvents() {
     document.getElementById("cred-monto-abono").value = "";
     document.getElementById("cred-nota-abono").value = "";
     const elMetodoSelect = document.getElementById("cred-metodo-abono");
-    if (elMetodoSelect) elMetodoSelect.value = "Efectivo";
+    if (elMetodoSelect) {
+      elMetodoSelect.value = "Efectivo";
+      if (window.syncCustomSelectUI) {
+        window.syncCustomSelectUI("cred-metodo-abono-container", "Efectivo");
+      }
+    }
     elModal?.classList.remove("hidden"); elModal?.classList.add("flex");
     document.getElementById("cred-monto-abono")?.focus();
   };

@@ -719,3 +719,186 @@ function loadNotificationsList() {
     </div>
   `).join("");
 }
+
+// ============================================================
+// Global Custom Select Helpers
+// ============================================================
+window.setupCustomSelect = function(containerId, hiddenInputId, onSelectChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const trigger = container.querySelector(".custom-select-trigger");
+  const optionsMenu = container.querySelector(".custom-select-options");
+  const hiddenInput = document.getElementById(hiddenInputId);
+  const options = container.querySelectorAll(".custom-option");
+  
+  if (!trigger || !optionsMenu) return;
+
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    // Close other custom selects first
+    document.querySelectorAll(".custom-select-options").forEach(menu => {
+      if (menu !== optionsMenu) menu.classList.add("hidden");
+    });
+    optionsMenu.classList.toggle("hidden");
+  });
+  
+  options.forEach(opt => {
+    opt.addEventListener("click", () => {
+      const val = opt.dataset.value;
+      const iconEl = opt.querySelector(".material-symbols-outlined");
+      const iconName = iconEl ? iconEl.textContent : "";
+      const labelEl = opt.querySelector(".flex-1");
+      const labelText = labelEl ? labelEl.textContent : "";
+      
+      const triggerLabel = trigger.querySelector(".selected-label");
+      if (triggerLabel) {
+        triggerLabel.textContent = labelText;
+      }
+      const triggerIcon = trigger.querySelector(".material-symbols-outlined");
+      if (triggerIcon && iconName) {
+        triggerIcon.textContent = iconName;
+      }
+      
+      options.forEach(o => {
+        const check = o.querySelector(".check-icon");
+        if (check) {
+          if (o === opt) check.classList.remove("hidden");
+          else check.classList.add("hidden");
+        }
+      });
+      
+      if (hiddenInput) {
+        hiddenInput.value = val;
+        hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      
+      if (onSelectChange) {
+        onSelectChange(val);
+      }
+      
+      optionsMenu.classList.add("hidden");
+    });
+  });
+};
+
+window.syncCustomSelectUI = function(containerId, value) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const trigger = container.querySelector(".custom-select-trigger");
+  const options = container.querySelectorAll(".custom-option");
+  if (!trigger || !options.length) return;
+
+  const targetOption = Array.from(options).find(o => o.dataset.value === value);
+  if (targetOption) {
+    const iconEl = targetOption.querySelector(".material-symbols-outlined");
+    const iconName = iconEl ? iconEl.textContent : "";
+    const labelEl = targetOption.querySelector(".flex-1");
+    const labelText = labelEl ? labelEl.textContent : "";
+    
+    const triggerLabel = trigger.querySelector(".selected-label");
+    if (triggerLabel) {
+      triggerLabel.textContent = labelText;
+    }
+    const triggerIcon = trigger.querySelector(".material-symbols-outlined");
+    if (triggerIcon && iconName) {
+      triggerIcon.textContent = iconName;
+    }
+    
+    options.forEach(o => {
+      const check = o.querySelector(".check-icon");
+      if (check) {
+        if (o === targetOption) check.classList.remove("hidden");
+        else check.classList.add("hidden");
+      }
+    });
+  }
+};
+
+window.buildCustomSelectOptions = function(containerId, hiddenInputId, items, placeholder = "Seleccione...", onSelectChange) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const trigger = container.querySelector(".custom-select-trigger");
+  const optionsMenu = container.querySelector(".custom-select-options");
+  const hiddenInput = document.getElementById(hiddenInputId);
+
+  if (!trigger || !optionsMenu) return;
+
+  // Clear options menu
+  optionsMenu.innerHTML = '';
+
+  // Set initial trigger label
+  const triggerLabel = trigger.querySelector(".selected-label");
+  if (triggerLabel) {
+    triggerLabel.textContent = placeholder;
+  }
+  const triggerIcon = trigger.querySelector(".material-symbols-outlined");
+
+  // Build options
+  items.forEach(item => {
+    const optDiv = document.createElement("div");
+    optDiv.className = "custom-option px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors";
+    optDiv.dataset.value = item.value;
+
+    const iconSpan = document.createElement("span");
+    iconSpan.className = "material-symbols-outlined text-[18px] text-slate-400";
+    iconSpan.textContent = item.icon || "person";
+    optDiv.appendChild(iconSpan);
+
+    const labelSpan = document.createElement("span");
+    labelSpan.className = "flex-1";
+    labelSpan.textContent = item.label;
+    optDiv.appendChild(labelSpan);
+
+    const checkSpan = document.createElement("span");
+    checkSpan.className = "material-symbols-outlined text-[16px] text-primary check-icon hidden";
+    checkSpan.textContent = "check_circle";
+    optDiv.appendChild(checkSpan);
+
+    optionsMenu.appendChild(optDiv);
+  });
+
+  // Re-bind events
+  const options = optionsMenu.querySelectorAll(".custom-option");
+  options.forEach(opt => {
+    opt.addEventListener("click", () => {
+      const val = opt.dataset.value;
+      const iconEl = opt.querySelector(".material-symbols-outlined");
+      const iconName = iconEl ? iconEl.textContent : "";
+      const labelEl = opt.querySelector(".flex-1");
+      const labelText = labelEl ? labelEl.textContent : "";
+
+      if (triggerLabel) {
+        triggerLabel.textContent = labelText;
+      }
+      if (triggerIcon && iconName) {
+        triggerIcon.textContent = iconName;
+      }
+
+      options.forEach(o => {
+        const check = o.querySelector(".check-icon");
+        if (check) {
+          if (o === opt) check.classList.remove("hidden");
+          else check.classList.add("hidden");
+        }
+      });
+
+      if (hiddenInput) {
+        hiddenInput.value = val;
+        hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+
+      if (onSelectChange) {
+        onSelectChange(val);
+      }
+
+      optionsMenu.classList.add("hidden");
+    });
+  });
+};
+
+document.addEventListener("click", () => {
+  document.querySelectorAll(".custom-select-options").forEach(menu => {
+    menu.classList.add("hidden");
+  });
+});
+

@@ -79,6 +79,10 @@ function renderTable(lista) {
 }
 
 function setupEvents() {
+  // Inicializar selectores personalizados
+  window.setupCustomSelect("user-input-rol-container", "user-input-rol");
+  window.setupCustomSelect("user-input-estado-container", "user-input-estado");
+
   document.getElementById("user-search")?.addEventListener("input", (e) => {
     const q = e.target.value.toLowerCase().trim();
     renderTable(_usuarios.filter(u => u.nombre.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)));
@@ -135,6 +139,10 @@ function openModal(u = null) {
     document.getElementById("user-input-rol").value = u.rol;
     document.getElementById("user-input-estado").value = u.estado;
   }
+
+  // Sincronizar selectores
+  window.syncCustomSelectUI("user-input-rol-container", document.getElementById("user-input-rol").value || "Vendedor");
+  window.syncCustomSelectUI("user-input-estado-container", document.getElementById("user-input-estado").value || "Activo");
   
   const modal = document.getElementById("user-modal");
   modal.classList.remove("hidden");

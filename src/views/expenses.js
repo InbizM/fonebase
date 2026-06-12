@@ -111,7 +111,10 @@ function setupEvents() {
   };
 
   elSearch.addEventListener("input", filterData);
-  elFilter.addEventListener("change", filterData);
+  if (window.setupCustomSelect) {
+    window.setupCustomSelect("exp-filter-cat-container", "exp-filter-cat", filterData);
+    window.setupCustomSelect("exp-categoria-container", "exp-categoria");
+  }
 
   // Helper to format numbers
   const formatNumberInput = (e) => {
@@ -133,6 +136,9 @@ function setupEvents() {
 
 function openModal() {
   elForm.reset();
+  if (window.syncCustomSelectUI) {
+    window.syncCustomSelectUI("exp-categoria-container", elCategoria.value || "Compra Inventario");
+  }
   
   // Set default responsible from cache
   try {

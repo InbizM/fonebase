@@ -139,18 +139,33 @@ function setupEvents() {
   if (_eventsBound) return;
   _eventsBound = true;
 
+  // Inicializar selectores personalizados
+  window.setupCustomSelect("nom-estado-container", "nom-estado");
+  window.setupCustomSelect("nom-empleado-container", "nom-empleado");
+
   const modal = document.getElementById("nom-modal");
   const form = document.getElementById("nom-form");
 
   document.getElementById("nom-new-btn")?.addEventListener("click", () => {
     form.reset();
     
-    // Poblar dropdown de empleados
-    const empSelect = document.getElementById("nom-empleado");
-    if (empSelect) {
-      empSelect.innerHTML = `<option value="">Seleccione empleado...</option>` + 
-        _usuarios.map(u => `<option value="${u.nombre}">${u.nombre} (${u.rol})</option>`).join("");
-    }
+    // Poblar dropdown de empleados de forma dinámica
+    const items = _usuarios.map(u => {
+      let icon = "person";
+      if (u.rol === "Administrador") icon = "shield_person";
+      else if (u.rol === "Técnico de reparación") icon = "build";
+      else if (u.rol === "Vendedor") icon = "badge";
+      return {
+        value: u.nombre,
+        label: `${u.nombre} (${u.rol})`,
+        icon: icon
+      };
+    });
+    window.buildCustomSelectOptions("nom-empleado-container", "nom-empleado", items, "Seleccione empleado...");
+    
+    // Sincronizar selectores
+    window.syncCustomSelectUI("nom-estado-container", "Pendiente");
+    window.syncCustomSelectUI("nom-empleado-container", "");
     
     updateFormTotals();
     modal.classList.remove("hidden");

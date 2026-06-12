@@ -95,15 +95,41 @@ function ensureDOM() {
              <div>
                 <input id="cs-new-dir" type="text" placeholder="Dirección" class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary outline-none" />
              </div>
-             <div class="flex gap-2">
-                <select id="cs-new-tipo" class="flex-1 bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm text-on-surface focus:border-primary outline-none">
-                  <option value="General">General</option>
-                  <option value="VIP">VIP</option>
-                  <option value="Empresa">Empresa</option>
-                  <option value="Mayorista">Mayorista</option>
-                </select>
-                <button id="cs-save-new" class="px-4 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-container whitespace-nowrap">Guardar</button>
-                <button id="cs-cancel-new" class="px-3 bg-surface-variant text-on-surface text-sm rounded-lg hover:bg-surface-container-high">x</button>
+             <div class="flex gap-2 items-center">
+                <div id="cs-new-tipo-container" class="custom-select-container relative flex-1">
+                  <input type="hidden" id="cs-new-tipo" value="General" />
+                  <button type="button" class="custom-select-trigger w-full bg-surface-container border border-surface-variant rounded-lg px-3 py-2 text-sm font-semibold text-on-surface focus:outline-none focus:border-primary flex items-center justify-between shadow-sm active:scale-[0.99] transition-all">
+                    <div class="flex items-center gap-2">
+                      <span class="material-symbols-outlined text-[18px] text-slate-500">person</span>
+                      <span class="selected-label">General</span>
+                    </div>
+                    <span class="material-symbols-outlined text-[18px] text-slate-400">keyboard_arrow_down</span>
+                  </button>
+                  <div class="custom-select-options hidden absolute left-0 right-0 bottom-full mb-1 bg-surface-container-high border border-surface-variant rounded-xl shadow-2xl z-50 overflow-hidden py-1">
+                    <div data-value="General" class="custom-option px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                      <span class="material-symbols-outlined text-[18px] text-slate-400">person</span>
+                      <span class="flex-1">General</span>
+                      <span class="material-symbols-outlined text-[16px] text-primary check-icon">check_circle</span>
+                    </div>
+                    <div data-value="VIP" class="custom-option px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                      <span class="material-symbols-outlined text-[18px] text-slate-400">star</span>
+                      <span class="flex-1">VIP</span>
+                      <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                    </div>
+                    <div data-value="Empresa" class="custom-option px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                      <span class="material-symbols-outlined text-[18px] text-slate-400">business</span>
+                      <span class="flex-1">Empresa</span>
+                      <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                    </div>
+                    <div data-value="Mayorista" class="custom-option px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                      <span class="material-symbols-outlined text-[18px] text-slate-400">store</span>
+                      <span class="flex-1">Mayorista</span>
+                      <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                    </div>
+                  </div>
+                </div>
+                <button id="cs-save-new" class="px-4 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary-container whitespace-nowrap self-stretch">Guardar</button>
+                <button id="cs-cancel-new" class="px-3 bg-surface-variant text-on-surface text-sm rounded-lg hover:bg-surface-container-high self-stretch">x</button>
              </div>
           </div>
         </div>
@@ -197,6 +223,7 @@ function ensureDOM() {
         document.getElementById("cs-new-email").value = "";
         document.getElementById("cs-new-dir").value = "";
         document.getElementById("cs-new-tipo").value = "General";
+        window.syncCustomSelectUI("cs-new-tipo-container", "General");
         
         selectClient(newClient);
       } else {
@@ -209,6 +236,9 @@ function ensureDOM() {
       btn.textContent = "Guardar";
     }
   });
+
+  // Inicializar selector personalizado
+  window.setupCustomSelect("cs-new-tipo-container", "cs-new-tipo");
 }
 
 function handleSearch() {

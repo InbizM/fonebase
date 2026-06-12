@@ -658,6 +658,7 @@ window.inventoryView = {
     document.getElementById("inv-marca").value = p.marca || "";
     document.getElementById("inv-categoria").value = p.categoria || "";
     document.getElementById("inv-tipo").value = p.tipo || "Físico";
+    if (window.syncCustomSelectUI) window.syncCustomSelectUI("inv-tipo-container", p.tipo || "Físico");
     document.getElementById("inv-costo").value = p.costo ? new Intl.NumberFormat("es-CO").format(p.costo) : "";
     document.getElementById("inv-venta").value = p.precioVenta ? new Intl.NumberFormat("es-CO").format(p.precioVenta) : "";
     document.getElementById("inv-stock-min").value = p.stockMinimo ?? "";
@@ -689,6 +690,7 @@ window.inventoryView = {
     
     document.getElementById("inv-form")?.reset();
     document.getElementById("inv-tipo").value = isReventa ? "Reventa" : "Físico";
+    if (window.syncCustomSelectUI) window.syncCustomSelectUI("inv-tipo-container", isReventa ? "Reventa" : "Físico");
     document.getElementById("inv-existing-img").value = "";
     document.getElementById("inv-img-preview").innerHTML =
       `<span class="material-symbols-outlined text-3xl text-on-surface-variant/40">add_photo_alternate</span>`;
@@ -731,11 +733,16 @@ async function loadInventario() {
 }
 
 function populateCategoryFilter() {
-  const sel = document.getElementById("inv-filter-cat");
   const cats = [...new Set(productos.map(p => p.categoria).filter(Boolean))];
-  if (sel) {
-    sel.innerHTML = `<option value="">Todas las categorías</option>` +
-      cats.map(c => `<option value="${c}">${c}</option>`).join("");
+  if (window.buildCustomSelectOptions) {
+    const items = cats.map(c => ({ value: c, label: c, icon: "label" }));
+    window.buildCustomSelectOptions(
+      "inv-filter-cat-container", 
+      "inv-filter-cat", 
+      items, 
+      "Todas las categorías", 
+      applyFilter
+    );
   }
   
   // Populate datalists
@@ -868,8 +875,11 @@ export function initInventory() {
 
   // Search
   document.getElementById("inv-search")?.addEventListener("input", applyFilter);
-  document.getElementById("inv-filter-cat")?.addEventListener("change", applyFilter);
-  document.getElementById("inv-filter-tipo")?.addEventListener("change", applyFilter);
+  
+  if (window.setupCustomSelect) {
+    window.setupCustomSelect("inv-filter-tipo-container", "inv-filter-tipo", applyFilter);
+    window.setupCustomSelect("inv-tipo-container", "inv-tipo");
+  }
 
   // Categoria change to toggle specs fields
   const catInput = document.getElementById("inv-categoria");
@@ -1001,6 +1011,7 @@ export function initInventory() {
           document.getElementById("inv-categoria").value = "Celulares";
         }
         document.getElementById("inv-tipo").value = "Físico";
+        if (window.syncCustomSelectUI) window.syncCustomSelectUI("inv-tipo-container", "Físico");
 
         // Auto-asignar la mejor foto recomendada por la IA para perfil
         if (_selectedScanImages.length > 0) {

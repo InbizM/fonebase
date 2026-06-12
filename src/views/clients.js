@@ -124,6 +124,9 @@ function setupEvents() {
   };
 
   elSearch.addEventListener("input", filterData);
+  if (window.setupCustomSelect) {
+    window.setupCustomSelect("cli-tipo-container", "cli-tipo");
+  }
 
   elBtnNew.addEventListener("click", () => openModal(null));
   elModalClose.addEventListener("click", closeModal);
@@ -170,6 +173,10 @@ function openModal(cli) {
     elOriginal.value = "";
     elTipo.value = "Normal";
     document.getElementById("cli-modal-title").textContent = "Nuevo Cliente";
+  }
+  
+  if (window.syncCustomSelectUI) {
+    window.syncCustomSelectUI("cli-tipo-container", elTipo.value);
   }
   
   elModal.classList.remove("hidden");

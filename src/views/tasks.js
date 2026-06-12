@@ -30,6 +30,9 @@ function bindEvents() {
   document.getElementById("task-modal-close")?.addEventListener("click", closeModal);
   document.getElementById("task-modal-backdrop")?.addEventListener("click", closeModal);
   document.getElementById("task-form")?.addEventListener("submit", saveTask);
+
+  // Inicializar selectores personalizados (después de clonar el formulario)
+  window.setupCustomSelect("task-input-priority-container", "task-input-priority");
 }
 
 async function loadTasks() {
@@ -94,6 +97,10 @@ function formatDate(iso) {
 function openModal() {
   const modal = document.getElementById("task-modal");
   document.getElementById("task-form").reset();
+  
+  // Sincronizar selector de prioridad
+  window.syncCustomSelectUI("task-input-priority-container", "Media");
+
   // Poner fecha de hoy por defecto
   document.getElementById("task-input-date").value = new Date().toISOString().slice(0, 10);
   modal.classList.remove("hidden");

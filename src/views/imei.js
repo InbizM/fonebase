@@ -502,7 +502,10 @@ function setupEvents() {
   });
 
   elSearch.addEventListener("input", filterData);
-  elFilter.addEventListener("change", filterData);
+  if (window.setupCustomSelect) {
+    window.setupCustomSelect("imei-filter-status-container", "imei-filter-status", filterData);
+    window.setupCustomSelect("imei-estado-container", "imei-estado");
+  }
 
   // Scanner for search
   document.getElementById("imei-scan-btn")?.addEventListener("click", () => {
@@ -893,6 +896,10 @@ function openModal(obj) {
     elDropdownSelectedText.classList.add("text-slate-500");
     
     document.getElementById("imei-modal-title").textContent = "Registrar Equipo";
+  }
+  
+  if (window.syncCustomSelectUI) {
+    window.syncCustomSelectUI("imei-estado-container", elEstado.value);
   }
   
   elModal.classList.remove("hidden");
