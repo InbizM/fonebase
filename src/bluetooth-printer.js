@@ -827,3 +827,278 @@ export async function printBluetoothTechnicalTicket(s, ajustesEmpresa = null) {
     _isPrinting = false;
   }
 }
+
+export async function printBluetoothAbonoTicket(cred, monto, nota, ajustesEmpresa = null) {
+  if (_isPrinting) {
+    console.warn("[BT-Printer] Impresión en progreso.");
+    return;
+  }
+
+  try {
+    _isPrinting = true;
+    await connectPrinter();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'ticket-container';
+    wrapper.style.cssText = `
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: ${PRINT_WIDTH_PX}px;
+      background: white;
+      z-index: -1;
+    `;
+    wrapper.innerHTML = buildAbonoTicketHTML(cred, monto, nota, ajustesEmpresa);
+    document.body.appendChild(wrapper);
+
+    // Esperar a que carguen imágenes
+    const imgs = wrapper.querySelectorAll('img');
+    await Promise.all([...imgs].map(img =>
+      img.complete ? Promise.resolve() : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
+
+    const rawCanvas = await html2canvas(wrapper, {
+      width: PRINT_WIDTH_PX,
+      windowWidth: PRINT_WIDTH_PX,
+      backgroundColor: '#ffffff',
+      scale: 1,
+      useCORS: true,
+      logging: false,
+      allowTaint: false,
+    });
+    document.body.removeChild(wrapper);
+
+    const ticketCanvas = alignHeight(rawCanvas);
+
+    console.log(`[BT-Printer] Abono Canvas: ${ticketCanvas.width}x${ticketCanvas.height}px`);
+
+    const encoder = new ReceiptPrinterEncoder({
+      language: 'esc-pos',
+      width: 48,
+    });
+
+    encoder
+      .initialize()
+      .align('center')
+      .image(ticketCanvas, PRINT_WIDTH_PX, ticketCanvas.height, 'threshold')
+      .newline()
+      .newline()
+      .newline()
+      .cut();
+
+    await sendBytes(encoder.encode());
+    console.log("[BT-Printer] ✅ Impresión de abono enviada.");
+
+  } catch (err) {
+    console.error("[BT-Printer] Error en ticket abono:", err);
+    alert(`Error Bluetooth: ${err.message || err}`);
+    throw err;
+  } finally {
+    _isPrinting = false;
+  }
+}
+
+function parseHistorialLocal(raw) {
+  if (!raw) return [];
+  return raw.split(";").filter(Boolean).map(e => {
+    const parts = e.split("|");
+    return { 
+      fecha: parts[0] || "", 
+      monto: parseFloat(parts[1]) || 0, 
+      nota: parts[2] || "", 
+      metodo: parts[3] || "Efectivo",
+      evidencia: parts[4] || ""
+    };
+  });
+}
+
+function buildAbonoTicketHTML(cred, monto, nota, ajustesEmpresa = null) {
+  const now = new Date();
+  const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+  
+  const emisor = {
+    nombre: ajustesEmpresa?.nombre || "WAYIRA PHONE",
+    nit: ajustesEmpresa?.nit || "1193400777-2",
+    direccion: (ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
+    contacto: ajustesEmpresa?.contacto || "3016807310",
+    logo: ajustesEmpresa?.logo || "",
+    logo_size: ajustesEmpresa?.logo_size || 60,
+    mostrar_nombre: ajustesEmpresa?.mostrar_nombre !== 0
+  };
+
+  const fmt = (n) => '$' + new Intl.NumberFormat('es-CO').format(n || 0);
+  const hist = parseHistorialLocal(cred.historialAbonos);
+
+  let histHtml = hist.map((a, idx) => `
+    <tr style="border-bottom: 2px solid #000;">
+      <td style="padding: 6px 0; text-align: left; vertical-align: top; font-size: 20px;">
+        <div class="bold">#${idx + 1} - ${a.fecha}</div>
+        <div style="font-size: 18px; margin-top: 2px;">
+          <span style="background: #000; color: #fff; padding: 2px 6px; border-radius: 4px; font-weight: 900; font-size: 16px; text-transform: uppercase;">${a.metodo || 'Efectivo'}</span>
+          ${a.nota ? '• ' + a.nota : ''}
+        </div>
+      </td>
+      <td style="text-align: right; padding: 6px 0; font-weight: 900; font-size: 22px; vertical-align: bottom;">
+        ${fmt(a.monto)}
+      </td>
+    </tr>
+  `).join("");
+
+  return `
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      .ticket-container {
+        font-family: Arial, Helvetica, sans-serif;
+        width: ${PRINT_WIDTH_PX}px;
+        background: #fff;
+        padding: 8px;
+        font-size: 24px;
+        font-weight: 900;
+        color: #000;
+        line-height: 1.35;
+        -webkit-text-stroke: 0.8px #000;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .bold { font-weight: 900; }
+      .center { text-align: center; }
+
+      .header-box {
+        border: 3px solid #000;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 12px;
+        text-align: center;
+        line-height: 1.3;
+      }
+      .header-box .name {
+        font-size: 32px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .header-box .info {
+        font-size: 22px;
+        font-weight: 900;
+        color: #000;
+        margin-top: 2px;
+      }
+
+      .card {
+        border: 3px solid #000;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 12px;
+      }
+      .flex-between {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      .badge {
+        background: #000;
+        color: #fff;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 20px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .badge-error {
+        border: 3px solid #000;
+        color: #000;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 20px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .section-title {
+        font-size: 18px;
+        font-weight: 900;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+        margin-top: 8px;
+        border-bottom: 2px solid #000;
+        padding-bottom: 2px;
+      }
+
+      .summary-card {
+        background: #000;
+        color: #fff;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 12px;
+      }
+    </style>
+    <div class="ticket-container">
+      <!-- Logo -->
+      ${emisor.logo ? `
+      <div style="text-align: center; margin-bottom: 6px;">
+        <img src="${emisor.logo}" style="max-height: ${emisor.logo_size || 60}px; max-width: 100%; object-fit: contain;">
+      </div>
+      ` : ''}
+      <div class="header-box">
+        ${emisor.mostrar_nombre ? `<div class="name">${emisor.nombre}</div>` : ''}
+        <div class="info">
+          <div>NIT: ${emisor.nit}</div>
+          <div>${emisor.direccion}</div>
+          <div>Tel: ${emisor.contacto}</div>
+        </div>
+      </div>
+
+      <!-- Header / Comprobante -->
+      <div class="card">
+        <div class="bold" style="font-size: 26px; color: #000; text-transform: uppercase; text-align: center; margin-bottom: 4px;">RECIBO DE ABONO</div>
+        <div class="flex-between">
+          <div class="bold" style="font-size: 22px;">${cred.tipo === 'Plan Separe' ? 'PLAN SEPARE' : 'CRÉDITO'}</div>
+          <div class="${cred.saldo <= 0 ? 'badge' : 'badge-error'}">${cred.saldo <= 0 ? (cred.tipo === 'Plan Separe' ? 'ENTREGADO' : 'PAGADO') : 'PENDIENTE'}</div>
+        </div>
+        <div class="flex-between" style="margin-top: 6px; font-size: 18px;">
+          <div>Fecha: ${fechaStr}</div>
+          <div>Ref: ${cred.idFactura || 'S/N'}</div>
+        </div>
+      </div>
+
+      <!-- Info Cliente -->
+      <div style="font-size: 20px; margin-bottom: 8px;">
+        <div class="section-title">CLIENTE</div>
+        <div class="bold">${cred.cliente}</div>
+        <div>ID: ${cred.telefono || ''}</div>
+      </div>
+      
+      <!-- Detalle Producto -->
+      <div style="font-size: 20px; margin-bottom: 8px;">
+        <div class="section-title">PRODUCTO / DETALLE</div>
+        <div class="bold">${cred.detalle || 'Pago de deuda'}</div>
+      </div>
+
+      <!-- Historial de Abonos -->
+      <div class="section-title">HISTORIAL DE PAGOS</div>
+      <table style="width: 100%; border-collapse: collapse;">
+        ${histHtml}
+      </table>
+
+      <!-- Resumen Financiero -->
+      <div class="summary-card" style="font-size: 22px;">
+        <div class="flex-between">
+          <span>Valor Total:</span>
+          <span class="bold">${fmt(cred.total)}</span>
+        </div>
+        <div class="flex-between" style="margin-top: 4px;">
+          <span>Total Abonado:</span>
+          <span class="bold">${fmt(cred.abonado)}</span>
+        </div>
+        <div class="flex-between" style="border-top: 2px dashed #fff; margin-top: 6px; padding-top: 6px; font-size: 24px;">
+          <span class="bold">SALDO PENDIENTE:</span>
+          <span class="bold" style="font-size: 28px;">${fmt(cred.saldo)}</span>
+        </div>
+      </div>
+
+      <div class="center bold" style="margin-top: 20px; font-size: 18px; font-style: italic;">
+        ${cred.tipo === 'Plan Separe' ? 'El producto se entregará al completar el pago total.' : 'Conserve este recibo como soporte de pago.'}
+      </div>
+      <div class="center bold" style="margin-top: 15px; font-size: 22px; border: 2px solid #000; padding: 4px; border-radius: 4px;">¡GRACIAS POR SU PAGO!</div>
+    </div>
+  `;
+}

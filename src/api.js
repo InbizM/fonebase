@@ -44,7 +44,7 @@ const mapArgs = (d) => d.map(v => {
 });
 
 // ── COMPRESIÓN DE IMÁGENES POR CANVAS ──
-function compressImage(base64Data, maxWidth = 1024, maxHeight = 1024, quality = 0.8) {
+export function compressImage(base64Data, maxWidth = 1024, maxHeight = 1024, quality = 0.8) {
   return new Promise((resolve) => {
     if (!base64Data || !base64Data.startsWith("data:")) {
       resolve(base64Data || "");

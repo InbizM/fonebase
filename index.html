@@ -2260,12 +2260,47 @@
                 <label class="field-label">Nota (opcional)</label>
                 <input id="cred-nota-abono" type="text" class="field-input" placeholder="Ej: Transferencia, efectivo..." />
               </div>
+              <div>
+                <label class="field-label">Evidencia de pago (Obligatorio) *</label>
+                <div class="flex gap-3 items-center">
+                  <div id="cred-abono-img-preview" class="w-16 h-16 rounded-xl bg-surface-container-low border border-dashed border-surface-variant flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer hover:bg-surface-container-high transition-colors">
+                    <span class="material-symbols-outlined text-xl text-slate-400">add_a_photo</span>
+                  </div>
+                  <div class="flex-1">
+                    <input id="cred-abono-img-file" type="file" accept="image/*" capture="environment" class="hidden" />
+                    <button type="button" onclick="document.getElementById('cred-abono-img-file').click()" class="flex items-center gap-2 px-4 py-2.5 bg-surface-container border border-surface-variant rounded-xl text-xs font-bold text-on-surface hover:bg-surface-container-high transition-colors w-full justify-center active:scale-[0.99]">
+                      <span class="material-symbols-outlined text-[16px] text-primary">camera_alt</span>
+                      Subir o tomar foto
+                    </button>
+                  </div>
+                </div>
+                <input id="cred-abono-evidencia" type="hidden" value="" />
+              </div>
             </form>
             <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-variant bg-surface-container-low rounded-b-2xl">
               <button onclick="document.getElementById('cred-modal-close').click()" class="px-4 py-2 text-sm font-semibold text-on-surface-variant hover:bg-surface-container rounded-lg">Cancelar</button>
               <button id="cred-save-btn" class="flex items-center gap-1.5 px-5 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg shadow-md">
                 <span class="material-symbols-outlined text-[18px]">save</span> Aplicar Abono
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MODAL VER EVIDENCIA -->
+        <div id="cred-evidencia-modal" class="hidden fixed inset-0 z-[80] items-center justify-center p-4">
+          <div id="cred-evidencia-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+          <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden z-10 flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-surface-variant flex-shrink-0">
+              <h3 class="font-bold text-lg text-on-surface">Evidencia de Pago</h3>
+              <button id="cred-evidencia-close" class="p-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg">
+                <span class="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div class="p-6 overflow-auto flex items-center justify-center bg-slate-50 flex-1">
+              <img id="cred-evidencia-img" src="" class="max-w-full max-h-[50vh] object-contain rounded-xl border border-surface-variant shadow-sm" alt="Evidencia de pago" />
+            </div>
+            <div class="flex items-center justify-end px-6 py-4 border-t border-surface-variant bg-surface-container-low flex-shrink-0">
+              <button id="cred-evidencia-btn-close" class="px-5 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg shadow-md active:scale-95 transition-all">Cerrar</button>
             </div>
           </div>
         </div>

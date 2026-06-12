@@ -1,6 +1,7 @@
-import { getCreditos, actualizarCredito, crearCredito, getAjustesEmpresa } from "../api.js";
+import { getCreditos, actualizarCredito, crearCredito, getAjustesEmpresa, compressImage } from "../api.js";
 import { showToast } from "../toast.js";
 import { openCustomerSelector } from "../customer-selector.js";
+import { printBluetoothAbonoTicket } from "../bluetooth-printer.js";
 
 let _creditos = [];
 let _isLoaded = false;
@@ -54,13 +55,14 @@ function parseHistorial(raw) {
       fecha: parts[0] || "", 
       monto: parseFloat(parts[1]) || 0, 
       nota: parts[2] || "", 
-      metodo: parts[3] || "Efectivo" 
+      metodo: parts[3] || "Efectivo",
+      evidencia: parts[4] || ""
     };
   });
 }
 
 function serializeHistorial(list) {
-  return list.map(a => `${a.fecha}|${a.monto}|${a.nota}|${a.metodo || 'Efectivo'}`).join(";");
+  return list.map(a => `${a.fecha}|${a.monto}|${a.nota}|${a.metodo || 'Efectivo'}|${a.evidencia || ''}`).join(";");
 }
 
 // ---- Stats ----
@@ -108,6 +110,11 @@ function renderTable(lista) {
         <td class="px-4 py-3">
           <p class="font-bold text-sm text-on-surface">${c.cliente || '-'}</p>
           <p class="text-[11px] text-on-surface-variant">${c.telefono || ''}</p>
+          <div class="md:hidden mt-1 text-[11px] text-on-surface-variant flex flex-col gap-0.5 border-t border-surface-variant/30 pt-1">
+            <div><span class="font-semibold text-slate-500">Deuda:</span> ${c.fecha || '-'}</div>
+            <div><span class="font-semibold text-slate-500">Total:</span> ${fmt(c.total)} | <span class="font-semibold text-green-600">Abonado:</span> ${fmt(c.abonado)}</div>
+            ${c.idFactura ? `<div><span class="font-semibold text-slate-500">Ref:</span> <span class="font-mono">${c.idFactura}</span></div>` : ''}
+          </div>
         </td>
         <td class="px-4 py-3 font-mono text-xs text-on-surface-variant hidden md:table-cell">${c.idFactura || '-'}</td>
         <td class="px-4 py-3 text-sm text-on-surface-variant hidden md:table-cell">${c.fecha || '-'}</td>
@@ -209,11 +216,28 @@ function setupEvents() {
                   ${a.nota ? '• ' + a.nota : ''}
                 </span>
               </div>
-              <span class="font-bold text-green-600">${fmt(a.monto)}</span>
+              <div class="flex items-center gap-2">
+                ${a.evidencia ? `
+                  <button onclick="window.credVerEvidencia('${a.evidencia.replace(/'/g, "\\'")}')" class="p-1 hover:bg-surface-container rounded-full text-primary flex items-center justify-center" title="Ver Evidencia">
+                    <span class="material-symbols-outlined text-[16px]">visibility</span>
+                  </button>
+                ` : ''}
+                <span class="font-bold text-green-600">${fmt(a.monto)}</span>
+              </div>
             </div>`).join("");
     }
     document.getElementById("cred-monto-abono").value = "";
     document.getElementById("cred-nota-abono").value = "";
+    // Reset file input, hidden evidence and preview
+    const fileInput = document.getElementById("cred-abono-img-file");
+    if (fileInput) fileInput.value = "";
+    const hiddenEvidencia = document.getElementById("cred-abono-evidencia");
+    if (hiddenEvidencia) hiddenEvidencia.value = "";
+    const previewContainer = document.getElementById("cred-abono-img-preview");
+    if (previewContainer) {
+      previewContainer.innerHTML = `<span class="material-symbols-outlined text-xl text-slate-400">add_a_photo</span>`;
+    }
+
     const elMetodoSelect = document.getElementById("cred-metodo-abono");
     if (elMetodoSelect) {
       elMetodoSelect.value = "Efectivo";
@@ -225,13 +249,78 @@ function setupEvents() {
     document.getElementById("cred-monto-abono")?.focus();
   };
 
+  // Evidencia de pago file change handler
+  const elFileInput = document.getElementById("cred-abono-img-file");
+  const elImgPreview = document.getElementById("cred-abono-img-preview");
+  const elHiddenEvidencia = document.getElementById("cred-abono-evidencia");
+
+  elFileInput?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (elImgPreview) {
+      elImgPreview.innerHTML = `<span class="animate-spin material-symbols-outlined text-xl text-primary">sync</span>`;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const rawBase64 = evt.target.result;
+        // Compress image to max 800px width/height and 0.7 quality to keep SQLite size low (~20KB)
+        const compressedBase64 = await compressImage(rawBase64, 800, 800, 0.7);
+        if (elHiddenEvidencia) elHiddenEvidencia.value = compressedBase64;
+        if (elImgPreview) {
+          elImgPreview.innerHTML = `<img src="${compressedBase64}" class="w-full h-full object-cover" />`;
+        }
+      } catch (err) {
+        showToast("Error al procesar la imagen: " + err.message, "error");
+        if (elImgPreview) {
+          elImgPreview.innerHTML = `<span class="material-symbols-outlined text-xl text-red-500">error</span>`;
+        }
+      }
+    };
+    reader.onerror = () => {
+      showToast("Error al leer el archivo", "error");
+      if (elImgPreview) {
+        elImgPreview.innerHTML = `<span class="material-symbols-outlined text-xl text-red-500">error</span>`;
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+
+  // Lightbox Modal Evidencia Event Listeners
+  const elEvidenciaModal = document.getElementById("cred-evidencia-modal");
+  const elEvidenciaClose = document.getElementById("cred-evidencia-close");
+  const elEvidenciaBtnClose = document.getElementById("cred-evidencia-btn-close");
+  const elEvidenciaBackdrop = document.getElementById("cred-evidencia-backdrop");
+  const elEvidenciaImg = document.getElementById("cred-evidencia-img");
+
+  const closeEvidenciaModal = () => {
+    elEvidenciaModal?.classList.add("hidden");
+    elEvidenciaModal?.classList.remove("flex");
+  };
+
+  elEvidenciaClose?.addEventListener("click", closeEvidenciaModal);
+  elEvidenciaBtnClose?.addEventListener("click", closeEvidenciaModal);
+  elEvidenciaBackdrop?.addEventListener("click", closeEvidenciaModal);
+
+  window.credVerEvidencia = (base64) => {
+    if (!base64) return;
+    if (elEvidenciaImg) elEvidenciaImg.src = base64;
+    elEvidenciaModal?.classList.remove("hidden");
+    elEvidenciaModal?.classList.add("flex");
+  };
+
   elBtnSave?.addEventListener("click", async () => {
     const id = document.getElementById("cred-id").value;
     const monto = parseInt((document.getElementById("cred-monto-abono").value || "").replace(/\D/g, "")) || 0;
     const nota  = (document.getElementById("cred-nota-abono")?.value || "").trim();
     const metodo = document.getElementById("cred-metodo-abono")?.value || "Efectivo";
+    const evidencia = document.getElementById("cred-abono-evidencia")?.value || "";
 
     if (!monto || monto <= 0) { showToast("Ingresa un monto válido", "warning"); return; }
+    if (!evidencia) { showToast("La foto de la evidencia de pago es obligatoria", "warning"); return; }
+    
     if (_isProcessing) return;
     _isProcessing = true;
     elBtnSave.textContent = "Aplicando...";
@@ -250,7 +339,7 @@ function setupEvents() {
       const timePart = now.toLocaleTimeString("es-CO", { hour: '2-digit', minute: '2-digit', hour12: true });
       const fechaStr = `${datePart} ${timePart}`;
       
-      hist.push({ fecha: fechaStr, monto, nota, metodo });
+      hist.push({ fecha: fechaStr, monto, nota, metodo, evidencia });
 
       const isSepare = cred.tipo === "Plan Separe";
       const estadoActivo = isSepare ? "Separado" : "Activo";
@@ -360,6 +449,16 @@ async function imprimirTicketAbono(cred, monto, nota) {
     ajustes = await getAjustesEmpresa();
   } catch (e) {
     console.error("Error al cargar ajustes de empresa:", e);
+  }
+
+  // Intenta imprimir por Bluetooth primero
+  try {
+    console.log("[Credits] Intentando impresión por Bluetooth...");
+    await printBluetoothAbonoTicket(cred, monto, nota, ajustes);
+    showToast("Impresión Bluetooth enviada", "success");
+    return; // Si tiene éxito, finaliza aquí
+  } catch (err) {
+    console.warn("[Credits] Impresión Bluetooth falló o cancelada. Usando fallback de navegador.", err);
   }
 
   const printWindow = window.open('', '_blank', 'width=300,height=600');
