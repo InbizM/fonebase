@@ -365,6 +365,11 @@ function showApp(nombre, rol) {
   const userEl = document.getElementById("user-name");
   if (userEl) userEl.textContent = nombre || "Usuario";
 
+  const mobileUserEl = document.getElementById("mobile-user-name");
+  const mobileRoleEl = document.getElementById("mobile-user-role");
+  if (mobileUserEl) mobileUserEl.textContent = nombre || "Usuario";
+  if (mobileRoleEl) mobileRoleEl.textContent = rol || "Rol";
+
   buildNavLinks("desktop-nav", rol, false);
   buildNavLinks("mobile-nav",  rol, true);
   initNotifications();
@@ -462,9 +467,11 @@ function resetLoginAvatar() {
 }
 
 async function handleLogout() {
-  await logout();
-  clearSession();
-  showLoginScreen();
+  if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
+    await logout();
+    clearSession();
+    showLoginScreen();
+  }
 }
 
 // ============================================================
@@ -482,6 +489,7 @@ document.getElementById("back-to-login")?.addEventListener("click", () => {
   resetLoginAvatar();
 });
 document.getElementById("logout-btn")?.addEventListener("click", handleLogout);
+document.getElementById("mobile-logout-btn")?.addEventListener("click", handleLogout);
 
 async function handleLoginStep1(e) {
   e.preventDefault();

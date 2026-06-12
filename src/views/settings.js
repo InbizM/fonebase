@@ -82,15 +82,6 @@ async function loadCompanySettings() {
 }
 
 function setupEvents() {
-  const btnLogout = document.getElementById("set-logout-btn");
-  if (btnLogout) {
-    btnLogout.replaceWith(btnLogout.cloneNode(true));
-  }
-  document.getElementById("set-logout-btn")?.addEventListener("click", () => {
-    if (confirm("¿Estás seguro de que deseas cerrar sesión?")) {
-      logout();
-    }
-  });
 
   const toggle = document.getElementById("set-theme-toggle");
   if (toggle) {
