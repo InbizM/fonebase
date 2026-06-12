@@ -58,6 +58,10 @@ async function loadCompanySettings() {
       if (elSizeSlider) elSizeSlider.value = logoSize;
       if (elSizeVal) elSizeVal.textContent = logoSize + "px";
       
+      const mostrarNombre = config.mostrar_nombre !== 0;
+      const elMostrarNombre = document.getElementById("set-store-mostrar-nombre");
+      if (elMostrarNombre) elMostrarNombre.checked = mostrarNombre;
+      
       const elImg = document.getElementById("set-store-logo-img");
       const elPlc = document.getElementById("set-store-logo-placeholder");
       if (config.logo) {
@@ -202,7 +206,8 @@ function setupEvents() {
       correo: document.getElementById("set-store-correo").value.trim(),
       condiciones: document.getElementById("set-store-condiciones").value.trim(),
       logo: _logoBase64,
-      logo_size: parseInt(document.getElementById("set-store-logo-size")?.value || "40", 10)
+      logo_size: parseInt(document.getElementById("set-store-logo-size")?.value || "40", 10),
+      mostrar_nombre: document.getElementById("set-store-mostrar-nombre")?.checked ? 1 : 0
     };
     
     try {
@@ -230,7 +235,16 @@ function setupEvents() {
   const previewCloseBg = document.getElementById("set-store-preview-close-bg");
   
   actualPreviewBtn?.addEventListener("click", () => {
-    document.getElementById("preview-ticket-name").textContent = document.getElementById("set-store-nombre").value.trim() || "MI ALMACÉN";
+    const mostrarNombre = document.getElementById("set-store-mostrar-nombre")?.checked;
+    const nameEl = document.getElementById("preview-ticket-name");
+    if (nameEl) {
+      if (mostrarNombre) {
+        nameEl.textContent = document.getElementById("set-store-nombre").value.trim() || "MI ALMACÉN";
+        nameEl.classList.remove("hidden");
+      } else {
+        nameEl.classList.add("hidden");
+      }
+    }
     document.getElementById("preview-ticket-nit").textContent = document.getElementById("set-store-nit").value.trim() || "00000000";
     document.getElementById("preview-ticket-address").textContent = document.getElementById("set-store-direccion").value.trim() || "Calle ...";
     document.getElementById("preview-ticket-city").textContent = document.getElementById("set-store-ciudad").value.trim() || "Ciudad";

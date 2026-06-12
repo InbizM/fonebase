@@ -78,7 +78,8 @@ function imprimirTicketHistory(v) {
     correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
     condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
     logo: _ajustesEmpresa?.logo || "",
-    logo_size: _ajustesEmpresa?.logo_size || 40
+    logo_size: _ajustesEmpresa?.logo_size || 40,
+    mostrar_nombre: _ajustesEmpresa?.mostrar_nombre !== 0
   };
 
   printWindow.document.write(`
@@ -166,7 +167,7 @@ function imprimirTicketHistory(v) {
         </div>
         ` : ''}
         <div class="center" style="margin-bottom: 6px; font-size: 8px; line-height: 1.2; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #f8fafc;">
-          <div class="bold text-sm" style="text-transform: uppercase; color: #000;">${emisor.nombre}</div>
+          ${emisor.mostrar_nombre ? `<div class="bold text-sm" style="text-transform: uppercase; color: #000;">${emisor.nombre}</div>` : ''}
           <div>NIT: ${emisor.nit}</div>
           <div>${emisor.direccion}</div>
           <div>Tel: ${emisor.contacto}</div>

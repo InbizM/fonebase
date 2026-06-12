@@ -101,7 +101,8 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
     contacto:    ajustesEmpresa?.contacto    || "3016807310",
     condiciones: ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
     logo:        ajustesEmpresa?.logo        || "",
-    logo_size:   ajustesEmpresa?.logo_size   || 60
+    logo_size:   ajustesEmpresa?.logo_size   || 60,
+    mostrar_nombre: ajustesEmpresa?.mostrar_nombre !== 0
   };
 
   const fmt = (n) => '$' + new Intl.NumberFormat('es-CO').format(n || 0);
@@ -347,7 +348,7 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
       <div style="text-align:center; margin-bottom:8px;">
         <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 160)}px; max-width:80%; object-fit:contain; display:inline-block;" crossorigin="anonymous">
       </div>` : ''}
-      <div class="name">${emisor.nombre}</div>
+      ${emisor.mostrar_nombre ? `<div class="name">${emisor.nombre}</div>` : ''}
       <div class="info">NIT: ${emisor.nit}</div>
       <div class="info">${emisor.direccion}</div>
       <div class="info">Tel: ${emisor.contacto}</div>
