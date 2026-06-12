@@ -231,8 +231,8 @@ function setupEvents() {
 
     try {
       const cred = _creditos.find(c => c.id == id);
-      const nuevoAbonado = (cred.abonado || 0) + monto;
-      const nuevoSaldo   = Math.max(0, (cred.total || 0) - nuevoAbonado);
+      const nuevoAbonado = Number(cred.abonado || 0) + monto;
+      const nuevoSaldo   = Math.max(0, Number(cred.total || 0) - nuevoAbonado);
       const cancelado    = nuevoSaldo <= 0;
 
       // Append to historial

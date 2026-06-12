@@ -601,7 +601,7 @@ export const getCreditos = async () => (await queryTurso("SELECT * FROM creditos
   fechaCancelacion: r.fecha_cancelacion,
   historialAbonos: r.historial_abonos
 }));
-export const crearCredito = (d) => queryTurso({ sql: "INSERT INTO creditos (id_credito, cliente, telefono, id_factura_ref, fecha_deuda, tipo, valor_total, total_abonado, saldo_pendiente, estado, detalle, historial_abonos) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", args: mapArgs([Date.now().toString(), d.cliente, d.telefono, d.idFactura || "", new Date().toISOString(), d.tipo||'Crédito', d.total, 0, d.total, 'Activo', d.detalle || "", d.historialAbonos || ""]) });
+export const crearCredito = (d) => queryTurso({ sql: "INSERT INTO creditos (id_credito, cliente, telefono, id_factura_ref, fecha_deuda, tipo, valor_total, total_abonado, saldo_pendiente, estado, detalle, historial_abonos) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", args: mapArgs([Date.now().toString(), d.cliente, d.telefono, d.idFactura || "", new Date().toISOString(), d.tipo||'Crédito', Number(d.total || 0), 0, Number(d.total || 0), 'Activo', d.detalle || "", d.historialAbonos || ""]) });
 export const actualizarCredito = (id, d) => queryTurso({ 
   sql: "UPDATE creditos SET id_credito=?, cliente=?, telefono=?, id_factura_ref=?, fecha_deuda=?, tipo=?, valor_total=?, total_abonado=?, saldo_pendiente=?, estado=?, fecha_cancelacion=?, detalle=?, historial_abonos=? WHERE id_credito=?", 
   args: [...mapArgs([
@@ -611,9 +611,9 @@ export const actualizarCredito = (id, d) => queryTurso({
     d.id_factura_ref || d.idFactura || "",
     d.fecha_deuda || d.fecha || "",
     d.tipo || "Crédito",
-    d.total !== undefined ? d.total : d.valor_total,
-    d.abonado !== undefined ? d.abonado : d.total_abonado,
-    d.saldo !== undefined ? d.saldo : d.saldo_pendiente,
+    Number(d.total !== undefined ? d.total : (d.valor_total !== undefined ? d.valor_total : 0)),
+    Number(d.abonado !== undefined ? d.abonado : (d.total_abonado !== undefined ? d.total_abonado : 0)),
+    Number(d.saldo !== undefined ? d.saldo : (d.saldo_pendiente !== undefined ? d.saldo_pendiente : 0)),
     d.estado,
     d.fechaCancelacion !== undefined ? d.fechaCancelacion : d.fecha_cancelacion || "",
     d.detalle || "",
