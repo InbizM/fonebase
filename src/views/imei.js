@@ -1,4 +1,4 @@
-import { getEquipos, crearEquipo, actualizarEquipo, eliminarEquipo, getInventario, crearProducto, analyzeImeiLabel } from "../api.js";
+import { getEquipos, crearEquipo, actualizarEquipo, eliminarEquipo, getInventario, crearProducto, analyzeImeiLabel, analyzeBulkImeis, crearEquiposLote } from "../api.js";
 import { showToast, showConfirm } from "../toast.js";
 import { openScanner } from "../scanner.js";
 import { createWorker } from "tesseract.js";
@@ -87,6 +87,14 @@ let elModal, elModalClose, elModalBackdrop, elForm, elBtnSave;
 let elImei1, elImei2, elNombre, elMarca, elProv, elCosto, elVenta, elEstado, elOriginal;
 let elDropdownTrigger, elDropdownMenu, elDropdownSearch, elDropdownOptions, elDropdownSelectedText;
 
+// Bulk Elements
+let elBulkBtn, elBulkModal, elBulkModalClose, elBulkModalBackdrop, elBulkCancelBtn, elBulkSaveBtn;
+let elBulkFile, elBulkCardContent, elBulkResultsContainer, elBulkList, elBulkCount, elBulkAddRowBtn;
+let elBulkDropdownTrigger, elBulkDropdownMenu, elBulkDropdownSearch, elBulkDropdownOptions, elBulkDropdownSelectedText;
+let elBulkNombre, elBulkProveedor;
+
+let _scannedImeis = [];
+
 let _inventory = [];
 
 export function initIMEI() {
@@ -130,6 +138,26 @@ function bindElements() {
   elDropdownSearch = document.getElementById("imei-dropdown-search");
   elDropdownOptions = document.getElementById("imei-dropdown-options");
   elDropdownSelectedText = document.getElementById("imei-dropdown-selected-text");
+
+  elBulkBtn = document.getElementById("imei-bulk-btn");
+  elBulkModal = document.getElementById("imei-bulk-modal");
+  elBulkModalClose = document.getElementById("imei-bulk-modal-close");
+  elBulkModalBackdrop = document.getElementById("imei-bulk-modal-backdrop");
+  elBulkCancelBtn = document.getElementById("imei-bulk-cancel-btn");
+  elBulkSaveBtn = document.getElementById("imei-bulk-save-btn");
+  elBulkFile = document.getElementById("imei-bulk-file");
+  elBulkCardContent = document.getElementById("imei-bulk-card-content");
+  elBulkResultsContainer = document.getElementById("imei-bulk-results-container");
+  elBulkList = document.getElementById("imei-bulk-list");
+  elBulkCount = document.getElementById("imei-bulk-count");
+  elBulkAddRowBtn = document.getElementById("imei-bulk-add-row-btn");
+  elBulkDropdownTrigger = document.getElementById("imei-bulk-dropdown-trigger");
+  elBulkDropdownMenu = document.getElementById("imei-bulk-dropdown-menu");
+  elBulkDropdownSearch = document.getElementById("imei-bulk-dropdown-search");
+  elBulkDropdownOptions = document.getElementById("imei-bulk-dropdown-options");
+  elBulkDropdownSelectedText = document.getElementById("imei-bulk-dropdown-selected-text");
+  elBulkNombre = document.getElementById("imei-bulk-nombre");
+  elBulkProveedor = document.getElementById("imei-bulk-proveedor");
 }
 
 async function loadData() {
@@ -141,6 +169,7 @@ async function loadData() {
     _inventory = await getInventario();
     
     renderDropdownOptions();
+    renderBulkDropdownOptions();
 
   } catch (err) {
     showToast("Error cargando equipos: " + err.message, "error");
@@ -235,6 +264,132 @@ window.imeiSelectProduct = (productId) => {
 
   elDropdownMenu.classList.add("hidden");
 };
+
+function renderBulkDropdownOptions(filterText = "") {
+  const query = filterText.toLowerCase().trim();
+  const filtered = _inventory.filter(p => 
+    !query || 
+    p.nombre.toLowerCase().includes(query) || 
+    (p.marca && p.marca.toLowerCase().includes(query))
+  );
+
+  let html = "";
+  if (filtered.length === 0) {
+    html = `<div class="px-4 py-4 text-center text-xs text-slate-400">No se encontraron productos</div>`;
+  } else {
+    html = filtered.map(p => {
+      const priceFmt = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(p.precioVenta || 0);
+      const imgHtml = p.imagen 
+        ? `<img src="${p.imagen}" class="w-8 h-8 rounded-lg object-cover bg-slate-50" referrerpolicy="no-referrer">`
+        : `<div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-400 flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">phone_android</span></div>`;
+      
+      return `
+        <div onclick="window.imeiSelectBulkProduct('${p.id}')" class="flex items-center justify-between px-4 py-2 hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-50/50">
+          <div class="flex items-center gap-3 min-w-0">
+            ${imgHtml}
+            <div class="min-w-0">
+              <p class="text-xs font-black text-slate-800 truncate">${p.nombre}</p>
+              <p class="text-[9px] text-slate-400 uppercase font-bold">${p.marca || 'Genérico'}</p>
+            </div>
+          </div>
+          <div class="text-right flex-shrink-0 ml-2">
+            <span class="text-xs font-black text-primary">${priceFmt}</span>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+  elBulkDropdownOptions.innerHTML = html;
+}
+
+window.imeiSelectBulkProduct = (productId) => {
+  const p = _inventory.find(x => x.id === productId);
+  if (!p) return;
+
+  elBulkNombre.value = p.nombre;
+  elBulkNombre.dataset.id = p.id;
+  elBulkNombre.dataset.marca = p.marca || "";
+  elBulkNombre.dataset.costo = p.costo || 0;
+  elBulkNombre.dataset.venta = p.precioVenta || 0;
+
+  const imgHtml = p.imagen 
+    ? `<img src="${p.imagen}" class="w-6 h-6 rounded-md object-cover bg-slate-50" referrerpolicy="no-referrer">`
+    : `<span class="material-symbols-outlined text-[16px] text-slate-400">phone_android</span>`;
+
+  elBulkDropdownSelectedText.innerHTML = `
+    <div class="flex items-center gap-2">
+      ${imgHtml}
+      <span class="font-black text-slate-800 text-xs">${p.nombre}</span>
+      <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">${p.marca || 'Genérico'}</span>
+    </div>
+  `;
+  elBulkDropdownSelectedText.classList.remove("text-slate-500");
+  elBulkDropdownMenu.classList.add("hidden");
+  
+  validateBulkFormReady();
+};
+
+function renderBulkImeisList() {
+  if (_scannedImeis.length === 0) {
+    elBulkList.innerHTML = `<p class="p-4 text-center text-xs opacity-50 italic">No hay IMEIs en la lista. Carga una foto o agrégalos manualmente.</p>`;
+    elBulkCount.textContent = "0";
+    validateBulkFormReady();
+    return;
+  }
+  
+  elBulkCount.textContent = _scannedImeis.length;
+  
+  elBulkList.innerHTML = _scannedImeis.map((item, idx) => `
+    <div class="imei-bulk-row bg-white p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shadow-sm transition-all hover:border-slate-300" data-index="${idx}">
+      <div class="flex items-center gap-2 shrink-0">
+        <input type="checkbox" ${item.selected ? 'checked' : ''} class="imei-bulk-checkbox w-4.5 h-4.5 accent-primary cursor-pointer" onchange="window.imeiToggleBulkSelect(${idx}, this.checked)" />
+        <span class="text-[10px] font-bold text-slate-400 font-mono">#${idx + 1}</span>
+      </div>
+      <div class="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] font-black text-slate-400 uppercase shrink-0 w-10">IMEI 1</span>
+          <input type="text" maxlength="15" placeholder="IMEI Principal" value="${item.imei1 || ''}" 
+            class="imei-bulk-input-1 w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono outline-none focus:border-primary" 
+            oninput="window.imeiUpdateBulkVal(${idx}, 'imei1', this.value)" />
+        </div>
+        <div class="flex items-center gap-1.5">
+          <span class="text-[10px] font-black text-slate-400 uppercase shrink-0 w-10">IMEI 2</span>
+          <input type="text" maxlength="15" placeholder="IMEI 2 (Opcional)" value="${item.imei2 || ''}" 
+            class="imei-bulk-input-2 w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono outline-none focus:border-primary" 
+            oninput="window.imeiUpdateBulkVal(${idx}, 'imei2', this.value)" />
+        </div>
+      </div>
+      <button type="button" onclick="window.imeiDeleteBulkRow(${idx})" 
+        class="p-1.5 text-slate-400 hover:text-error hover:bg-error/10 rounded-lg transition-colors shrink-0 flex items-center justify-center" title="Eliminar fila">
+        <span class="material-symbols-outlined text-[18px]">delete</span>
+      </button>
+    </div>
+  `).join("");
+  
+  validateBulkFormReady();
+}
+
+window.imeiToggleBulkSelect = (idx, checked) => {
+  if (_scannedImeis[idx]) _scannedImeis[idx].selected = checked;
+  validateBulkFormReady();
+};
+
+window.imeiUpdateBulkVal = (idx, field, val) => {
+  const digits = val.replace(/\D/g, "");
+  if (_scannedImeis[idx]) _scannedImeis[idx][field] = digits;
+  validateBulkFormReady();
+};
+
+window.imeiDeleteBulkRow = (idx) => {
+  _scannedImeis.splice(idx, 1);
+  renderBulkImeisList();
+};
+
+function validateBulkFormReady() {
+  const selectedProdId = elBulkNombre.dataset.id;
+  const hasSelectedImeis = _scannedImeis.some(item => item.selected && item.imei1.length === 15);
+  elBulkSaveBtn.disabled = !selectedProdId || !hasSelectedImeis;
+}
 
 // Global hook for product creation
 window.__onProductCreated = async (product) => {
@@ -527,6 +682,169 @@ function setupEvents() {
       showToast("Error: " + err.message, "error");
     }
   };
+
+  // ── EVENTOS CARGA MASIVA ──
+  const openBulkModal = () => {
+    _scannedImeis = [];
+    elBulkNombre.value = "";
+    elBulkNombre.removeAttribute("data-id");
+    elBulkProveedor.value = "";
+    elBulkDropdownSelectedText.innerHTML = "Seleccione el equipo en común...";
+    elBulkDropdownSelectedText.classList.add("text-slate-500");
+    elBulkResultsContainer.classList.add("hidden");
+    elBulkList.innerHTML = "";
+    
+    elBulkModal.classList.remove("hidden");
+    elBulkModal.classList.add("flex");
+    validateBulkFormReady();
+  };
+
+  const closeBulkModal = () => {
+    elBulkModal.classList.add("hidden");
+    elBulkModal.classList.remove("flex");
+  };
+
+  elBulkBtn?.addEventListener("click", openBulkModal);
+  elBulkModalClose?.addEventListener("click", closeBulkModal);
+  elBulkCancelBtn?.addEventListener("click", closeBulkModal);
+  elBulkModalBackdrop?.addEventListener("click", closeBulkModal);
+
+  elBulkDropdownTrigger?.addEventListener("click", () => {
+    elBulkDropdownMenu.classList.toggle("hidden");
+    if (!elBulkDropdownMenu.classList.contains("hidden")) {
+      elBulkDropdownSearch.value = "";
+      elBulkDropdownSearch.focus();
+      renderBulkDropdownOptions();
+    }
+  });
+
+  elBulkDropdownSearch?.addEventListener("input", (e) => {
+    renderBulkDropdownOptions(e.target.value);
+  });
+
+  elBulkAddRowBtn?.addEventListener("click", () => {
+    _scannedImeis.push({ imei1: "", imei2: "", selected: true });
+    elBulkResultsContainer.classList.remove("hidden");
+    renderBulkImeisList();
+  });
+
+  // Evento Carga Foto Lote
+  elBulkFile?.addEventListener("change", async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const originalHtml = elBulkCardContent.innerHTML;
+
+    // Loader
+    elBulkCardContent.innerHTML = `
+      <div class="flex flex-col items-center justify-center py-4 text-primary">
+        <span class="material-symbols-outlined animate-spin text-[32px] mb-2">progress_activity</span>
+        <p class="text-xs font-black text-slate-800">Procesando lote de IMEIs con IA...</p>
+        <p class="text-[10px] text-slate-400 mt-0.5">Analizando imagen y extrayendo números de serie</p>
+      </div>
+    `;
+
+    try {
+      const reader = new FileReader();
+      const imageSrc = await new Promise((resolve, reject) => {
+        reader.onload = (ev) => resolve(ev.target.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+      });
+
+      const result = await analyzeBulkImeis(imageSrc, file.type);
+      console.log("[AI Bulk IMEIs Analysis Result]:", result);
+
+      if (!result.success) {
+        throw new Error(result.mensaje || "No se pudieron analizar los IMEIs");
+      }
+
+      const rawImeis = result.data.imeis || [];
+      const validImeis = rawImeis.map(val => val.replace(/\D/g, "")).filter(val => val.length >= 14 && val.length <= 16);
+
+      if (validImeis.length === 0) {
+        showToast("No se encontraron IMEIs de 15 dígitos en la imagen", "warning");
+      } else {
+        showToast(`La IA detectó ${validImeis.length} IMEIs con éxito ✨`, "success");
+        validImeis.forEach(imei => {
+          if (!_scannedImeis.some(item => item.imei1 === imei)) {
+            _scannedImeis.push({ imei1: imei.substring(0, 15), imei2: "", selected: true });
+          }
+        });
+        
+        elBulkResultsContainer.classList.remove("hidden");
+        renderBulkImeisList();
+      }
+    } catch (err) {
+      console.error("AI Bulk IMEIs Error:", err);
+      showToast("Error al procesar: " + err.message, "error");
+    } finally {
+      elBulkCardContent.innerHTML = originalHtml;
+      e.target.value = "";
+    }
+  });
+
+  // Guardar Lote
+  elBulkSaveBtn?.addEventListener("click", async () => {
+    const selectedProdId = elBulkNombre.dataset.id;
+    const productNombre = elBulkNombre.value;
+    const productMarca = elBulkNombre.dataset.marca || "";
+    const costoVal = parseInt(elBulkNombre.dataset.costo) || 0;
+    const ventaVal = parseInt(elBulkNombre.dataset.venta) || 0;
+    const proveedor = elBulkProveedor.value.trim();
+
+    const selectedImeis = _scannedImeis.filter(item => item.selected && item.imei1.length === 15);
+    
+    if (selectedImeis.length === 0) {
+      showToast("No hay IMEIs válidos de 15 dígitos seleccionados", "warning");
+      return;
+    }
+
+    if (_isProcessing) return;
+    _isProcessing = true;
+    elBulkSaveBtn.textContent = "Registrando lote...";
+    elBulkSaveBtn.disabled = true;
+
+    try {
+      const lote = selectedImeis.map(item => ({
+        imei1: item.imei1,
+        imei2: item.imei2,
+        id_producto: selectedProdId,
+        nombre: productNombre,
+        marca: productMarca,
+        proveedor: proveedor,
+        costo: costoVal,
+        venta: ventaVal,
+        estado: "Disponible"
+      }));
+
+      const res = await crearEquiposLote(lote);
+      if (res && res.success) {
+        showToast(`✅ Se registraron ${lote.length} equipos con éxito`, "success");
+        closeBulkModal();
+        await loadData();
+        renderTable(_equipos);
+      } else {
+        showToast(res?.mensaje || "Error al registrar lote", "error");
+      }
+    } catch (err) {
+      showToast("Error de conexión: " + err.message, "error");
+    } finally {
+      _isProcessing = false;
+      elBulkSaveBtn.innerHTML = `<span class="material-symbols-outlined text-[18px]">check_circle</span> Registrar Lote`;
+      validateBulkFormReady();
+    }
+  });
+
+  // Click fuera para cerrar dropdowns
+  document.addEventListener("click", (e) => {
+    if (elDropdownTrigger && !elDropdownTrigger.contains(e.target) && elDropdownMenu && !elDropdownMenu.contains(e.target)) {
+      elDropdownMenu.classList.add("hidden");
+    }
+    if (elBulkDropdownTrigger && !elBulkDropdownTrigger.contains(e.target) && elBulkDropdownMenu && !elBulkDropdownMenu.contains(e.target)) {
+      elBulkDropdownMenu.classList.add("hidden");
+    }
+  });
 }
 
 function openModal(obj) {

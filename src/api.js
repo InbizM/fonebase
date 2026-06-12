@@ -166,7 +166,11 @@ export const uploadSignature = async (base64, fileName) => base64;
 export const uploadEvidencia = async (base64, fileName, mimeType) => await compressImage(base64, 1024, 1024, 0.8);
 
 // ── BROWSER-DIRECT GEMINI API VISION CALL ──
-async function callGeminiDirect(base64Data, mimeType, isImei = false) {
+async function callGeminiDirect(base64Data, mimeType, mode = "label") {
+  // Support backward compatibility
+  if (mode === true) mode = "imei";
+  if (mode === false) mode = "label";
+
   const apiKey = "AIzaSyBgIE-rLsAEfHapwDCaULRNXanFukHL-Dk";
   
   const imeiPrompt = 'Eres un experto en identificación de teléfonos celulares. ' +
@@ -201,7 +205,21 @@ async function callGeminiDirect(base64Data, mimeType, isImei = false) {
     '- Si no encuentras un dato, deja el valor como cadena vacía "".\n' +
     '- NO inventes datos que no estén en la imagen.';
 
-  const prompt = isImei ? imeiPrompt : labelPrompt;
+  const bulkPrompt = 'Eres un experto en digitalización de inventarios. ' +
+    'Mira esta imagen que contiene un listado, etiquetas, códigos de barras o una caja con múltiples números IMEI de teléfonos celulares. ' +
+    'Extrae todos los números IMEI de 15 dígitos numéricos que encuentres. ' +
+    'Responde SOLO con un JSON válido, sin texto adicional, sin bloques de código ni explicaciones:\n\n' +
+    '{"imeis":["IMEI_1_de_15_dígitos","IMEI_2_de_15_dígitos",...]}\n\n' +
+    'REGLAS:\n' +
+    '- Cada IMEI en el arreglo "imeis" debe ser una cadena de exactamente 15 caracteres numéricos.\n' +
+    '- No incluyas espacios, guiones ni letras en los IMEIs.\n' +
+    '- Si no detectas ningún IMEI válido, responde con un arreglo vacío {"imeis":[]}.\n' +
+    '- NO inventes datos. Solo extrae lo que ves en la imagen.';
+
+  let prompt = labelPrompt;
+  if (mode === "imei") prompt = imeiPrompt;
+  else if (mode === "bulk") prompt = bulkPrompt;
+
   const parts = [];
   parts.push({ text: prompt });
 
@@ -422,8 +440,9 @@ async function callGeminiDirect(base64Data, mimeType, isImei = false) {
   return { success: false, mensaje: `No se pudo analizar la imagen con ningún modelo de Gemini (Error: ${lastError}) ni de OpenRouter (Error: ${openRouterLastError})` };
 }
 
-export const analyzeLabelImage = async (base64Data, mimeType) => await callGeminiDirect(base64Data, mimeType, false);
-export const analyzeImeiLabel = async (base64Data, mimeType) => await callGeminiDirect(base64Data, mimeType, true);
+export const analyzeLabelImage = async (base64Data, mimeType) => await callGeminiDirect(base64Data, mimeType, "label");
+export const analyzeImeiLabel = async (base64Data, mimeType) => await callGeminiDirect(base64Data, mimeType, "imei");
+export const analyzeBulkImeis = async (base64Data, mimeType) => await callGeminiDirect(base64Data, mimeType, "bulk");
 
 // ── AUTH ──
 export const login = async (email, password) => {
@@ -535,6 +554,24 @@ export const actualizarEquipo = (id, d) => queryTurso({
   args: [...mapArgs([d.imei1, d.imei2, d.id_producto || '', d.marca, d.nombre, d.proveedor, d.costo, d.venta, d.estado, d.fecha_ingreso || new Date().toISOString()]), { type: "text", value: id }] 
 });
 export const eliminarEquipo = (id) => queryTurso({ sql: "DELETE FROM equipos WHERE imei1 = ?", args: [{ type: "text", value: id }] });
+export const crearEquiposLote = (list) => {
+  const requests = list.map(d => ({
+    sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, estado, fecha_ingreso) VALUES (?,?,?,?,?,?,?,?,?,?)",
+    args: mapArgs([
+      d.imei1,
+      d.imei2 || '',
+      d.id_producto || '',
+      d.marca || '',
+      d.nombre || '',
+      d.proveedor || '',
+      d.costo || 0,
+      d.venta || 0,
+      d.estado || 'Disponible',
+      d.fecha_ingreso || new Date().toISOString()
+    ])
+  }));
+  return queryTurso(requests);
+};
 
 // ── VENTAS ──
 export const getVentas = async () => (await queryTurso("SELECT * FROM ventas ORDER BY fecha DESC"))[0] || [];
