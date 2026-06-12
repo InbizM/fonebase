@@ -2155,13 +2155,43 @@
                 </div>
                 <div>
                   <label class="field-label">Estado</label>
-                  <select id="tech-estado" class="field-input">
-                    <option value="Ingresado">Ingresado</option>
-                    <option value="En Revisión">En Revisión</option>
-                    <option value="Reparado">Reparado</option>
-                    <option value="Entregado">Entregado</option>
-                    <option value="Sin Arreglo">Sin Arreglo</option>
-                  </select>
+                  <div id="tech-estado-container" class="custom-select-container relative">
+                    <input type="hidden" id="tech-estado" value="Ingresado" />
+                    <button type="button" class="custom-select-trigger w-full bg-surface-container border border-surface-variant rounded-xl px-4 py-2.5 text-sm font-semibold text-on-surface focus:outline-none focus:border-primary flex items-center justify-between shadow-sm active:scale-[0.99] transition-all">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-slate-500">login</span>
+                        <span class="selected-label">Ingresado</span>
+                      </div>
+                      <span class="material-symbols-outlined text-[18px] text-slate-400">keyboard_arrow_down</span>
+                    </button>
+                    <div class="custom-select-options hidden absolute left-0 right-0 top-full mt-2 bg-surface-container-high border border-surface-variant rounded-2xl shadow-2xl z-50 overflow-hidden py-1">
+                      <div data-value="Ingresado" class="custom-option px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                        <span class="material-symbols-outlined text-[18px] text-slate-400">login</span>
+                        <span class="flex-1">Ingresado</span>
+                        <span class="material-symbols-outlined text-[16px] text-primary check-icon">check_circle</span>
+                      </div>
+                      <div data-value="En Revisión" class="custom-option px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                        <span class="material-symbols-outlined text-[18px] text-slate-400">visibility</span>
+                        <span class="flex-1">En Revisión</span>
+                        <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                      </div>
+                      <div data-value="Reparado" class="custom-option px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                        <span class="material-symbols-outlined text-[18px] text-slate-400">handyman</span>
+                        <span class="flex-1">Reparado</span>
+                        <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                      </div>
+                      <div data-value="Entregado" class="custom-option px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                        <span class="material-symbols-outlined text-[18px] text-slate-400">how_to_reg</span>
+                        <span class="flex-1">Entregado</span>
+                        <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                      </div>
+                      <div data-value="Sin Arreglo" class="custom-option px-4 py-3 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+                        <span class="material-symbols-outlined text-[18px] text-slate-400">cancel</span>
+                        <span class="flex-1">Sin Arreglo</span>
+                        <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
                 <!-- Evidencias Fotográficas -->

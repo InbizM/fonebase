@@ -125,6 +125,7 @@ function setupEvents() {
   document.getElementById("tech-modal-close")?.addEventListener("click", closeModal);
   document.getElementById("tech-modal-backdrop")?.addEventListener("click", closeModal);
   document.getElementById("tech-form")?.addEventListener("submit", saveService);
+  initCustomStatusSelect();
 
   // Setup Image Previews
   ['recepcion', 'resultado'].forEach(tipo => {
@@ -438,6 +439,7 @@ function openModal(s = null) {
       } catch(e) {}
     }
   }
+  syncCustomStatusSelectUI(s ? s.estado : "Ingresado");
   
   const modal = document.getElementById("tech-modal");
   modal.classList.remove("hidden");
@@ -510,5 +512,66 @@ async function saveService(e) {
     _isProcessing = false;
     btn.disabled = false;
     btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">save</span> Guardar`;
+  }
+}
+
+function initCustomStatusSelect() {
+  const container = document.getElementById("tech-estado-container");
+  if (!container) return;
+  const trigger = container.querySelector(".custom-select-trigger");
+  const optionsMenu = container.querySelector(".custom-select-options");
+  const hiddenInput = document.getElementById("tech-estado");
+  const options = container.querySelectorAll(".custom-option");
+  
+  trigger.addEventListener("click", (e) => {
+    e.stopPropagation();
+    optionsMenu.classList.toggle("hidden");
+  });
+  
+  options.forEach(opt => {
+    opt.addEventListener("click", () => {
+      const val = opt.dataset.value;
+      const iconName = opt.querySelector(".material-symbols-outlined").textContent;
+      const labelText = opt.querySelector(".flex-1").textContent;
+      
+      trigger.querySelector(".selected-label").textContent = labelText;
+      trigger.querySelector(".material-symbols-outlined").textContent = iconName;
+      
+      options.forEach(o => {
+        const check = o.querySelector(".check-icon");
+        if (o === opt) check.classList.remove("hidden");
+        else check.classList.add("hidden");
+      });
+      
+      if (hiddenInput) {
+        hiddenInput.value = val;
+        hiddenInput.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+      
+      optionsMenu.classList.add("hidden");
+    });
+  });
+
+  document.addEventListener("click", () => {
+    optionsMenu.classList.add("hidden");
+  });
+}
+
+function syncCustomStatusSelectUI(value) {
+  const container = document.getElementById("tech-estado-container");
+  if (!container) return;
+  const trigger = container.querySelector(".custom-select-trigger");
+  const options = container.querySelectorAll(".custom-option");
+  const targetOption = Array.from(options).find(o => o.dataset.value === value);
+  if (targetOption) {
+    const iconName = targetOption.querySelector(".material-symbols-outlined").textContent;
+    const labelText = targetOption.querySelector(".flex-1").textContent;
+    trigger.querySelector(".selected-label").textContent = labelText;
+    trigger.querySelector(".material-symbols-outlined").textContent = iconName;
+    options.forEach(o => {
+      const check = o.querySelector(".check-icon");
+      if (o === targetOption) check.classList.remove("hidden");
+      else check.classList.add("hidden");
+    });
   }
 }
