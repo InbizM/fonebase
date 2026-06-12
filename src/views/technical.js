@@ -49,6 +49,8 @@ function renderGrid(lista) {
 
   container.innerHTML = lista.map(s => {
     const saldo = (s.precio_final || 0) - (s.abono || 0);
+    const estadoStr = (s.estado || "").trim();
+    const canPrint = ["Ingresado", "Reparado", "Entregado", "Sin Arreglo"].includes(estadoStr);
     return `
       <div class="bg-surface-container-lowest border border-surface-variant rounded-2xl p-5 shadow-sm hover:shadow-md transition-all group relative">
         <div class="flex justify-between items-start mb-3">
@@ -60,14 +62,14 @@ function renderGrid(lista) {
         <p class="text-xs font-bold text-on-surface-variant mb-3 flex items-center gap-1">
           <span class="material-symbols-outlined text-[14px]">person</span> ${s.cliente}
         </p>
-
+ 
         <div class="bg-surface-container-low rounded-xl p-3 mb-4">
           <p class="text-[10px] uppercase font-bold text-on-surface-variant/60 mb-1">Falla Reportada</p>
           <p class="text-xs text-on-surface italic line-clamp-2">${s.falla}</p>
         </div>
         
         ${s.evidencias && s.evidencias !== "{}" && s.evidencias.length > 5 ? `<div class="flex items-center gap-1.5 mb-3 text-[10px] font-bold text-primary bg-primary/5 px-2 py-1 w-fit rounded-md"><span class="material-symbols-outlined text-[14px]">photo_camera</span> Evidencias Adjuntas</div>` : ''}
-
+ 
         <div class="grid grid-cols-2 gap-2 mb-4 border-t border-surface-variant/30 pt-3">
           <div>
             <p class="text-[9px] uppercase font-bold text-on-surface-variant/50">Total</p>
@@ -78,11 +80,13 @@ function renderGrid(lista) {
             <p class="text-sm font-black ${saldo > 0 ? 'text-error' : 'text-green-600'}">$${fmt(saldo)}</p>
           </div>
         </div>
-
+ 
         <div class="flex gap-2">
+          ${canPrint ? `
           <button onclick="window.techPrint('${s.id_orden}')" title="Imprimir Ticket" class="p-2 bg-surface border border-surface-variant rounded-xl text-on-surface-variant hover:text-primary hover:bg-primary/5 transition-colors">
             <span class="material-symbols-outlined text-[18px]">print</span>
           </button>
+          ` : ''}
           <button onclick="window.techEdit('${s.id_orden}')" class="flex-1 py-2 bg-surface border border-surface-variant rounded-xl text-xs font-bold text-primary hover:bg-primary/5 transition-colors flex items-center justify-center gap-1">
             <span class="material-symbols-outlined text-[16px]">edit</span> Editar
           </button>
