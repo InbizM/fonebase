@@ -36,7 +36,12 @@ async function queryTurso(sqls) {
   results.success = true;
   return results;
 }
-const mapArgs = (d) => d.map(v => ({ type: typeof v === 'number' ? 'float' : 'text', value: String(v) }));
+const mapArgs = (d) => d.map(v => {
+  if (typeof v === 'number') {
+    return { type: 'float', value: v };
+  }
+  return { type: 'text', value: String(v !== undefined && v !== null ? v : '') };
+});
 
 // ── COMPRESIÓN DE IMÁGENES POR CANVAS ──
 function compressImage(base64Data, maxWidth = 1024, maxHeight = 1024, quality = 0.8) {
