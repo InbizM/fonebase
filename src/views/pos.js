@@ -218,8 +218,17 @@ function setupEvents() {
       const cleanBtn = activeSigCanvas.parentElement.querySelector("button");
       if (cleanBtn) cleanBtn.classList.remove("hidden");
 
-      if (isClient) {
-        openSigFull(elCanvasVendedor, "Firma del Vendedor");
+      // Check if the other signature is still pending (meaning its helper is still visible)
+      const otherHelperId = isClient ? "pos-sig-helper-vendedor" : "pos-sig-helper-cliente";
+      const otherHelper = document.getElementById(otherHelperId);
+      const otherPending = otherHelper && !otherHelper.classList.contains("hidden");
+
+      if (otherPending) {
+        if (isClient) {
+          openSigFull(elCanvasVendedor, "Firma del Vendedor");
+        } else {
+          openSigFull(elCanvasCliente, "Firma del Comprador");
+        }
         return;
       }
     }
@@ -235,8 +244,13 @@ function setupEvents() {
     ctxFull.lineWidth = 8; ctxFull.lineCap = "round"; ctxFull.strokeStyle = "#000";
     ctxFull.clearRect(0, 0, elCanvasFull.width, elCanvasFull.height);
 
+    // Check if the other signature is still pending
     const isClient = activeSigCanvas.id === "pos-canvas-cliente";
-    if (isClient) {
+    const otherHelperId = isClient ? "pos-sig-helper-vendedor" : "pos-sig-helper-cliente";
+    const otherHelper = document.getElementById(otherHelperId);
+    const otherPending = otherHelper && !otherHelper.classList.contains("hidden");
+
+    if (otherPending) {
       elSigModalSave.innerHTML = `<span class="material-symbols-outlined text-[18px]">arrow_forward</span> Siguiente`;
     } else {
       elSigModalSave.innerHTML = `<span class="material-symbols-outlined text-[18px]">check_circle</span> Guardar Firma`;
