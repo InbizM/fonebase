@@ -587,7 +587,24 @@ export const registrarVenta = async (v) => {
 // ── CRÉDITOS ──
 export const getCreditos = async () => (await queryTurso("SELECT * FROM creditos"))[0].map(r => ({ ...r, id: r.id_credito, idFactura: r.id_factura_ref, abonado: r.total_abonado, saldo: r.saldo_pendiente, total: r.valor_total }));
 export const crearCredito = (d) => queryTurso({ sql: "INSERT INTO creditos (id_credito, cliente, telefono, id_factura_ref, fecha_deuda, tipo, valor_total, total_abonado, saldo_pendiente, estado, detalle) VALUES (?,?,?,?,?,?,?,?,?,?,?)", args: mapArgs([Date.now().toString(), d.cliente, d.telefono, d.idFactura, new Date().toISOString(), d.tipo||'Crédito', d.total, 0, d.total, 'Activo', d.detalle]) });
-export const actualizarCredito = (id, d) => queryTurso({ sql: "UPDATE creditos SET id_credito=?, cliente=?, telefono=?, id_factura_ref=?, fecha_deuda=?, tipo=?, valor_total=?, total_abonado=?, saldo_pendiente=?, estado=?, fecha_cancelacion=?, detalle=?, historial_abonos=? WHERE id_credito=?", args: [...mapArgs(d), { type: "text", value: id }] });
+export const actualizarCredito = (id, d) => queryTurso({ 
+  sql: "UPDATE creditos SET id_credito=?, cliente=?, telefono=?, id_factura_ref=?, fecha_deuda=?, tipo=?, valor_total=?, total_abonado=?, saldo_pendiente=?, estado=?, fecha_cancelacion=?, detalle=?, historial_abonos=? WHERE id_credito=?", 
+  args: [...mapArgs([
+    d.id_credito || d.id,
+    d.cliente,
+    d.telefono,
+    d.id_factura_ref || d.idFactura || "",
+    d.fecha_deuda || d.fecha || "",
+    d.tipo || "Crédito",
+    d.valor_total !== undefined ? d.valor_total : d.total,
+    d.total_abonado !== undefined ? d.total_abonado : d.abonado,
+    d.saldo_pendiente !== undefined ? d.saldo_pendiente : d.saldo,
+    d.estado,
+    d.fecha_cancelacion || d.fechaCancelacion || "",
+    d.detalle || "",
+    d.historial_abonos || d.historialAbonos || ""
+  ]), { type: "text", value: id }] 
+});
 
 // ── REVENTAS ──
 export const getReventas = async () => (await queryTurso("SELECT * FROM reventas ORDER BY fecha DESC"))[0].map(r => ({ ...r, id: r.id_reventa, producto: r.producto, costo: r.costo_proveedor, precio: r.precio_venta, utilidad: r.utilidad }));
