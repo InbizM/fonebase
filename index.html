@@ -45,11 +45,14 @@
     <!-- Ambient Background Waves (Red & Grey out-of-focus stripes) -->
     <div class="absolute inset-0 overflow-hidden pointer-events-none z-0">
       <!-- Wave 1 (Red Stripe) -->
-      <div class="absolute top-[-30%] left-[-20%] w-[150%] h-[60%] bg-gradient-to-r from-[#e6171a]/12 via-[#e6171a]/4 to-transparent -skew-y-12 blur-[110px]"></div>
+      <div class="absolute top-[-30%] left-[-20%] w-[150%] h-[60%] -skew-y-12" 
+           style="background: linear-gradient(135deg, rgba(230, 23, 26, 0.22) 0%, rgba(230, 23, 26, 0.05) 60%, transparent 100%); filter: blur(80px); -webkit-filter: blur(80px);"></div>
       <!-- Wave 2 (Grey Stripe) -->
-      <div class="absolute top-[20%] right-[-30%] w-[140%] h-[55%] bg-gradient-to-l from-[#b4b3b2]/8 via-[#b4b3b2]/2 to-transparent skew-y-12 blur-[130px]"></div>
+      <div class="absolute top-[20%] right-[-30%] w-[140%] h-[55%] skew-y-12" 
+           style="background: linear-gradient(225deg, rgba(180, 179, 178, 0.15) 0%, rgba(180, 179, 178, 0.02) 60%, transparent 100%); filter: blur(90px); -webkit-filter: blur(90px);"></div>
       <!-- Wave 3 (Red Stripe) -->
-      <div class="absolute bottom-[-20%] left-[-35%] w-[160%] h-[50%] bg-gradient-to-r from-transparent via-[#e6171a]/5 to-[#e6171a]/12 -skew-y-6 blur-[100px]"></div>
+      <div class="absolute bottom-[-20%] left-[-35%] w-[160%] h-[50%] -skew-y-6" 
+           style="background: linear-gradient(135deg, transparent 0%, rgba(230, 23, 26, 0.04) 40%, rgba(230, 23, 26, 0.18) 100%); filter: blur(80px); -webkit-filter: blur(80px);"></div>
     </div>
 
     <div class="w-full max-w-[400px] relative z-10 animate-fade-in-up">
