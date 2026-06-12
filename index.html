@@ -2393,15 +2393,15 @@
           <div id="sale-detail-content" class="p-6 max-h-[70vh] overflow-y-auto overflow-x-hidden bg-slate-50/30">
             <!-- JS dynamic content -->
           </div>
-          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
-            <button id="sale-detail-print-bt" class="px-4 py-2 bg-blue-600 text-white rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-blue-700 transition-all">
+          <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center gap-3">
+            <button id="sale-detail-print-bt" class="w-full sm:w-auto h-11 flex items-center justify-center gap-2 px-5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98]">
               <span class="material-symbols-outlined text-[18px]">bluetooth</span> Imprimir BT
             </button>
-            <div class="flex gap-3">
-              <button id="sale-detail-print-btn" class="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-bold text-sm flex items-center gap-2 hover:bg-slate-100 transition-all">
+            <div class="flex flex-col sm:flex-row gap-3">
+              <button id="sale-detail-print-btn" class="w-full sm:w-auto h-11 flex items-center justify-center gap-2 px-5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 rounded-xl font-bold text-sm transition-all active:scale-[0.98]">
                 <span class="material-symbols-outlined text-[18px]">print</span> Imprimir Ticket (48mm)
               </button>
-              <button onclick="document.getElementById('sale-detail-close').click()" class="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all">
+              <button onclick="document.getElementById('sale-detail-close').click()" class="w-full sm:w-auto h-11 flex items-center justify-center px-6 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-sm transition-all active:scale-[0.98]">
                 Cerrar
               </button>
             </div>
