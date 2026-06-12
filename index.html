@@ -63,26 +63,28 @@
   <!-- ======================================================== -->
   <!-- LOGIN SCREEN                                              -->
   <!-- ======================================================== -->
-  <div id="login-screen" class="hidden fixed inset-0 z-50 flex flex-col md:flex-row items-center justify-center gap-8 md:gap-16
-       bg-black p-4 md:p-8 overflow-y-auto select-none">
+  <div id="login-screen" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-black p-4 md:p-8 overflow-y-auto select-none">
     
     <!-- Ambient Background Waves (Red & Grey out-of-focus stripes) -->
-    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-black">
+    <div class="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-black" style="filter: blur(80px); -webkit-filter: blur(80px);">
       <!-- Wave 1 (Red Stripe - top left) -->
       <div class="absolute top-[-35%] left-[-25%] w-[160%] h-[70%] animate-wave-1" 
-           style="background: linear-gradient(135deg, rgba(230, 23, 26, 0.16) 0%, rgba(230, 23, 26, 0.04) 50%, transparent 100%); filter: blur(75px); -webkit-filter: blur(75px); transform-origin: center;"></div>
+           style="background: linear-gradient(135deg, rgba(230, 23, 26, 0.16) 0%, rgba(230, 23, 26, 0.04) 50%, transparent 100%); transform-origin: center;"></div>
       <!-- Wave 2 (Grey Stripe - middle right) -->
       <div class="absolute top-[15%] right-[-35%] w-[150%] h-[60%] animate-wave-2" 
-           style="background: linear-gradient(225deg, rgba(160, 160, 160, 0.12) 0%, rgba(160, 160, 160, 0.03) 50%, transparent 100%); filter: blur(85px); -webkit-filter: blur(85px); transform-origin: center;"></div>
+           style="background: linear-gradient(225deg, rgba(160, 160, 160, 0.12) 0%, rgba(160, 160, 160, 0.03) 50%, transparent 100%); transform-origin: center;"></div>
       <!-- Wave 3 (Red Stripe - bottom left) -->
       <div class="absolute bottom-[-25%] left-[-40%] w-[170%] h-[65%] animate-wave-3" 
-           style="background: linear-gradient(135deg, transparent 0%, rgba(230, 23, 26, 0.03) 45%, rgba(230, 23, 26, 0.14) 100%); filter: blur(75px); -webkit-filter: blur(75px); transform-origin: center;"></div>
+           style="background: linear-gradient(135deg, transparent 0%, rgba(230, 23, 26, 0.03) 45%, rgba(230, 23, 26, 0.14) 100%); transform-origin: center;"></div>
     </div>
 
-    <div class="w-full max-w-[400px] relative z-10 animate-fade-in-up">
-      <!-- Logo -->
+    <!-- Centered login container -->
+    <div class="w-full max-w-[400px] relative z-10 animate-fade-in-up flex flex-col items-stretch">
+      
+      <!-- Brand Header -->
       <div class="text-center mb-6">
-        <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" class="w-44 h-44 mx-auto">
+        <!-- Logo -->
+        <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1254 1254" class="w-28 h-28 mx-auto mb-3">
           <style>
             .s0 { fill: #e6161a } 
           </style>
@@ -95,18 +97,20 @@
           <path class="s0" d="m580.72 76.81c12.48-0.76 90.83-1.34 98.91 1.02 3.33 0.97 5.89 3.13 7.39 6.27 1.55 3.24 1.91 7.87 0.44 11.2-1.96 4.42-5.92 6.68-10.21 8.37-10.04 0.62-92.79 1.21-98.78-0.97-3.37-1.22-6.21-3.45-7.75-6.73-1.5-3.19-1.94-8.34-0.51-11.6 1.97-4.48 6.19-6.09 10.51-7.56z"/>
           <path class="s0" d="m321.45 646.19c11.4-1.72 13.72 9.47 13.82 18.74 0.16 16.27 0.56 32.9-0.66 49.09-0.1 1.29-1.35 2.62-2.18 3.52-11.22 4.13-12.67-2.28-12.18-11.68 0.41-7.85-1.64-56.38 1.2-59.67z"/>
         </svg>
+
+        <!-- FoneBase Title -->
+        <h1 class="text-4xl md:text-5xl font-bold tracking-tight select-none mt-4" style="font-family: 'Outfit', sans-serif;">
+          <span class="text-[#e6171a] font-black">Fone</span><span class="text-white font-light">Base</span>
+        </h1>
+
+        <!-- Slogan -->
+        <p class="text-slate-500 text-[10px] font-bold tracking-[0.2em] mt-3 uppercase opacity-80 select-none max-w-[340px] mx-auto" style="font-family: 'Space Grotesk', sans-serif;">
+          INVENTARIO INTELIGENTE PARA TELÉFONOS Y ACCESORIOS
+        </p>
       </div>
-      <h1 class="text-6xl md:text-7xl font-bold tracking-tight mt-6 select-none text-center" style="font-family: 'Outfit', sans-serif;">
-        <span class="text-[#e6171a] font-black">Fone</span><span class="text-white font-light">Base</span>
-      </h1>
-      <p class="text-slate-500 text-[11px] font-bold tracking-[0.22em] mt-4 text-center uppercase opacity-80 select-none max-w-[340px] mx-auto" style="font-family: 'Space Grotesk', sans-serif;">
-        INVENTARIO INTELIGENTE PARA TELÉFONOS Y ACCESORIOS
-      </p>
-    </div>
 
       <!-- Card -->
-      <div class="bg-[#1c1c1e]/75 backdrop-blur-xl border border-[#2c2c2e]/60 rounded-2xl p-8 shadow-2xl relative z-10">
-
+      <div class="bg-[#1c1c1e]/75 backdrop-blur-xl border border-[#2c2c2e]/60 rounded-2xl p-6 md:p-8 shadow-2xl relative">
         <!-- STEP 1: Credentials -->
         <div id="step-credentials">
           <h2 class="text-white font-bold text-xl mb-6">Iniciar sesión</h2>
@@ -181,9 +185,9 @@
             </button>
           </form>
         </div>
-
       </div>
 
+      <!-- Copyright Footer -->
       <p class="text-center text-slate-600 text-xs mt-6">FoneBase &copy; 2026 — Gestión de Inventario</p>
     </div>
   </div>
