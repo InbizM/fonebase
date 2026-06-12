@@ -513,3 +513,317 @@ export async function printBluetoothTicket(v, _canvasCliente = null, _canvasVend
     _isPrinting = false;
   }
 }
+
+function buildTechnicalTicketHTML(s, ajustesEmpresa = null) {
+  const now = new Date();
+  const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+  const emisor = {
+    nombre:      ajustesEmpresa?.nombre      || "WAYIRA PHONE",
+    nit:         ajustesEmpresa?.nit         || "1193400777-2",
+    direccion:   (ajustesEmpresa?.direccion  || "Calle 12 No. 10 - 108") + ", " + (ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
+    contacto:    ajustesEmpresa?.contacto    || "3016807310",
+    condiciones: ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
+    logo:        ajustesEmpresa?.logo        || "",
+    logo_size:   ajustesEmpresa?.logo_size   || 60,
+    mostrar_nombre: ajustesEmpresa?.mostrar_nombre !== 0
+  };
+
+  const fmt = (n) => '$' + new Intl.NumberFormat('es-CO').format(n || 0);
+  const saldo = (s.precio_final || 0) - (s.abono || 0);
+  const st = (s.estado || "").trim();
+
+  return `
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      .ticket-container {
+        font-family: Arial, Helvetica, sans-serif;
+        width: ${PRINT_WIDTH_PX}px;
+        background: #fff;
+        padding: 8px;
+        font-size: 24px;
+        font-weight: 900;
+        color: #000;
+        line-height: 1.35;
+        -webkit-text-stroke: 0.8px #000;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .bold { font-weight: 900; }
+      .center { text-align: center; }
+
+      /* ---- Header empresa ---- */
+      .header-box {
+        border: 3px solid #000;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 12px;
+        text-align: center;
+        line-height: 1.3;
+      }
+      .header-box .name {
+        font-size: 32px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+      .header-box .info {
+        font-size: 22px;
+        font-weight: 900;
+        color: #000;
+        margin-top: 2px;
+      }
+
+      /* ---- Card genérica ---- */
+      .card {
+        border: 3px solid #000;
+        border-radius: 8px;
+        padding: 10px;
+        margin-bottom: 12px;
+      }
+
+      .flex-between {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .badge {
+        background: #000;
+        color: #fff;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 20px;
+        font-weight: 900;
+        text-transform: uppercase;
+      }
+
+      .section-label {
+        font-size: 20px;
+        font-weight: 900;
+        color: #000;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+        margin-top: 12px;
+        border-bottom: 2px solid #000;
+        padding-bottom: 3px;
+      }
+
+      .divider {
+        border: none;
+        border-top: 3px dashed #000;
+        margin: 12px 0;
+      }
+
+      .data-row {
+        margin-bottom: 4px;
+        font-size: 22px;
+        font-weight: 900;
+      }
+      .data-label {
+        font-weight: 900;
+        text-transform: uppercase;
+        font-size: 18px;
+        margin-right: 4px;
+      }
+
+      /* ---- Totales ---- */
+      .summary-card {
+        border: 3px solid #000;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 12px;
+      }
+
+      /* ---- Firmas GRANDES ---- */
+      .firma-grid {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+      }
+      .firma-col {
+        flex: 1;
+        text-align: center;
+      }
+      .firma-label {
+        font-size: 20px;
+        font-weight: 900;
+        color: #000;
+      }
+      .firma-box {
+        border: 3px solid #000;
+        border-radius: 6px;
+        height: 170px;
+        margin-top: 6px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        overflow: hidden;
+      }
+
+      /* ---- Legal / Footer ---- */
+      .legal {
+        font-size: 22px;
+        font-weight: 900;
+        color: #000;
+        text-align: justify;
+        margin-top: 14px;
+        line-height: 1.35;
+      }
+      .footer {
+        text-align: center;
+        font-size: 28px;
+        font-weight: 900;
+        color: #000;
+        margin-top: 14px;
+        padding-bottom: 20px;
+      }
+    </style>
+
+    ${emisor.logo ? `
+    <div style="text-align:center; margin-bottom:12px;">
+      <img src="${emisor.logo}" style="max-height:${Math.max(emisor.logo_size, 160)}px; max-width:80%; object-fit:contain; display:inline-block;" crossorigin="anonymous">
+    </div>` : ''}
+
+    <div class="header-box">
+      ${emisor.mostrar_nombre ? `<div class="name">${emisor.nombre}</div>` : ''}
+      <div class="info">NIT: ${emisor.nit}</div>
+      <div class="info">${emisor.direccion}</div>
+      <div class="info">Tel: ${emisor.contacto}</div>
+    </div>
+
+    <div class="card">
+      <div class="bold text-xl uppercase">SERVICIO TÉCNICO</div>
+      <div class="flex-between" style="margin-top:6px;">
+        <div class="bold text-2xl">${s.id_orden}</div>
+        <div class="badge">${st}</div>
+      </div>
+      <div class="flex-between" style="margin-top:6px;">
+        <div class="text-sm font-bold">${fechaStr}</div>
+        <div class="text-sm font-bold">SOPORTE</div>
+      </div>
+    </div>
+
+    <div class="section-label">CLIENTE</div>
+    <div class="data-row bold" style="font-size:24px;">${s.cliente}</div>
+    <div class="data-row"><span class="data-label">Tel:</span> ${s.telefono || 'N/A'}</div>
+
+    <div class="section-label">DISPOSITIVO</div>
+    <div class="data-row bold" style="font-size:24px;">${s.equipo}</div>
+    <div class="data-row"><span class="data-label">IMEI/S:</span> ${s.imei_serie || 'N/A'}</div>
+    ${s.clave_patron ? `<div class="data-row"><span class="data-label">CLAVE:</span> ${s.clave_patron}</div>` : ''}
+
+    <hr class="divider">
+
+    <div class="section-label">DETALLES DEL TRABAJO</div>
+    <div class="card" style="font-size:22px; line-height:1.4;">
+      <div class="bold" style="font-size:18px; text-transform:uppercase;">Falla Reportada:</div>
+      <div>${s.falla}</div>
+      ${s.repuestos ? `
+        <div class="bold" style="font-size:18px; text-transform:uppercase; margin-top:8px; border-top:2px dashed #000; padding-top:4px;">Repuestos Utilizados:</div>
+        <div>${s.repuestos}</div>
+      ` : ''}
+    </div>
+
+    <div class="summary-card">
+      <div class="flex-between">
+        <div>
+          <div class="bold text-sm uppercase">Resumen de Pago</div>
+          <div style="font-size:20px; margin-top:4px;">Costo Total: ${fmt(s.precio_final)}</div>
+          <div style="font-size:20px; font-weight:900;">Abonado: -${fmt(s.abono)}</div>
+        </div>
+        <div style="text-align: right;">
+          <div class="bold text-sm uppercase">Saldo Pendiente</div>
+          <div class="text-2xl bold">${fmt(saldo)}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="firma-grid" style="margin-top:16px;">
+      <div class="firma-col">
+        <div class="firma-label">FIRMA TÉCNICO</div>
+        <div class="firma-box"></div>
+      </div>
+      <div class="firma-col">
+        <div class="firma-label">FIRMA CLIENTE</div>
+        <div class="firma-box"></div>
+      </div>
+    </div>
+
+    <div class="legal">
+      ${emisor.condiciones}
+      <p style="margin-top:6px; font-style:italic; text-align:center;">Conserve este ticket para reclamar su equipo.</p>
+    </div>
+    <div class="footer">¡GRACIAS POR SU CONFIANZA!</div>
+  `;
+}
+
+export async function printBluetoothTechnicalTicket(s, ajustesEmpresa = null) {
+  if (_isPrinting) {
+    console.warn("[BT-Printer] Impresión en progreso.");
+    return;
+  }
+
+  try {
+    _isPrinting = true;
+    await connectPrinter();
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'ticket-container';
+    wrapper.style.cssText = `
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: ${PRINT_WIDTH_PX}px;
+      background: white;
+      z-index: -1;
+    `;
+    wrapper.innerHTML = buildTechnicalTicketHTML(s, ajustesEmpresa);
+    document.body.appendChild(wrapper);
+
+    const imgs = wrapper.querySelectorAll('img');
+    await Promise.all([...imgs].map(img =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise(r => { img.onload = r; img.onerror = r; })
+    ));
+
+    const rawCanvas = await html2canvas(wrapper, {
+      width: PRINT_WIDTH_PX,
+      windowWidth: PRINT_WIDTH_PX,
+      backgroundColor: '#ffffff',
+      scale: 1,
+      useCORS: true,
+      logging: false,
+      allowTaint: false,
+    });
+
+    document.body.removeChild(wrapper);
+    const ticketCanvas = alignHeight(rawCanvas);
+
+    console.log(`[BT-Printer] Technical Canvas: ${ticketCanvas.width}x${ticketCanvas.height}px`);
+
+    const encoder = new ReceiptPrinterEncoder({
+      language: 'esc-pos',
+      width: 48,
+    });
+
+    encoder
+      .initialize()
+      .align('center')
+      .image(ticketCanvas, PRINT_WIDTH_PX, ticketCanvas.height, 'threshold')
+      .newline()
+      .newline()
+      .newline()
+      .cut();
+
+    await sendBytes(encoder.encode());
+    console.log("[BT-Printer] ✅ Impresión de Servicio Técnico enviada.");
+
+  } catch (err) {
+    console.error("[BT-Printer] Error en ticket técnico:", err);
+    alert(`Error Bluetooth: ${err.message || err}`);
+  } finally {
+    _isPrinting = false;
+  }
+}

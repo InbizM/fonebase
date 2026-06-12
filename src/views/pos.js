@@ -383,7 +383,10 @@ function renderCarrito() {
     const p = i.precioManual || 0;
     sub += p * i.qty;
     return `
-    <div class="bg-white border-2 ${p === 0 ? 'border-orange-400 animate-pulse' : 'border-slate-100'} p-3 rounded-2xl flex gap-3 shadow-sm transition-all">
+    <div class="bg-white border-2 ${p === 0 ? 'border-orange-400 animate-pulse' : 'border-slate-100'} p-3 rounded-2xl flex gap-3 shadow-sm transition-all items-center">
+      <button onclick="window.posRemoveItem('${i.id}')" class="text-slate-300 hover:text-red-500 transition-colors shrink-0 flex items-center justify-center">
+        <span class="material-symbols-outlined text-[20px]">delete</span>
+      </button>
       <div class="flex-1 min-w-0">
         <p class="text-[11px] font-black text-slate-800 truncate mb-1 uppercase">${i.nombre}</p>
         <div class="flex items-center bg-slate-50 rounded-lg px-2 border border-slate-200 focus-within:border-primary transition-colors">
@@ -391,9 +394,9 @@ function renderCarrito() {
           <input type="text" value="${p === 0 ? '' : new Intl.NumberFormat('es-CO').format(p)}" placeholder="0" oninput="window.posUpdatePrice('${i.id}', this)" class="w-full py-1.5 px-1 text-sm font-black text-primary bg-transparent outline-none placeholder:text-slate-300" />
         </div>
       </div>
-      <div class="flex flex-col justify-between items-end">
-        <button onclick="window.posRemoveItem('${i.id}')" class="text-slate-300 hover:text-red-500 transition-colors"><span class="material-symbols-outlined text-[18px]">delete</span></button>
-        <div class="flex items-center gap-2 bg-slate-100 rounded-xl p-1 border border-slate-200">
+      <div class="flex flex-col justify-between items-end self-stretch">
+        <div></div>
+        <div class="flex items-center gap-2 bg-slate-100 rounded-xl p-1 border border-slate-200 mt-auto">
           <button onclick="window.posUpdateQty('${i.id}', -1)" class="w-7 h-7 bg-white shadow-sm rounded-lg flex items-center justify-center hover:bg-slate-50 active:scale-90 transition-all text-slate-600 font-bold">-</button>
           <span class="text-xs font-black w-5 text-center text-slate-700">${i.qty}</span>
           <button onclick="window.posUpdateQty('${i.id}', 1)" class="w-7 h-7 bg-white shadow-sm rounded-lg flex items-center justify-center hover:bg-slate-50 active:scale-90 transition-all text-slate-600 font-bold">+</button>

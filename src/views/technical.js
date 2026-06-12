@@ -1,4 +1,5 @@
 import { getTechnical, crearServicioTecnico, actualizarServicioTecnico, eliminarServicioTecnico, uploadEvidencia, getAjustesEmpresa } from "../api.js";
+import { printBluetoothTechnicalTicket } from "../bluetooth-printer.js";
 import { showToast } from "../toast.js";
 
 let _servicios = [];
@@ -158,221 +159,229 @@ function setupEvents() {
     if (s) openModal(s);
   };
 
-  window.techPrint = (id) => {
+  window.techPrint = async (id) => {
     const s = _servicios.find(x => x.id_orden === id);
     if (!s) return;
 
-    const fmt = n => new Intl.NumberFormat("es-CO").format(n || 0);
-    const saldo = (s.precio_final || 0) - (s.abono || 0);
-    const hoy = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+    try {
+      showToast("Conectando a impresora Bluetooth...", "info");
+      await printBluetoothTechnicalTicket(s, _ajustesEmpresa);
+    } catch (err) {
+      console.error("Bluetooth print failed, falling back to window print:", err);
+      showToast("Impresión Bluetooth no disponible, usando impresión local...", "warning");
 
-    const emisor = {
-      nombre: _ajustesEmpresa?.nombre || "WAYIRA PHONE",
-      propietario: _ajustesEmpresa?.propietario || "Yeison Rangel Rangel",
-      nit: _ajustesEmpresa?.nit || "1193400777-2",
-      direccion: (_ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (_ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
-      contacto: _ajustesEmpresa?.contacto || "3016807310",
-      correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
-      condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
-      logo: _ajustesEmpresa?.logo || "",
-      logo_size: _ajustesEmpresa?.logo_size || 40,
-      mostrar_nombre: _ajustesEmpresa?.mostrar_nombre !== 0
-    };
+      const fmt = n => new Intl.NumberFormat("es-CO").format(n || 0);
+      const saldo = (s.precio_final || 0) - (s.abono || 0);
+      const hoy = new Date().toLocaleDateString('es-CO', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-    let badgeClass = "badge-ingresado";
-    const st = (s.estado || "").trim();
-    if (st === "En Revisión") badgeClass = "badge-revision";
-    else if (st === "En Taller") badgeClass = "badge-taller";
-    else if (st === "Reparado") badgeClass = "badge-reparado";
-    else if (st === "Entregado") badgeClass = "badge-entregado";
-    else if (st === "Sin Arreglo") badgeClass = "badge-sinarreglo";
+      const emisor = {
+        nombre: _ajustesEmpresa?.nombre || "WAYIRA PHONE",
+        propietario: _ajustesEmpresa?.propietario || "Yeison Rangel Rangel",
+        nit: _ajustesEmpresa?.nit || "1193400777-2",
+        direccion: (_ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (_ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
+        contacto: _ajustesEmpresa?.contacto || "3016807310",
+        correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
+        condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
+        logo: _ajustesEmpresa?.logo || "",
+        logo_size: _ajustesEmpresa?.logo_size || 40,
+        mostrar_nombre: _ajustesEmpresa?.mostrar_nombre !== 0
+      };
 
-    const ticketHTML = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            @page { size: 48mm auto; margin: 0; }
-            html, body { 
-              width: 48mm; 
-              margin: 0; 
-              padding: 0; 
-              background: #fff;
-              -webkit-print-color-adjust: exact;
-              color-adjust: exact;
-            }
-            body { 
-              font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-              padding: 2mm; 
-              font-size: 10px; 
-              color: #1e293b; 
-              line-height: 1.3;
-            }
-            .bold { font-weight: 900; }
-            .text-xs { font-size: 8px; }
-            .text-sm { font-size: 11px; }
-            .text-lg { font-size: 14px; }
-            .text-xl { font-size: 18px; }
-            .text-slate-500 { color: #64748b; }
-            .text-slate-400 { color: #94a3b8; }
-            .text-primary { color: #020617; }
-            
-            .card { 
-              border: 1px solid #e2e8f0; 
-              border-radius: 6px; 
-              padding: 4px; 
-              margin-bottom: 6px; 
-              background: #f8fafc;
-            }
-            .flex-between { display: flex; justify-content: space-between; align-items: flex-start; }
-            .badge { 
-              padding: 2px 4px; border-radius: 8px; 
-              font-size: 8px; font-weight: 900; text-transform: uppercase;
-            }
-            .badge-ingresado { background: #f1f5f9; color: #334155; }
-            .badge-revision { background: #dbeafe; color: #1e40af; }
-            .badge-taller { background: #dbeafe; color: #1e40af; }
-            .badge-reparado { background: #dcfce7; color: #166534; }
-            .badge-entregado { background: #059669; color: #ffffff; }
-            .badge-sinarreglo { background: #fee2e2; color: #991b1b; }
-            
-            .section-title {
-              font-size: 7px;
-              font-weight: 900;
-              color: #94a3b8;
-              text-transform: uppercase;
-              letter-spacing: 0.5px;
-              margin-bottom: 2px;
-              margin-top: 4px;
-            }
+      let badgeClass = "badge-ingresado";
+      const st = (s.estado || "").trim();
+      if (st === "En Revisión") badgeClass = "badge-revision";
+      else if (st === "En Taller") badgeClass = "badge-taller";
+      else if (st === "Reparado") badgeClass = "badge-reparado";
+      else if (st === "Entregado") badgeClass = "badge-entregado";
+      else if (st === "Sin Arreglo") badgeClass = "badge-sinarreglo";
 
-            .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
-            
-            .product-card {
-              background: #f8fafc;
-              border: 1px solid #e2e8f0;
-              border-radius: 4px;
-              padding: 4px;
-              margin-bottom: 4px;
-            }
-            
-            .summary-card {
-              background: #0f172a;
-              color: white;
-              border-radius: 6px;
-              padding: 6px;
-              margin-top: 6px;
-            }
-            
-            .legal { font-size: 7px; text-align: justify; margin-top: 8px; color: #64748b; }
-            .center { text-align: center; }
-          </style>
-        </head>
-        <body>
-          <!-- Logo de la Empresa -->
-          ${emisor.logo ? `
-          <div style="text-align: center; margin-bottom: 4px;">
-            <img src="${emisor.logo}" style="max-height: ${emisor.logo_size || 40}px; max-width: 100%; object-fit: contain;">
-          </div>
-          ` : ''}
-          <div class="center" style="margin-bottom: 6px; font-size: 8px; line-height: 1.2; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #f8fafc;">
-            ${emisor.mostrar_nombre ? `<div class="bold text-sm" style="text-transform: uppercase; color: #000;">${emisor.nombre}</div>` : ''}
-            <div>NIT: ${emisor.nit}</div>
-            <div>${emisor.direccion}</div>
-            <div>Tel: ${emisor.contacto}</div>
-          </div>
+      const ticketHTML = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <style>
+              @page { size: 48mm auto; margin: 0; }
+              html, body { 
+                width: 48mm; 
+                margin: 0; 
+                padding: 0; 
+                background: #fff;
+                -webkit-print-color-adjust: exact;
+                color-adjust: exact;
+              }
+              body { 
+                font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
+                padding: 2mm; 
+                font-size: 10px; 
+                color: #1e293b; 
+                line-height: 1.3;
+              }
+              .bold { font-weight: 900; }
+              .text-xs { font-size: 8px; }
+              .text-sm { font-size: 11px; }
+              .text-lg { font-size: 14px; }
+              .text-xl { font-size: 18px; }
+              .text-slate-500 { color: #64748b; }
+              .text-slate-400 { color: #94a3b8; }
+              .text-primary { color: #020617; }
+              
+              .card { 
+                border: 1px solid #e2e8f0; 
+                border-radius: 6px; 
+                padding: 4px; 
+                margin-bottom: 6px; 
+                background: #f8fafc;
+              }
+              .flex-between { display: flex; justify-content: space-between; align-items: flex-start; }
+              .badge { 
+                padding: 2px 4px; border-radius: 8px; 
+                font-size: 8px; font-weight: 900; text-transform: uppercase;
+              }
+              .badge-ingresado { background: #f1f5f9; color: #334155; }
+              .badge-revision { background: #dbeafe; color: #1e40af; }
+              .badge-taller { background: #dbeafe; color: #1e40af; }
+              .badge-reparado { background: #dcfce7; color: #166534; }
+              .badge-entregado { background: #059669; color: #ffffff; }
+              .badge-sinarreglo { background: #fee2e2; color: #991b1b; }
+              
+              .section-title {
+                font-size: 7px;
+                font-weight: 900;
+                color: #94a3b8;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                margin-bottom: 2px;
+                margin-top: 4px;
+              }
 
-          <!-- Header / Comprobante -->
-          <div class="card">
-            <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">SERVICIO TÉCNICO</div>
-            <div class="flex-between" style="margin-top: 2px;">
-              <div class="text-lg bold" style="line-height: 1;">${s.id_orden}</div>
-              <div class="badge ${badgeClass}">${s.estado}</div>
+              .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+              
+              .product-card {
+                background: #f8fafc;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 4px;
+                margin-bottom: 4px;
+              }
+              
+              .summary-card {
+                background: #0f172a;
+                color: white;
+                border-radius: 6px;
+                padding: 6px;
+                margin-top: 6px;
+              }
+              
+              .legal { font-size: 7px; text-align: justify; margin-top: 8px; color: #64748b; }
+              .center { text-align: center; }
+            </style>
+          </head>
+          <body>
+            <!-- Logo de la Empresa -->
+            ${emisor.logo ? `
+            <div style="text-align: center; margin-bottom: 4px;">
+              <img src="${emisor.logo}" style="max-height: ${emisor.logo_size || 40}px; max-width: 100%; object-fit: contain;">
             </div>
-            <div class="flex-between" style="margin-top: 2px;">
-              <div class="text-xs text-slate-500">${hoy}</div>
-              <div class="text-xs bold" style="color: #dc2626;">SOPORTE</div>
-            </div>
-          </div>
-          
-          <!-- Info Cliente -->
-          <div class="grid-2">
-            <div>
-              <div class="section-title">INFORMACIÓN DEL CLIENTE</div>
-              <div class="bold text-sm">${s.cliente}</div>
-              <div class="text-xs text-slate-500"><span class="text-slate-400 bold">Tel:</span> ${s.telefono || 'N/A'}</div>
-            </div>
-            <div>
-              <div class="section-title">DISPOSITIVO</div>
-              <div class="bold text-sm">${s.equipo}</div>
-              <div class="text-xs text-slate-500"><span class="text-slate-400 bold">IMEI/S:</span> ${s.imei_serie || 'N/A'}</div>
-              ${s.clave_patron ? `<div class="text-xs text-slate-500"><span class="text-slate-400 bold">Clave:</span> ${s.clave_patron}</div>` : ''}
-            </div>
-          </div>
-          
-          <div style="border-top: 1px solid #f1f5f9; margin: 6px 0;"></div>
-          
-          <!-- Detalle Soporte -->
-          <div class="section-title">DETALLES DEL TRABAJO</div>
-          <div class="product-card">
-            <div class="bold text-[8px] text-slate-400">FALLA REPORTADA:</div>
-            <div class="text-xs text-slate-800" style="margin-bottom: 4px;">${s.falla}</div>
-            ${s.repuestos ? `
-              <div class="bold text-[8px] text-slate-400" style="margin-top: 4px; border-top: 1px dashed #e2e8f0; padding-top: 2px;">REPUESTOS UTILIZADOS:</div>
-              <div class="text-xs text-slate-800">${s.repuestos}</div>
             ` : ''}
-          </div>
+            <div class="center" style="margin-bottom: 6px; font-size: 8px; line-height: 1.2; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; background: #f8fafc;">
+              ${emisor.mostrar_nombre ? `<div class="bold text-sm" style="text-transform: uppercase; color: #000;">${emisor.nombre}</div>` : ''}
+              <div>NIT: ${emisor.nit}</div>
+              <div>${emisor.direccion}</div>
+              <div>Tel: ${emisor.contacto}</div>
+            </div>
 
-          <!-- Resumen Financiero -->
-          <div class="summary-card">
-            <div class="flex-between" style="align-items: flex-end;">
-              <div>
-                <div class="section-title" style="color: #94a3b8; margin-top: 0;">RESUMEN DE PAGO</div>
-                <div class="text-xs" style="color: #cbd5e1;">Costo Total: $${fmt(s.precio_final)}</div>
-                <div class="text-xs text-green-400 font-bold">Abonado: -$${fmt(s.abono)}</div>
+            <!-- Header / Comprobante -->
+            <div class="card">
+              <div class="text-xs text-primary bold" style="color: #dc2626; text-transform: uppercase;">SERVICIO TÉCNICO</div>
+              <div class="flex-between" style="margin-top: 2px;">
+                <div class="text-lg bold" style="line-height: 1;">${s.id_orden}</div>
+                <div class="badge ${badgeClass}">${s.estado}</div>
               </div>
-              <div style="text-align: right;">
-                <div class="section-title" style="color: #94a3b8; margin-top: 0; margin-bottom: 0;">SALDO PENDIENTE</div>
-                <div class="text-xl bold text-white" style="line-height: 1; color: ${saldo > 0 ? '#f87171' : '#4ade80'};">$${fmt(saldo)}</div>
+              <div class="flex-between" style="margin-top: 2px;">
+                <div class="text-xs text-slate-500">${hoy}</div>
+                <div class="text-xs bold" style="color: #dc2626;">SOPORTE</div>
               </div>
             </div>
-          </div>
+            
+            <!-- Info Cliente -->
+            <div class="grid-2">
+              <div>
+                <div class="section-title">INFORMACIÓN DEL CLIENTE</div>
+                <div class="bold text-sm">${s.cliente}</div>
+                <div class="text-xs text-slate-500"><span class="text-slate-400 bold">Tel:</span> ${s.telefono || 'N/A'}</div>
+              </div>
+              <div>
+                <div class="section-title">DISPOSITIVO</div>
+                <div class="bold text-sm">${s.equipo}</div>
+                <div class="text-xs text-slate-500"><span class="text-slate-400 bold">IMEI/S:</span> ${s.imei_serie || 'N/A'}</div>
+                ${s.clave_patron ? `<div class="text-xs text-slate-500"><span class="text-slate-400 bold">Clave:</span> ${s.clave_patron}</div>` : ''}
+              </div>
+            </div>
+            
+            <div style="border-top: 1px solid #f1f5f9; margin: 6px 0;"></div>
+            
+            <!-- Detalle Soporte -->
+            <div class="section-title">DETALLES DEL TRABAJO</div>
+            <div class="product-card">
+              <div class="bold text-[8px] text-slate-400">FALLA REPORTADA:</div>
+              <div class="text-xs text-slate-800" style="margin-bottom: 4px;">${s.falla}</div>
+              ${s.repuestos ? `
+                <div class="bold text-[8px] text-slate-400" style="margin-top: 4px; border-top: 1px dashed #e2e8f0; padding-top: 2px;">REPUESTOS UTILIZADOS:</div>
+                <div class="text-xs text-slate-800">${s.repuestos}</div>
+              ` : ''}
+            </div>
 
-          <!-- Firmas -->
-          <div class="grid-2" style="margin-top: 8px;">
-             <div class="center">
-               <div class="text-xs bold text-slate-400">FIRMA TÉCNICO</div>
-               <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px;"></div>
-             </div>
-             <div class="center">
-               <div class="text-xs bold text-slate-400">FIRMA CLIENTE</div>
-               <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px;"></div>
-             </div>
-          </div>
-          
-          <!-- Footer Legal -->
-          <div class="legal">
-            ${emisor.condiciones}
-            <p style="margin-top: 4px; font-style: italic; text-align: center;">Conserve este ticket para reclamar su equipo.</p>
-          </div>
-          <div class="center bold" style="margin-top: 8px; font-size: 11px;">¡GRACIAS POR SU CONFIANZA!</div>
-        </body>
-      </html>
-    `;
+            <!-- Resumen Financiero -->
+            <div class="summary-card">
+              <div class="flex-between" style="align-items: flex-end;">
+                <div>
+                  <div class="section-title" style="color: #94a3b8; margin-top: 0;">RESUMEN DE PAGO</div>
+                  <div class="text-xs" style="color: #cbd5e1;">Costo Total: $${fmt(s.precio_final)}</div>
+                  <div class="text-xs text-green-400 font-bold">Abonado: -$${fmt(s.abono)}</div>
+                </div>
+                <div style="text-align: right;">
+                  <div class="section-title" style="color: #94a3b8; margin-top: 0; margin-bottom: 0;">SALDO PENDIENTE</div>
+                  <div class="text-xl bold text-white" style="line-height: 1; color: ${saldo > 0 ? '#f87171' : '#4ade80'};">$${fmt(saldo)}</div>
+                </div>
+              </div>
+            </div>
 
-    const printWin = window.open('', '_blank', 'width=300,height=600');
-    if (printWin) {
-      printWin.document.open();
-      printWin.document.write(ticketHTML);
-      printWin.document.close();
-      printWin.focus();
-      setTimeout(() => {
-        printWin.print();
-        printWin.close();
-      }, 500);
-    } else {
-      showToast("Por favor permite las ventanas emergentes para imprimir", "warning");
+            <!-- Firmas -->
+            <div class="grid-2" style="margin-top: 8px;">
+               <div class="center">
+                 <div class="text-xs bold text-slate-400">FIRMA TÉCNICO</div>
+                 <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px;"></div>
+               </div>
+               <div class="center">
+                 <div class="text-xs bold text-slate-400">FIRMA CLIENTE</div>
+                 <div style="border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; height: 30px; margin-top: 2px;"></div>
+               </div>
+            </div>
+            
+            <!-- Footer Legal -->
+            <div class="legal">
+              ${emisor.condiciones}
+              <p style="margin-top: 4px; font-style: italic; text-align: center;">Conserve este ticket para reclamar su equipo.</p>
+            </div>
+            <div class="center bold" style="margin-top: 8px; font-size: 11px;">¡GRACIAS POR SU CONFIANZA!</div>
+          </body>
+        </html>
+      `;
+
+      const printWin = window.open('', '_blank', 'width=300,height=600');
+      if (printWin) {
+        printWin.document.open();
+        printWin.document.write(ticketHTML);
+        printWin.document.close();
+        printWin.focus();
+        setTimeout(() => {
+          printWin.print();
+          printWin.close();
+        }, 500);
+      } else {
+        showToast("Por favor permite las ventanas emergentes para imprimir", "warning");
+      }
     }
   };
 
