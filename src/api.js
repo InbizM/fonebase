@@ -752,8 +752,7 @@ export const procesarValeOcrConQwen = async (base64Data) => {
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
 
   const models = [
-    "qwen/qwen2.5-vl-72b-instruct",
-    "qwen/qwen-2.5-72b-instruct"
+    "qwen/qwen3.7-flash"
   ];
 
   let dataUrl = base64Data;
