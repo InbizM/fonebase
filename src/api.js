@@ -751,50 +751,63 @@ export const procesarValeOcrConQwen = async (base64Data) => {
   const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
 
+  const models = [
+    "qwen/qwen-2.5-vl-72b-instruct:free",
+    "google/gemini-2.5-flash-lite",
+    "qwen/qwen-vl-plus:free"
+  ];
+
   let dataUrl = base64Data;
   if (!dataUrl.startsWith("data:")) {
     dataUrl = `data:image/jpeg;base64,${dataUrl}`;
   }
 
-  const response = await fetch(openRouterUrl, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${openRouterApiKey}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      model: "qwen/qwen3.7-flash",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: dataUrl } }
-          ]
-        }
-      ],
-      temperature: 0.1
-    })
-  });
+  let lastError = "";
 
-  if (!response.ok) {
-    throw new Error(`Error en API Qwen (${response.status}): ${await response.text()}`);
+  for (const modelName of models) {
+    try {
+      const response = await fetch(openRouterUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${openRouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://adminpro.local",
+          "X-Title": "FoneBase OCR"
+        },
+        body: JSON.stringify({
+          model: modelName,
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: prompt },
+                { type: "image_url", image_url: { url: dataUrl } }
+              ]
+            }
+          ],
+          temperature: 0.1
+        })
+      });
+
+      if (!response.ok) {
+        lastError = `Status ${response.status}: ${await response.text()}`;
+        continue;
+      }
+
+      const resData = await response.json();
+      const rawText = resData.choices[0]?.message?.content || "";
+      const cleanedJson = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+      const firstBrace = cleanedJson.indexOf("{");
+      const lastBrace = cleanedJson.lastIndexOf("}");
+      if (firstBrace !== -1 && lastBrace > firstBrace) {
+        return JSON.parse(cleanedJson.substring(firstBrace, lastBrace + 1));
+      }
+      return JSON.parse(cleanedJson);
+    } catch (err) {
+      lastError = err.message;
+    }
   }
 
-  const resData = await response.json();
-  const rawText = resData.choices[0]?.message?.content || "";
-  const cleanedJson = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-
-  try {
-    return JSON.parse(cleanedJson);
-  } catch (e) {
-    console.error("Error al parsear JSON de Qwen:", rawText);
-    return {
-      cliente: "Cliente no identificado",
-      producto: rawText.substring(0, 100),
-      cantidad: 1,
-      monto: 0,
-      fecha: new Date().toISOString().split('T')[0]
-    };
-  }
+  throw new Error("No se pudo extraer la información del vale: " + lastError);
 };
