@@ -731,27 +731,13 @@ export const eliminarValeFisico = (id) => queryTurso({
 });
 
 export const procesarValeOcrConQwen = async (base64Data) => {
-  const prompt = 'Eres un experto en lectura y digitalización de vales, recibos y pagarés escritos a mano o impresos en español. ' +
-    'Analiza la foto del vale adjunta y extrae los siguientes datos en un formato JSON exacto sin texto explicativo adicional:\n\n' +
-    '{\n' +
-    '  "cliente": "nombre de la persona o cliente que solicitó el vale o se llevó el producto",\n' +
-    '  "producto": "descripción breve del producto, artículo o servicio que se llevó",\n' +
-    '  "cantidad": 1,\n' +
-    '  "monto": 50000,\n' +
-    '  "fecha": "AAAA-MM-DD"\n' +
-    '}\n\n' +
-    'REGLAS:\n' +
-    '- "cliente": Extrae el nombre o razón social. Si no es visible, pon "Cliente de Contado".\n' +
-    '- "producto": Describe lo que se llevó. Si hay varios ítems, concaténalos en una sola frase.\n' +
-    '- "cantidad": Número entero de la cantidad total de artículos. Si no especifica, usa 1.\n' +
-    '- "monto": Número entero o decimal sin símbolos ni puntos de miles. Si dice $50.000 responder 50000. Si no visualizas monto responder 0.\n' +
-    '- "fecha": Fecha en formato AAAA-MM-DD. Si no es visible, usa la fecha actual.\n' +
-    '- Devuelve únicamente el objeto JSON sin bloques de marcado markdown ```json ```.';
+  const prompt = 'Responde ÚNICAMENTE un objeto JSON válido con los campos: "cliente" (string), "producto" (string), "cantidad" (número), "monto" (número), "fecha" (YYYY-MM-DD). No incluyas explicaciones ni bloques de texto.';
 
   const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
 
   const models = [
+    "qwen/qwen2.5-vl-72b-instruct",
     "qwen/qwen3.7-flash"
   ];
 
@@ -783,7 +769,7 @@ export const procesarValeOcrConQwen = async (base64Data) => {
               ]
             }
           ],
-          max_tokens: 1000,
+          max_tokens: 4000,
           temperature: 0.1
         })
       });
