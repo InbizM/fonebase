@@ -510,68 +510,13 @@ async function handleLoginStep1(e) {
   try {
     const res = await login(email, pwd);
     if (res.success) {
-      _pendingEmail = email;
-      
-      const setupContainer = document.getElementById("totp-setup-container");
-      const pinHint = document.getElementById("pin-hint");
-      
-      if (res.step === "setup-totp") {
-        document.getElementById("totp-qr").src = res.qrCodeUrl;
-        document.getElementById("totp-secret-text").textContent = res.secret;
-        setupContainer.classList.remove("hidden");
-        pinHint.textContent = "Escanea el código QR en tu app autenticadora e ingresa el código de 6 dígitos.";
-      } else {
-        setupContainer.classList.add("hidden");
-        pinHint.textContent = "Ingresa el código de 6 dígitos de tu aplicación autenticadora.";
-      }
-      
-      // Mostrar iniciales o logo de la empresa, y nombre del usuario
-      const nombre = res.nombre || "Usuario";
-      const initials = nombre.split(" ").filter(Boolean).map(n => n[0]).join("").substring(0, 2).toUpperCase();
-      
-      const elAvatar = document.getElementById("login-user-avatar");
-      const elName = document.getElementById("login-user-name");
-      
-      if (elAvatar) {
-        // Asegurar que estén cargados los ajustes
-        if (!_companySettings) {
-          try {
-            _companySettings = await getAjustesEmpresa();
-          } catch (err) {}
-        }
-
-        if (_companySettings?.logo) {
-          elAvatar.innerHTML = `<img src="${_companySettings.logo}" class="max-h-full max-w-full object-contain" />`;
-          elAvatar.className = "w-64 h-32 rounded-2xl bg-white border border-slate-200 flex items-center justify-center p-5 shadow-lg transition-all duration-300";
-          elAvatar.style.backgroundColor = "white";
-          elAvatar.style.padding = "1.25rem";
-        } else {
-          elAvatar.innerHTML = initials;
-          elAvatar.style.backgroundColor = "";
-          elAvatar.style.padding = "";
-          const colors = [
-            'bg-red-600/15 text-red-400 border-red-600/30',
-            'bg-indigo-600/15 text-indigo-400 border-indigo-600/30',
-            'bg-emerald-600/15 text-emerald-400 border-emerald-600/30',
-            'bg-amber-600/15 text-amber-400 border-amber-600/30',
-            'bg-purple-600/15 text-purple-400 border-purple-600/30',
-            'bg-pink-600/15 text-pink-400 border-pink-600/30',
-            'bg-sky-600/15 text-sky-400 border-sky-600/30'
-          ];
-          const colorIdx = (initials.charCodeAt(0) || 0) % colors.length;
-          elAvatar.className = `w-16 h-16 rounded-full flex items-center justify-center font-black text-xl select-none uppercase tracking-wider shadow-inner transition-all duration-300 ${colors[colorIdx]}`;
-        }
-      }
-      
-      if (elName) {
-        elName.textContent = nombre;
-      }
-      
-      showStep("pin");
-      document.getElementById("login-pin").value = "";
-      document.getElementById("login-pin").focus();
-    } else { 
-      showToast(res.mensaje || "Credenciales incorrectas", "error"); 
+      currentUser = { nombre: res.nombre, rol: res.rol, email: res.email };
+      updateUserUI();
+      document.getElementById("login-screen").classList.add("hidden");
+      document.getElementById("app-layout").classList.remove("hidden");
+      showToast(`¡Bienvenido, ${currentUser.nombre}! 👋`, "success");
+      navigate("pos");
+      document.getElementById("login-form").reset();
     }
   } catch (err) { 
     showToast("Error de conexión: " + err.message, "error"); 
