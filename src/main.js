@@ -235,6 +235,7 @@ function buildNavLinks(containerId, rol, mobile = false) {
             { id: "pos",           label: "Ventas (POS)",        icon: "point_of_sale", roles: ["Administrador", "Vendedor"] },
             { id: "sales-history", label: "Historial Ventas",   icon: "history",       roles: ["Administrador", "Vendedor"] },
             { id: "credits",       label: "Créditos",            icon: "credit_score",  roles: ["Administrador", "Vendedor"] },
+            { id: "vales_fisicos", label: "Vales Físicos",       icon: "photo_camera",  roles: ["Administrador", "Vendedor"] },
             { id: "expenses",      label: "Egresos",             icon: "payments",      roles: ["Administrador"] },
             { id: "nominas",       label: "Nóminas",             icon: "request_quote", roles: ["Administrador"] }
           ]
