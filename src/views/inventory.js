@@ -901,9 +901,10 @@ export function initInventory() {
     });
   });
   
+  document.getElementById("inv-filter-tipo")?.addEventListener("change", applyFilter);
+
   if (window.setupCustomSelect) {
     window.setupCustomSelect("inv-filter-cat-container", "inv-filter-cat", applyFilter);
-    window.setupCustomSelect("inv-filter-tipo-container", "inv-filter-tipo", applyFilter);
     window.setupCustomSelect("inv-tipo-container", "inv-tipo");
   }
 

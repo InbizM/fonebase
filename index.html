@@ -749,41 +749,14 @@
                 </div>
               </div>
 
-              <!-- Custom Type Filter -->
-              <div id="inv-filter-tipo-container" class="custom-select-container relative flex-1 sm:w-36 min-w-0">
-                <input type="hidden" id="inv-filter-tipo" value="" />
-                <button type="button" class="custom-select-trigger w-full bg-surface-container text-xs sm:text-sm text-on-background border-none rounded-lg px-2.5 py-2 flex items-center justify-between cursor-pointer">
-                  <span class="selected-label truncate">Todos los tipos</span>
-                  <span class="material-symbols-outlined text-[16px] text-slate-400 shrink-0 ml-0.5">keyboard_arrow_down</span>
-                </button>
-                <div class="custom-select-options hidden absolute left-0 right-0 top-full mt-1 bg-surface-container-high border border-surface-variant rounded-xl shadow-2xl z-50 overflow-hidden py-1">
-                  <div data-value="" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px] text-slate-400">category</span>
-                    <span class="flex-1 truncate">Todos los tipos</span>
-                    <span class="material-symbols-outlined text-[16px] text-primary check-icon">check_circle</span>
-                  </div>
-                  <div data-value="Físico" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px] text-slate-400">inventory_2</span>
-                    <span class="flex-1 truncate">Físico</span>
-                    <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
-                  </div>
-                  <div data-value="Reventa" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px] text-slate-400">storefront</span>
-                    <span class="flex-1 truncate">Reventa</span>
-                    <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
-                  </div>
-                  <div data-value="Digital" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px] text-slate-400">cloud</span>
-                    <span class="flex-1 truncate">Digital</span>
-                    <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
-                  </div>
-                  <div data-value="Servicio" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
-                    <span class="material-symbols-outlined text-[18px] text-slate-400">build</span>
-                    <span class="flex-1 truncate">Servicio</span>
-                    <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
-                  </div>
-                </div>
-              </div>
+              <!-- Native Type Filter -->
+              <select id="inv-filter-tipo" class="bg-surface-container text-xs sm:text-sm text-on-background border-none rounded-lg px-2.5 py-2 focus:outline-none focus:ring-1 focus:ring-primary/40 cursor-pointer shrink-0">
+                <option value="">Todos los tipos</option>
+                <option value="Físico">Físico</option>
+                <option value="Reventa">Reventa</option>
+                <option value="Digital">Digital</option>
+                <option value="Servicio">Servicio</option>
+              </select>
 
               <button id="inv-view-toggle" title="Cambiar Vista" class="hidden sm:flex shrink-0 px-3 py-2 bg-surface-container text-on-surface-variant rounded-lg hover:text-on-surface transition-colors items-center justify-center">
                 <span class="material-symbols-outlined text-[20px]">view_list</span>
