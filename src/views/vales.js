@@ -341,12 +341,12 @@ function setupEventListeners() {
     reader.readAsDataURL(file);
   });
 
-  // IA Qwen Scan Button
+  // IA Scan Button
   btnScanQwen.addEventListener("click", async () => {
     if (!currentPhotoBase64) return;
 
     btnScanQwen.disabled = true;
-    btnScanQwen.innerHTML = `<span>⏳ Procesando con IA Qwen...</span>`;
+    btnScanQwen.innerHTML = `<span class="material-symbols-outlined animate-spin text-[18px]">sync</span><span>Analizando imagen con IA...</span>`;
 
     try {
       const data = await procesarValeOcrConQwen(currentPhotoBase64);
@@ -356,13 +356,13 @@ function setupEventListeners() {
       if (data.monto) document.getElementById("vale-monto").value = data.monto;
       if (data.fecha) document.getElementById("vale-fecha").value = data.fecha;
 
-      showToast("¡Datos extraídos con éxito por Qwen AI!", "success");
+      showToast("¡Información del vale extraída con éxito!", "success");
     } catch (err) {
       console.error(err);
-      showToast("Error procesando vale con Qwen AI", "error");
+      showToast(`Error de escaneo: ${err.message || 'No se pudo leer la imagen'}`, "error");
     } finally {
       btnScanQwen.disabled = false;
-      btnScanQwen.innerHTML = `<span>✨ Escanear y Extraer Datos con Qwen AI</span>`;
+      btnScanQwen.innerHTML = `<span class="material-symbols-outlined text-[20px]">auto_awesome</span><span>Extraer Datos con IA</span>`;
     }
   });
 

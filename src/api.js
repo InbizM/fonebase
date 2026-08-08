@@ -752,9 +752,9 @@ export const procesarValeOcrConQwen = async (base64Data) => {
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
 
   const models = [
-    "qwen/qwen-2.5-vl-72b-instruct:free",
     "google/gemini-2.5-flash-lite",
-    "qwen/qwen-vl-plus:free"
+    "google/gemini-2.5-flash",
+    "qwen/qwen-2.5-vl-72b-instruct:free"
   ];
 
   let dataUrl = base64Data;
@@ -785,6 +785,7 @@ export const procesarValeOcrConQwen = async (base64Data) => {
               ]
             }
           ],
+          max_tokens: 1000,
           temperature: 0.1
         })
       });
