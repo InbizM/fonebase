@@ -686,14 +686,14 @@ window.setupCustomSelect = function(containerId, hiddenInputId, onSelectChange) 
   
   if (!trigger || !optionsMenu) return;
 
-  trigger.addEventListener("click", (e) => {
+  trigger.onclick = (e) => {
     e.stopPropagation();
     // Close other custom selects first
     document.querySelectorAll(".custom-select-options").forEach(menu => {
       if (menu !== optionsMenu) menu.classList.add("hidden");
     });
     optionsMenu.classList.toggle("hidden");
-  });
+  };
   
   options.forEach(opt => {
     opt.addEventListener("click", () => {
