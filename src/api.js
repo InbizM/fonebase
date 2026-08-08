@@ -795,14 +795,40 @@ export const procesarValeOcrConQwen = async (base64Data) => {
 
       const resData = await response.json();
       const rawText = resData.choices[0]?.message?.content || "";
-      const cleanedJson = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+      let cleanedJson = rawText.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
 
       const firstBrace = cleanedJson.indexOf("{");
       const lastBrace = cleanedJson.lastIndexOf("}");
+      
       if (firstBrace !== -1 && lastBrace > firstBrace) {
-        return JSON.parse(cleanedJson.substring(firstBrace, lastBrace + 1));
+        try {
+          return JSON.parse(cleanedJson.substring(firstBrace, lastBrace + 1));
+        } catch (e) {
+          console.warn("Fallo sub-brace parse, intentando parse directo...", e);
+        }
       }
-      return JSON.parse(cleanedJson);
+
+      try {
+        return JSON.parse(cleanedJson);
+      } catch (e) {
+        // Fallback de extracción vía Regex si el JSON está incompleto o con formato mixto
+        const clienteMatch = rawText.match(/"cliente"\s*:\s*"([^"]+)"/i);
+        const productoMatch = rawText.match(/"producto"\s*:\s*"([^"]+)"/i);
+        const cantidadMatch = rawText.match(/"cantidad"\s*:\s*(\d+)/i);
+        const montoMatch = rawText.match(/"monto"\s*:\s*(\d+)/i);
+        const fechaMatch = rawText.match(/"fecha"\s*:\s*"([^"]+)"/i);
+
+        if (clienteMatch || productoMatch || montoMatch) {
+          return {
+            cliente: clienteMatch ? clienteMatch[1] : "Cliente Vale",
+            producto: productoMatch ? productoMatch[1] : "Producto impreso",
+            cantidad: cantidadMatch ? parseInt(cantidadMatch[1], 10) : 1,
+            monto: montoMatch ? parseInt(montoMatch[1], 10) : 0,
+            fecha: fechaMatch ? fechaMatch[1] : new Date().toISOString().split('T')[0]
+          };
+        }
+        throw new Error("No se pudo interpretar el formato JSON del modelo: " + e.message);
+      }
     } catch (err) {
       lastError = err.message;
     }
