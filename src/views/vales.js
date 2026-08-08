@@ -90,16 +90,39 @@ export async function initValesFisicos() {
 
         <form id="form-vale" class="space-y-4">
           <!-- AREA FOTO / OCR -->
-          <div class="space-y-2">
+          <div class="space-y-3">
             <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">Foto del Vale Físico</label>
-            <div id="vale-photo-dropzone" class="border-2 border-dashed border-surface-variant rounded-2xl p-5 text-center cursor-pointer hover:border-primary transition-colors bg-surface-container/40">
-              <input type="file" id="vale-file-input" accept="image/*" class="hidden">
-              <div id="vale-photo-placeholder" class="space-y-2">
-                <span class="material-symbols-outlined text-4xl text-on-surface-variant">add_a_photo</span>
-                <p class="text-sm font-semibold text-primary">Haz clic para tomar foto o seleccionar imagen</p>
-                <p class="text-xs text-on-surface-variant/70">Asegúrate de que el texto sea legible</p>
+
+            <!-- Inputs invisibles de Cámara y Galería -->
+            <input type="file" id="vale-file-camera" accept="image/*" capture="environment" class="hidden">
+            <input type="file" id="vale-file-gallery" accept="image/*" class="hidden">
+
+            <div id="vale-photo-dropzone" class="border-2 border-dashed border-surface-variant rounded-2xl p-4 text-center bg-surface-container/40">
+              <div id="vale-photo-placeholder" class="space-y-3">
+                <span class="material-symbols-outlined text-4xl text-on-surface-variant">photo_camera</span>
+                <p class="text-xs text-on-surface-variant/70 font-medium">Selecciona cómo deseas adjuntar el vale:</p>
+
+                <!-- Botones duales -->
+                <div class="flex flex-col sm:flex-row gap-2 pt-1">
+                  <button type="button" id="btn-open-camera" class="flex-1 py-2.5 px-3 bg-primary text-on-primary font-semibold text-xs rounded-xl shadow-sm hover:bg-primary/90 flex items-center justify-center gap-1.5 transition-all">
+                    <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+                    <span>Tomar Foto (Cámara)</span>
+                  </button>
+
+                  <button type="button" id="btn-open-gallery" class="flex-1 py-2.5 px-3 bg-surface-container-high border border-surface-variant text-on-surface font-semibold text-xs rounded-xl hover:bg-surface-variant/20 flex items-center justify-center gap-1.5 transition-all">
+                    <span class="material-symbols-outlined text-[18px]">photo_library</span>
+                    <span>Elegir de Galería</span>
+                  </button>
+                </div>
               </div>
-              <img id="vale-photo-preview" class="hidden max-h-48 mx-auto rounded-xl shadow-md object-contain">
+
+              <!-- Vista previa de imagen cargada -->
+              <div id="vale-photo-preview-container" class="hidden relative">
+                <img id="vale-photo-preview" class="max-h-48 mx-auto rounded-xl shadow-md object-contain">
+                <button type="button" id="btn-change-photo" class="mt-2 text-xs font-bold text-primary hover:underline flex items-center justify-center gap-1 mx-auto">
+                  <span class="material-symbols-outlined text-[16px]">refresh</span> Cambiar Foto
+                </button>
+              </div>
             </div>
             
             <button type="button" id="btn-scan-qwen" class="hidden w-full py-2.5 bg-primary text-on-primary font-semibold rounded-xl text-sm flex items-center justify-center gap-2 shadow-md transition-all">
@@ -307,12 +330,19 @@ function setupEventListeners() {
 
   let currentPhotoBase64 = "";
 
+  const fileCamera = document.getElementById("vale-file-camera");
+  const fileGallery = document.getElementById("vale-file-gallery");
+  const previewContainer = document.getElementById("vale-photo-preview-container");
+  const btnCamera = document.getElementById("btn-open-camera");
+  const btnGallery = document.getElementById("btn-open-gallery");
+  const btnChangePhoto = document.getElementById("btn-change-photo");
+
   document.getElementById("btn-nuevo-vale").addEventListener("click", () => {
     document.getElementById("form-vale").reset();
     document.getElementById("vale-fecha").value = new Date().toISOString().split('T')[0];
     currentPhotoBase64 = "";
     preview.src = "";
-    preview.classList.add("hidden");
+    previewContainer.classList.add("hidden");
     placeholder.classList.remove("hidden");
     btnScanQwen.classList.add("hidden");
     modalVale.classList.remove("hidden");
@@ -322,24 +352,32 @@ function setupEventListeners() {
   document.getElementById("btn-cancelar-vale").addEventListener("click", () => modalVale.classList.add("hidden"));
   document.getElementById("close-modal-foto").addEventListener("click", () => modalFoto.classList.add("hidden"));
 
-  // Dropzone / Photo Upload
-  dropzone.addEventListener("click", () => fileInput.click());
+  // Eventos de botones
+  btnCamera.addEventListener("click", () => fileCamera.click());
+  btnGallery.addEventListener("click", () => fileGallery.click());
+  btnChangePhoto?.addEventListener("click", () => {
+    previewContainer.classList.add("hidden");
+    placeholder.classList.remove("hidden");
+    btnScanQwen.classList.add("hidden");
+    currentPhotoBase64 = "";
+  });
 
-  fileInput.addEventListener("change", async (e) => {
-    const file = e.target.files[0];
+  const handleFileSelect = async (file) => {
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = async (evt) => {
       const rawBase64 = evt.target.result;
       currentPhotoBase64 = await compressImage(rawBase64, 1024, 1024, 0.8);
       preview.src = currentPhotoBase64;
-      preview.classList.remove("hidden");
+      previewContainer.classList.remove("hidden");
       placeholder.classList.add("hidden");
       btnScanQwen.classList.remove("hidden");
     };
     reader.readAsDataURL(file);
-  });
+  };
+
+  fileCamera.addEventListener("change", (e) => handleFileSelect(e.target.files[0]));
+  fileGallery.addEventListener("change", (e) => handleFileSelect(e.target.files[0]));
 
   // IA Scan Button
   btnScanQwen.addEventListener("click", async () => {
