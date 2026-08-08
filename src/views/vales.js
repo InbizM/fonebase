@@ -93,7 +93,7 @@ export async function initValesFisicos() {
           <div class="space-y-2">
             <label class="block text-xs font-bold text-on-surface-variant uppercase tracking-wider">Foto del Vale Físico</label>
             <div id="vale-photo-dropzone" class="border-2 border-dashed border-surface-variant rounded-2xl p-5 text-center cursor-pointer hover:border-primary transition-colors bg-surface-container/40">
-              <input type="file" id="vale-file-input" accept="image/*" capture="environment" class="hidden">
+              <input type="file" id="vale-file-input" accept="image/*" class="hidden">
               <div id="vale-photo-placeholder" class="space-y-2">
                 <span class="material-symbols-outlined text-4xl text-on-surface-variant">add_a_photo</span>
                 <p class="text-sm font-semibold text-primary">Haz clic para tomar foto o seleccionar imagen</p>
