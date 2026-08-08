@@ -32,6 +32,7 @@ if ('serviceWorker' in navigator) {
 }
 
 import { navigate, registerView, onRouteChange, onBeforeRoute } from "./router.js";
+import { closeScanner } from "./scanner.js";
 import { initInventory } from "./views/inventory.js";
 import { initDashboard } from "./views/dashboard.js";
 import { initPOS } from "./views/pos.js";
@@ -47,6 +48,7 @@ import { initTechnical } from "./views/technical.js";
 import { initExpenses } from "./views/expenses.js";
 import { initNominas } from "./views/nominas.js";
 import { initSettings } from "./views/settings.js";
+import { initValesFisicos } from "./views/vales.js";
 import { showToast, showConfirm } from "./toast.js";
 import { login, verifyPin, logout, setToken, getToken, getAjustesEmpresa } from "./api.js";
 
@@ -127,6 +129,7 @@ const NAV_GROUPS = [
       { id: "pos",           label: "Ventas (POS)",        icon: "point_of_sale", roles: ["Administrador", "Vendedor"] },
       { id: "sales-history", label: "Historial de Ventas", icon: "history",       roles: ["Administrador", "Vendedor"] },
       { id: "credits",       label: "Créditos",            icon: "credit_score",  roles: ["Administrador", "Vendedor"] },
+      { id: "vales_fisicos", label: "Vales Físicos",       icon: "photo_camera",  roles: ["Administrador", "Vendedor"] },
       { id: "expenses",      label: "Egresos",             icon: "payments",      roles: ["Administrador"] },
       { id: "nominas",       label: "Nóminas",             icon: "request_quote", roles: ["Administrador"] }
     ]
@@ -377,6 +380,11 @@ function showApp(nombre, rol) {
   const userRol = rol || 'Vendedor';
   
   onBeforeRoute((viewId) => {
+    try {
+      closeScanner();
+    } catch (e) {
+      console.warn("[Router] No se pudo cerrar el escáner al cambiar de ruta:", e);
+    }
     let allowed = false;
     let found = false;
     NAV_GROUPS.forEach(g => {
@@ -426,6 +434,7 @@ function showApp(nombre, rol) {
   registerView("expenses", initExpenses());
   registerView("nominas", initNominas());
   registerView("settings", initSettings());
+  registerView("vales_fisicos", () => initValesFisicos());
 
   const initialHash = window.location.hash.replace('#', '');
   navigate(initialHash || "dashboard");

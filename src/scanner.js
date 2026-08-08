@@ -1,6 +1,7 @@
 import { createWorker } from 'tesseract.js';
 
 let _isRunning = false;
+let _wantsToRun = false;
 let _onScanCallback = null;
 let _facingMode = "environment";
 let _torchOn = false;
@@ -622,12 +623,30 @@ async function switchCamera() {
 function stopStream() {
   _isRunning = false;
   _decoding  = false;
-  if (_videoStream) { _videoStream.getTracks().forEach(t => t.stop()); _videoStream = null; }
-  if (videoEl)  videoEl.srcObject = null;
+  _wantsToRun = false;
+  if (_videoStream) {
+    try {
+      _videoStream.getTracks().forEach(t => t.stop());
+    } catch (e) {
+      console.warn("[Scanner] Error al detener pista del stream:", e);
+    }
+    _videoStream = null;
+  }
+  if (videoEl) {
+    try {
+      videoEl.pause();
+      videoEl.srcObject = null;
+      videoEl.removeAttribute("src");
+      videoEl.load();
+    } catch (e) {
+      console.warn("[Scanner] Error al apagar elemento video:", e);
+    }
+  }
   if (_animFrameId) { cancelAnimationFrame(_animFrameId); _animFrameId = null; }
 }
 
 async function startScannerFeed() {
+  _wantsToRun = true;
   try {
     let constraints;
 
@@ -649,7 +668,13 @@ async function startScannerFeed() {
       constraints = { video: { facingMode: "user" } };
     }
 
-    _videoStream = await navigator.mediaDevices.getUserMedia(constraints);
+    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+    if (!_wantsToRun) {
+      console.log("[Scanner] El stream se obtuvo pero el escáner ya no debe ejecutarse. Deteniendo.");
+      stream.getTracks().forEach(t => t.stop());
+      return;
+    }
+    _videoStream = stream;
     videoEl.srcObject = _videoStream;
 
     const track = _videoStream.getVideoTracks()[0];
@@ -888,6 +913,7 @@ export async function openScanner({ title = "Escanear Código", onScan, filter =
   await initDecoders();
   ensureDOM();
 
+  _wantsToRun      = true;
   _onScanCallback  = onScan;
   _facingMode      = "environment";
   _torchOn         = false;

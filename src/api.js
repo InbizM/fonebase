@@ -335,14 +335,14 @@ async function callGeminiDirect(base64Data, mimeType, mode = "label") {
   // ============================================================
   console.warn("[Gemini API] Todos los modelos de Gemini fallaron. Iniciando fallback a OpenRouter...");
   
-  const openRouterApiKey = atob("c2stb3ItdjEtMmE3NmEzZjE3YzdmZDdhNjg2NmZiN2M3NjU4YThmNzk2MDQ1NzhjZGRlY2NmOGY2NzFiMGRhMzBmYjYyY2FiZQ==");
+  const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
   
   const openRouterModels = [
-    "meta-llama/llama-3.2-11b-vision-instruct:free",
-    "qwen/qwen-2-vl-7b-instruct:free",
-    "google/gemma-3-4b-it:free",
-    "openrouter/free"
+    "qwen/qwen3.7-flash",
+    "qwen/qwen3.5-flash-02-23",
+    "qwen/qwen3.5-9b",
+    "qwen/qwen3-vl-32b-instruct"
   ];
 
   const openRouterContent = [{ type: "text", text: prompt }];
@@ -721,3 +721,93 @@ export const saveAjustesEmpresa = (c) => queryTurso({
   sql: "UPDATE ajustes_empresa SET nombre=?, nit=?, propietario=?, telefono=?, direccion=?, ciudad=?, contacto=?, correo=?, condiciones=?, logo=?, logo_size=?, mostrar_nombre=? WHERE id=1",
   args: mapArgs([c.nombre, c.nit, c.propietario, c.telefono, c.direccion, c.ciudad, c.contacto, c.correo, c.condiciones, c.logo || '', c.logo_size || 40, c.mostrar_nombre !== undefined ? c.mostrar_nombre : 1])
 });
+
+// ── VALES FÍSICOS ──
+export const getValesFisicos = async () => {
+  const results = await queryTurso("SELECT * FROM vales_fisicos ORDER BY id DESC");
+  return results[0] || [];
+};
+
+export const crearValeFisico = (v) => queryTurso({
+  sql: "INSERT INTO vales_fisicos (cliente, producto, cantidad, monto, estado, fecha, foto_base64) VALUES (?,?,?,?,?,?,?)",
+  args: mapArgs([v.cliente, v.producto, v.cantidad || 1, v.monto || 0, v.estado || 'Pendiente', v.fecha || new Date().toISOString().split('T')[0], v.foto_base64 || ''])
+});
+
+export const cambiarEstadoVale = (id, estado) => queryTurso({
+  sql: "UPDATE vales_fisicos SET estado = ? WHERE id = ?",
+  args: [{ type: "text", value: estado }, { type: "integer", value: Number(id) }]
+});
+
+export const eliminarValeFisico = (id) => queryTurso({
+  sql: "DELETE FROM vales_fisicos WHERE id = ?",
+  args: [{ type: "integer", value: Number(id) }]
+});
+
+export const procesarValeOcrConQwen = async (base64Data) => {
+  const prompt = 'Eres un experto en lectura y digitalización de vales, recibos y pagarés escritos a mano o impresos en español. ' +
+    'Analiza la foto del vale adjunta y extrae los siguientes datos en un formato JSON exacto sin texto explicativo adicional:\n\n' +
+    '{\n' +
+    '  "cliente": "nombre de la persona o cliente que solicitó el vale o se llevó el producto",\n' +
+    '  "producto": "descripción breve del producto, artículo o servicio que se llevó",\n' +
+    '  "cantidad": 1,\n' +
+    '  "monto": 50000,\n' +
+    '  "fecha": "AAAA-MM-DD"\n' +
+    '}\n\n' +
+    'REGLAS:\n' +
+    '- "cliente": Extrae el nombre o razón social. Si no es visible, pon "Cliente de Contado".\n' +
+    '- "producto": Describe lo que se llevó. Si hay varios ítems, concaténalos en una sola frase.\n' +
+    '- "cantidad": Número entero de la cantidad total de artículos. Si no especifica, usa 1.\n' +
+    '- "monto": Número entero o decimal sin símbolos ni puntos de miles. Si dice $50.000 responder 50000. Si no visualizas monto responder 0.\n' +
+    '- "fecha": Fecha en formato AAAA-MM-DD. Si no es visible, usa la fecha actual.\n' +
+    '- Devuelve únicamente el objeto JSON sin bloques de marcado markdown ```json ```.';
+
+  const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
+  const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
+
+  let dataUrl = base64Data;
+  if (!dataUrl.startsWith("data:")) {
+    dataUrl = `data:image/jpeg;base64,${dataUrl}`;
+  }
+
+  const response = await fetch(openRouterUrl, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${openRouterApiKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: "qwen/qwen3.7-flash",
+      messages: [
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: dataUrl } }
+          ]
+        }
+      ],
+      temperature: 0.1
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Error en API Qwen (${response.status}): ${await response.text()}`);
+  }
+
+  const resData = await response.json();
+  const rawText = resData.choices[0]?.message?.content || "";
+  const cleanedJson = rawText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+
+  try {
+    return JSON.parse(cleanedJson);
+  } catch (e) {
+    console.error("Error al parsear JSON de Qwen:", rawText);
+    return {
+      cliente: "Cliente no identificado",
+      producto: rawText.substring(0, 100),
+      cantidad: 1,
+      monto: 0,
+      fecha: new Date().toISOString().split('T')[0]
+    };
+  }
+};
