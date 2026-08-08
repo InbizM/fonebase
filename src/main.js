@@ -509,14 +509,13 @@ async function handleLoginStep1(e) {
   btn.disabled = true; btn.textContent = "Verificando...";
   try {
     const res = await login(email, pwd);
-    if (res.success) {
-      currentUser = { nombre: res.nombre, rol: res.rol, email: res.email };
-      updateUserUI();
-      document.getElementById("login-screen").classList.add("hidden");
-      document.getElementById("app-layout").classList.remove("hidden");
-      showToast(`¡Bienvenido, ${currentUser.nombre}! 👋`, "success");
-      navigate("pos");
+    if (res.success && res.token) {
+      saveSession({ email: res.email, nombre: res.nombre, rol: res.rol }, res.token);
+      showApp(res.nombre, res.rol);
+      showToast(`¡Bienvenido, ${res.nombre}! 👋`, "success");
       document.getElementById("login-form").reset();
+    } else {
+      showToast(res.mensaje || "Credenciales incorrectas", "error");
     }
   } catch (err) { 
     showToast("Error de conexión: " + err.message, "error"); 
