@@ -726,11 +726,15 @@
 
           <!-- Search + Filter bar -->
           <div class="flex flex-col sm:flex-row gap-2.5 mb-5 bg-surface-container-lowest border border-surface-variant rounded-xl p-2.5 shadow-sm sticky top-14 z-20 backdrop-blur-md">
-            <div class="relative flex-1 min-w-0">
-              <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
-              <input id="inv-search" type="text" placeholder="Buscar por nombre, marca, SKU..."
-                class="w-full bg-transparent pl-10 pr-4 py-2 text-sm text-on-background placeholder-on-surface-variant
-                       focus:outline-none focus:ring-1 focus:ring-primary/40 rounded-lg transition-all truncate" />
+            <div class="relative flex-1 min-w-0 flex gap-2">
+              <div class="relative flex-1">
+                <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
+                <input id="inv-search" type="text" placeholder="Buscar por nombre, marca, SKU..."
+                  class="w-full bg-surface-container-lowest border border-surface-variant rounded-xl pl-10 pr-4 py-2 text-sm text-on-surface focus:outline-none focus:border-primary shadow-sm truncate" />
+              </div>
+              <button id="inv-search-scan-btn" type="button" title="Escanear Producto" class="p-2 bg-surface-container text-primary rounded-xl hover:bg-primary/10 transition-colors shadow-sm border border-surface-variant flex items-center justify-center flex-shrink-0">
+                <span class="material-symbols-outlined text-[20px]">qr_code_scanner</span>
+              </button>
             </div>
             <div class="grid grid-cols-2 sm:flex gap-2 w-full sm:w-auto shrink-0 z-30">
               <!-- Custom Category Filter -->

@@ -876,6 +876,28 @@ export function initInventory() {
   // Search
   document.getElementById("inv-search")?.addEventListener("input", applyFilter);
   
+  document.getElementById("inv-search-scan-btn")?.addEventListener("click", () => {
+    openScanner({
+      title: "Escanear Producto / SKU",
+      onScan: (code) => {
+        const searchInput = document.getElementById("inv-search");
+        if (searchInput) {
+          searchInput.value = code;
+          applyFilter();
+          showToast(`Buscando SKU: ${code}`, "info");
+
+          // Si hay exactamente un resultado, abrir su detalle automáticamente
+          if (filteredProductos.length === 1) {
+            inventoryView.openDetail(filteredProductos[0].id);
+            showToast("Producto encontrado", "success");
+          } else if (filteredProductos.length === 0) {
+            showToast("No se encontró el producto en inventario", "warning");
+          }
+        }
+      }
+    });
+  });
+  
   if (window.setupCustomSelect) {
     window.setupCustomSelect("inv-filter-tipo-container", "inv-filter-tipo", applyFilter);
     window.setupCustomSelect("inv-tipo-container", "inv-tipo");
