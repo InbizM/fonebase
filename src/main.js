@@ -786,15 +786,15 @@ window.buildCustomSelectOptions = function(containerId, hiddenInputId, items, pl
   }
   const triggerIcon = trigger.querySelector(".material-symbols-outlined");
 
-  // Build trigger events
-  trigger.addEventListener("click", (e) => {
+  // Build trigger events (Use direct assignment to prevent duplicate listeners on re-build)
+  trigger.onclick = (e) => {
     e.stopPropagation();
     // Close other custom selects first
     document.querySelectorAll(".custom-select-options").forEach(menu => {
       if (menu !== optionsMenu) menu.classList.add("hidden");
     });
     optionsMenu.classList.toggle("hidden");
-  });
+  };
 
   // Build options
   items.forEach(item => {

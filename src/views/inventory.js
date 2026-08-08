@@ -735,7 +735,10 @@ async function loadInventario() {
 function populateCategoryFilter() {
   const cats = [...new Set(productos.map(p => p.categoria).filter(Boolean))];
   if (window.buildCustomSelectOptions) {
-    const items = cats.map(c => ({ value: c, label: c, icon: "label" }));
+    const items = [
+      { value: "", label: "Todas las categorías", icon: "category" },
+      ...cats.map(c => ({ value: c, label: c, icon: "label" }))
+    ];
     window.buildCustomSelectOptions(
       "inv-filter-cat-container", 
       "inv-filter-cat", 
