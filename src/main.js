@@ -49,6 +49,7 @@ import { initExpenses } from "./views/expenses.js";
 import { initNominas } from "./views/nominas.js";
 import { initSettings } from "./views/settings.js";
 import { initValesFisicos } from "./views/vales.js";
+import { initKiosk } from "./views/kiosk.js";
 import { showToast, showConfirm } from "./toast.js";
 import { login, verifyPin, logout, setToken, getToken, getAjustesEmpresa } from "./api.js";
 
@@ -139,6 +140,7 @@ const NAV_GROUPS = [
     items: [
       { id: "inventory",     label: "Catálogo General",    icon: "inventory_2",   roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
       { id: "imei",          label: "Equipos IMEI",        icon: "phone_android", roles: ["Administrador", "Vendedor"] },
+      { id: "kiosk",         label: "Modo Kiosco",         icon: "tv",            roles: ["Administrador", "Vendedor"] },
       { id: "reventas",      label: "Reventas",            icon: "storefront",    roles: ["Administrador", "Vendedor"] }
     ]
   },
@@ -436,6 +438,7 @@ function showApp(nombre, rol) {
   registerView("nominas", initNominas());
   registerView("settings", initSettings());
   registerView("vales_fisicos", () => initValesFisicos());
+  registerView("kiosk", () => initKiosk());
 
   const initialHash = window.location.hash.replace('#', '');
   navigate(initialHash || "dashboard");
