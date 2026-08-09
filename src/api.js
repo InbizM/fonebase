@@ -249,102 +249,12 @@ async function callGeminiDirect(base64Data, mimeType, mode = "label") {
     });
   }
 
-  const models = [
-    "gemini-3.5-flash",
-    "gemini-2.5-flash",
-    "gemini-3.1-flash-lite",
-    "gemini-2.5-pro"
-  ];
-
-  let lastError = "";
-
-  for (let m = 0; m < models.length; m++) {
-    const modelName = models[m];
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-    
-    try {
-      console.log(`[Gemini API] Intentando con modelo: ${modelName}`);
-      const response = await fetch(apiUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: parts
-            }
-          ],
-          generationConfig: {
-            responseMimeType: "application/json",
-            temperature: 0.1
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        lastError = `Error de Gemini (${response.status}): ${errText.substring(0, 200)}`;
-        console.warn(`[Gemini API] Falló ${modelName}. Detalle: ${lastError}`);
-        continue;
-      }
-
-      const data = await response.json();
-      if (!data.candidates || data.candidates.length === 0) {
-        lastError = `Sin respuesta/candidatos de ${modelName}`;
-        console.warn(`[Gemini API] Falló ${modelName}. Detalle: ${lastError}`);
-        continue;
-      }
-
-      const candidate = data.candidates[0];
-      if (!candidate.content || !candidate.content.parts || candidate.content.parts.length === 0) {
-        lastError = `Respuesta vacía de ${modelName}`;
-        console.warn(`[Gemini API] Falló ${modelName}. Detalle: ${lastError}`);
-        continue;
-      }
-
-      const responseContent = candidate.content.parts[0].text.trim();
-      let jsonStr = responseContent;
-
-      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (codeBlockMatch) {
-        jsonStr = codeBlockMatch[1].trim();
-      }
-
-      const firstBrace = jsonStr.indexOf("{");
-      const lastBrace = jsonStr.lastIndexOf("}");
-      if (firstBrace !== -1 && lastBrace > firstBrace) {
-        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
-      }
-
-      const parsed = JSON.parse(jsonStr);
-      console.log(`[Gemini API] Éxito con el modelo: ${modelName}`);
-      return { success: true, data: parsed, model: modelName };
-
-    } catch (e) {
-      lastError = `Error con ${modelName}: ${e.message}`;
-      console.error(`[Gemini API] Excepción en ${modelName}:`, e);
-      if (m < models.length - 1) {
-        await new Promise(r => setTimeout(r, 500));
-      }
-    }
-  }
-
   // ============================================================
-  // OPENROUTER FALLBACK (En caso de que Gemini devuelva 429/Sin Cuota)
+  // ANALISIS DE IMAGEN CON IA (EXCLUSIVO QWEN 3.7 FLASH VIA OPENROUTER)
   // ============================================================
-  console.warn("[Gemini API] Todos los modelos de Gemini fallaron. Iniciando fallback a OpenRouter...");
-  
   const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
   
-  const openRouterModels = [
-    "qwen/qwen3.7-flash",
-    "qwen/qwen3.5-flash-02-23",
-    "qwen/qwen3.5-9b",
-    "qwen/qwen3-vl-32b-instruct"
-  ];
-
   const openRouterContent = [{ type: "text", text: prompt }];
 
   if (Array.isArray(base64Data)) {
@@ -369,75 +279,61 @@ async function callGeminiDirect(base64Data, mimeType, mode = "label") {
     });
   }
 
-  let openRouterLastError = "";
+  try {
+    console.log("[Qwen 3.7 Flash] Analizando imagen de inventario...");
+    const response = await fetch(openRouterUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openRouterApiKey}`,
+        "HTTP-Referer": "https://adminpro.local",
+        "X-Title": "FoneBase Inventory AI"
+      },
+      body: JSON.stringify({
+        model: "qwen/qwen3.7-flash",
+        messages: [
+          {
+            role: "user",
+            content: openRouterContent
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 4000
+      })
+    });
 
-  for (let m = 0; m < openRouterModels.length; m++) {
-    const modelName = openRouterModels[m];
-    try {
-      console.log(`[OpenRouter Fallback] Intentando con modelo: ${modelName}`);
-      const response = await fetch(openRouterUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openRouterApiKey}`,
-          "HTTP-Referer": "https://adminpro.local",
-          "X-Title": "FoneBase Inventory AI Fallback"
-        },
-        body: JSON.stringify({
-          model: modelName,
-          messages: [
-            {
-              role: "user",
-              content: openRouterContent
-            }
-          ],
-          temperature: 0.1,
-          max_tokens: 1500
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        openRouterLastError = `Error de OpenRouter (${response.status}): ${errText.substring(0, 200)}`;
-        console.warn(`[OpenRouter Fallback] Falló ${modelName}. Detalle: ${openRouterLastError}`);
-        continue;
-      }
-
-      const data = await response.json();
-      if (!data.choices || data.choices.length === 0) {
-        openRouterLastError = `Sin respuesta/candidatos de ${modelName}`;
-        console.warn(`[OpenRouter Fallback] Falló ${modelName}. Detalle: ${openRouterLastError}`);
-        continue;
-      }
-
-      const responseContent = data.choices[0].message.content.trim();
-      let jsonStr = responseContent;
-
-      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (codeBlockMatch) {
-        jsonStr = codeBlockMatch[1].trim();
-      }
-
-      const firstBrace = jsonStr.indexOf("{");
-      const lastBrace = jsonStr.lastIndexOf("}");
-      if (firstBrace !== -1 && lastBrace > firstBrace) {
-        jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
-      }
-
-      const parsed = JSON.parse(jsonStr);
-      console.log(`[OpenRouter Fallback] Éxito con el modelo: ${modelName}`);
-      return { success: true, data: parsed, model: modelName };
-
-    } catch (e) {
-      openRouterLastError = `Error con ${modelName}: ${e.message}`;
-      console.error(`[OpenRouter Fallback] Excepción en ${modelName}:`, e);
-      if (m < openRouterModels.length - 1) {
-        await new Promise(r => setTimeout(r, 500));
-      }
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Error de OpenRouter (${response.status}): ${errText.substring(0, 200)}`);
     }
-  }
 
-  return { success: false, mensaje: `No se pudo analizar la imagen con ningún modelo de Gemini (Error: ${lastError}) ni de OpenRouter (Error: ${openRouterLastError})` };
+    const data = await response.json();
+    if (!data.choices || data.choices.length === 0) {
+      throw new Error("Sin respuesta del modelo Qwen 3.7 Flash");
+    }
+
+    const responseContent = data.choices[0].message.content.trim();
+    let jsonStr = responseContent;
+
+    const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim();
+    }
+
+    const firstBrace = jsonStr.indexOf("{");
+    const lastBrace = jsonStr.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+    }
+
+    const parsed = JSON.parse(jsonStr);
+    console.log("[Qwen 3.7 Flash] Éxito al analizar producto:", parsed);
+    return { success: true, data: parsed, model: "qwen/qwen3.7-flash" };
+
+  } catch (e) {
+    console.error("[Qwen 3.7 Flash] Excepción al analizar imagen:", e);
+    return { success: false, mensaje: `Error de análisis con Qwen 3.7 Flash: ${e.message}` };
+  }
 }
 
 export const analyzeLabelImage = async (base64Data, mimeType) => await callGeminiDirect(base64Data, mimeType, "label");
