@@ -15,23 +15,25 @@ export async function initKiosk() {
     const productosInv = (inv || []).filter(p => p.imagen && p.precioVenta > 0).map(p => ({
       id: p.id,
       nombre: p.nombre,
-      marca: p.marca || "Premium",
+      marca: p.marca || "Editorial",
       categoria: p.categoria || "Accesorio",
       precio: p.precioVenta,
       imagen: p.imagen,
-      destacado: p.categoria === "Celulares" ? "OFERTA RECOMENDADA" : "OFERTA FLASH",
-      specs: [p.color ? `Color: ${p.color}` : null, p.ram ? `RAM: ${p.ram}` : null, p.memoria ? `Almacenamiento: ${p.memoria}` : null].filter(Boolean)
+      destacado: p.categoria === "Celulares" ? "LA COLECCIÓN EXCLUSIVA" : "EL DETALLE PERFECTO",
+      subtitulo: "Diseño de vanguardia y rendimiento excepcional en cada línea.",
+      specs: [p.color ? `Acabado ${p.color}` : null, p.ram ? `Rendimiento de ${p.ram} RAM` : null, p.memoria ? `Espacio: ${p.memoria}` : null].filter(Boolean)
     }));
 
     const productosEq = (eq || []).filter(e => e.venta > 0 && e.estado === "Disponible").map(e => ({
       id: e.imei1,
       nombre: e.nombre,
-      marca: e.marca || "Smartphone",
+      marca: e.marca || "Signature",
       categoria: "Celular IMEI",
       precio: e.venta,
       imagen: e.imagen || "https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?q=80&w=800&auto=format&fit=crop",
-      destacado: "EQUIPO DISPONIBLE",
-      specs: [`IMEI: ${e.imei1}`, `Garantía Oficial`, `Entrega Inmediata`]
+      destacado: "EDICIÓN DE COLECCIONISTA",
+      subtitulo: "La obra maestra de la tecnología móvil ya está disponible en tienda.",
+      specs: [`Garantía Certificada`, `Disponibilidad Inmediata`, `IMEI Registrado`]
     }));
 
     _kioskProducts = [...productosInv, ...productosEq];
@@ -40,22 +42,24 @@ export async function initKiosk() {
         {
           id: "demo-1",
           nombre: "iPhone 15 Pro Max 256GB",
-          marca: "Apple",
+          marca: "Apple Edition",
           categoria: "Smartphone",
           precio: 4890000,
           imagen: "https://images.unsplash.com/photo-1695048133142-1a20484d2569?q=80&w=800&auto=format&fit=crop",
-          destacado: "🔥 SUPER OFERTA DEL DÍA",
-          specs: ["Pantalla 6.7'' Super Retina XDR", "Chip A17 Pro Titanium", "Cámara 48MP Zoom 5x"]
+          destacado: "LA CÚSPIDE DE LA ELEGANCIA",
+          subtitulo: "Un marco de titanio cepillado que redefine la sofisticación moderna y la potencia.",
+          specs: ["Pantalla 6.7'' Super Retina XDR", "Estructura de Titanio Grado 5", "Cámara Teleobjetivo de 120mm"]
         },
         {
           id: "demo-2",
-          nombre: "Samsung Galaxy S24 Ultra 512GB",
-          marca: "Samsung",
+          nombre: "Galaxy S24 Ultra Titanium",
+          marca: "Samsung Lux",
           categoria: "Smartphone",
           precio: 4590000,
           imagen: "https://images.unsplash.com/photo-1610945265064-0e34e5519bbf?q=80&w=800&auto=format&fit=crop",
-          destacado: "⚡ INVENTARIO DESTACADO",
-          specs: ["Galaxy AI Integrado", "S-Pen Incluido", "Titanium Black"]
+          destacado: "EL FUTURO ES INTELIGENCIA",
+          subtitulo: "Inteligencia artificial que optimiza cada momento de tu rutina diaria.",
+          specs: ["Galaxy AI Integrada", "Lápiz Óptico Integrado", "Estructura de Titanio Puro"]
         }
       ];
     }
@@ -72,114 +76,122 @@ function renderKioskUI(container) {
   const current = _kioskProducts[_currentIndex] || _kioskProducts[0];
   const formattedPrice = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(current.precio);
 
+  // Layout inspirado en revistas de moda clásicas (Vogue / Harper's Bazaar) y editoriales de periódicos finos
   container.innerHTML = `
-    <div class="fixed inset-0 z-50 bg-[#09090b] text-white flex flex-col justify-between p-6 md:p-12 overflow-hidden select-none">
+    <div class="fixed inset-0 z-50 bg-[#fbfbf9] text-[#1a1a1a] flex flex-col justify-between p-6 md:p-12 overflow-hidden select-none font-serif">
       
-      <!-- Top Banner -->
-      <div class="flex items-center justify-between border-b border-white/10 pb-6">
-        <div class="flex items-center gap-3">
-          <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-red-600 to-rose-400 flex items-center justify-center shadow-lg shadow-red-500/30 animate-pulse">
-            <span class="material-symbols-outlined text-white text-[28px]">stars</span>
-          </div>
-          <div>
-            <h2 class="text-2xl font-extrabold tracking-tight" style="font-family: 'Outfit', sans-serif;">
-              <span class="text-red-500">Fone</span>Base <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 uppercase tracking-widest ml-2">Exhibición Tienda</span>
-            </h2>
-            <p class="text-slate-400 text-xs">Catálogo de Productos y Ofertas Exclusivas</p>
-          </div>
+      <!-- Top Newspaper-Style Header Banner -->
+      <div class="flex flex-col md:flex-row items-center justify-between border-b-2 border-[#1a1a1a] pb-6">
+        <div class="text-center md:text-left">
+          <p class="text-[10px] uppercase tracking-[0.3em] font-sans font-bold text-slate-500">Vol. III — Edición Especial de Tienda</p>
+          <h2 class="text-4xl md:text-5xl tracking-normal font-black uppercase text-[#1a1a1a] mt-1" style="font-family: 'Cinzel', serif;">
+            THE FONEBASE JOURNAL
+          </h2>
         </div>
 
-        <div class="flex items-center gap-4">
-          <button id="kiosk-pause-btn" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-sm font-semibold transition-all backdrop-blur-md border border-white/10">
-            <span class="material-symbols-outlined text-[18px]">${_isPaused ? 'play_arrow' : 'pause'}</span>
+        <div class="flex items-center gap-4 mt-4 md:mt-0 font-sans">
+          <button id="kiosk-pause-btn" class="flex items-center gap-2 px-5 py-2.5 rounded-none bg-transparent hover:bg-[#1a1a1a]/5 text-[#1a1a1a] text-xs font-black uppercase tracking-widest transition-all border border-[#1a1a1a]">
+            <span class="material-symbols-outlined text-[16px]">${_isPaused ? 'play_arrow' : 'pause'}</span>
             <span>${_isPaused ? 'Reanudar' : 'Pausar'}</span>
           </button>
           
-          <button id="kiosk-exit-btn" class="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600/30 hover:bg-red-600 text-red-300 hover:text-white text-sm font-semibold transition-all border border-red-500/40 shadow-lg shadow-red-900/20">
-            <span class="material-symbols-outlined text-[18px]">logout</span>
-            <span>Salir de Kiosco</span>
+          <button id="kiosk-exit-btn" class="flex items-center gap-2 px-5 py-2.5 rounded-none bg-[#1a1a1a] hover:bg-red-800 text-white text-xs font-black uppercase tracking-widest transition-all border border-transparent shadow-md">
+            <span class="material-symbols-outlined text-[16px]">logout</span>
+            <span>Salir</span>
           </button>
         </div>
       </div>
 
-      <!-- Main Showcase Grid -->
-      <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 my-auto items-center max-w-7xl mx-auto w-full">
+      <!-- Main Newspaper Grid Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 my-auto items-center max-w-7xl mx-auto w-full">
         
-        <!-- Left: Image Display -->
-        <div class="lg:col-span-6 flex justify-center items-center relative group">
-          <div class="absolute inset-0 bg-gradient-to-tr from-red-600/20 to-purple-600/20 rounded-3xl blur-3xl opacity-60"></div>
-          
-          <div class="relative w-full max-w-[480px] h-[380px] md:h-[460px] rounded-3xl overflow-hidden border border-white/15 bg-black/40 backdrop-blur-2xl shadow-2xl flex items-center justify-center p-6">
-            <img src="${current.imagen}" alt="${current.nombre}" class="w-full h-full object-contain drop-shadow-[0_20px_50px_rgba(230,23,26,0.3)] transition-transform duration-700 ease-out hover:scale-105" />
-            
-            <div class="absolute top-4 left-4 bg-red-600 text-white text-xs font-black uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-lg">
-              ${current.destacado}
-            </div>
-          </div>
-        </div>
-
-        <!-- Right: Product Info & Price -->
-        <div class="lg:col-span-6 flex flex-col justify-center space-y-6">
+        <!-- Left Section: Editorial Product Story & Specs -->
+        <div class="lg:col-span-4 flex flex-col justify-center space-y-6 text-left border-r-0 lg:border-r border-[#1a1a1a]/20 lg:pr-8">
           <div>
-            <span class="text-xs font-bold text-red-400 tracking-widest uppercase bg-red-500/10 px-3 py-1 rounded-lg border border-red-500/20">${current.marca}</span>
-            <h1 class="text-4xl md:text-5xl font-black tracking-tight text-white mt-3 leading-tight" style="font-family: 'Outfit', sans-serif;">
+            <span class="text-xs font-bold text-red-700 tracking-[0.2em] uppercase font-sans border-b-2 border-red-700 pb-1">${current.marca}</span>
+            <p class="text-[11px] font-sans font-semibold tracking-wider text-slate-500 uppercase mt-4">${current.destacado}</p>
+            <h1 class="text-3xl md:text-5xl font-normal text-[#1a1a1a] mt-2 tracking-tight leading-none" style="font-family: 'Playfair Display', serif;">
               ${current.nombre}
             </h1>
           </div>
 
-          <!-- Price Tag -->
-          <div class="p-6 rounded-2xl bg-gradient-to-r from-red-950/40 via-red-900/20 to-transparent border border-red-500/30 backdrop-blur-xl">
-            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-1">Precio Especial de Contado</span>
-            <span class="text-4xl md:text-6xl font-black text-emerald-400 tracking-tight" style="font-family: 'Space Grotesk', sans-serif;">
-              ${formattedPrice}
-            </span>
-          </div>
+          <p class="text-sm md:text-base text-slate-700 leading-relaxed italic" style="font-family: 'Playfair Display', serif;">
+            "${current.subtitulo || 'La esencia de la tecnología y estética se fusionan para entregar una experiencia visual superior.'}"
+          </p>
 
-          <!-- Specs List -->
+          <!-- Specifications Editorial Style -->
           ${current.specs && current.specs.length > 0 ? `
-            <div class="space-y-2">
-              <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Características Principales:</h4>
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div class="space-y-3 pt-2">
+              <h4 class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans">Notas de la Colección</h4>
+              <div class="space-y-2">
                 ${current.specs.map(spec => `
-                  <div class="flex items-center gap-2 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-sm text-slate-200">
-                    <span class="material-symbols-outlined text-red-500 text-[18px]">check_circle</span>
+                  <div class="flex items-center gap-2 text-xs text-[#1a1a1a] font-sans">
+                    <span class="w-1.5 h-1.5 bg-[#1a1a1a] rounded-full"></span>
                     <span>${spec}</span>
                   </div>
                 `).join('')}
               </div>
             </div>
           ` : ''}
+        </div>
+
+        <!-- Center Section: Elegant Image Canvas -->
+        <div class="lg:col-span-5 flex justify-center items-center relative py-6">
+          <div class="relative w-full max-w-[380px] h-[340px] md:h-[420px] rounded-none overflow-hidden bg-transparent border-t border-b border-[#1a1a1a] flex items-center justify-center p-4">
+            <!-- Vintage Paper texture layer -->
+            <div class="absolute inset-0 bg-[#f6f6f2] mix-blend-multiply opacity-80 pointer-events-none"></div>
+            
+            <img src="${current.imagen}" alt="${current.nombre}" class="w-full h-full object-contain drop-shadow-[0_15px_30px_rgba(0,0,0,0.15)] transition-transform duration-700 ease-out hover:scale-105" />
+          </div>
+        </div>
+
+        <!-- Right Section: Pricing and Editorial Ad Copy -->
+        <div class="lg:col-span-3 flex flex-col justify-center space-y-6 lg:pl-4 text-center lg:text-left">
+          <div class="border-t-2 border-b-2 border-[#1a1a1a] py-6">
+            <span class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em] font-sans block mb-1">Precio Sugerido</span>
+            <span class="text-4xl md:text-5xl font-black text-[#1a1a1a] tracking-tighter" style="font-family: 'Space Grotesk', sans-serif;">
+              ${formattedPrice}
+            </span>
+          </div>
+
+          <div class="space-y-2">
+            <p class="text-[10px] font-sans font-bold uppercase tracking-widest text-slate-400">Certificación</p>
+            <p class="text-xs text-slate-600 leading-normal" style="font-family: 'Playfair Display', serif;">
+              Garantía extendida provista por el fabricante oficial. Soporte especializado directamente en tienda física.
+            </p>
+          </div>
 
           <!-- Indicator Dots -->
-          <div class="flex items-center gap-2 pt-4">
+          <div class="flex items-center justify-center lg:justify-start gap-2 pt-4">
             ${_kioskProducts.map((_, idx) => `
-              <button data-kiosk-index="${idx}" class="h-2.5 rounded-full transition-all duration-300 ${idx === _currentIndex ? 'w-8 bg-red-500 shadow-md shadow-red-500/50' : 'w-2.5 bg-white/20 hover:bg-white/40'}"></button>
+              <button data-kiosk-index="${idx}" class="h-2 rounded-full transition-all duration-300 ${idx === _currentIndex ? 'w-8 bg-[#1a1a1a]' : 'w-2 bg-[#1a1a1a]/20 hover:bg-[#1a1a1a]/40'}"></button>
             `).join('')}
           </div>
         </div>
 
       </div>
 
-      <!-- Bottom Controls -->
-      <div class="flex items-center justify-between border-t border-white/10 pt-6">
-        <button id="kiosk-prev-btn" class="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold transition-all border border-white/10 active:scale-95">
-          <span class="material-symbols-outlined">arrow_back</span>
+      <!-- Bottom Newspaper Footer Info -->
+      <div class="flex flex-col sm:flex-row items-center justify-between border-t border-[#1a1a1a]/20 pt-6">
+        <button id="kiosk-prev-btn" class="flex items-center gap-2 px-5 py-2.5 rounded-none bg-transparent hover:bg-[#1a1a1a]/5 text-[#1a1a1a] text-xs font-black uppercase tracking-widest transition-all border border-[#1a1a1a] active:scale-95 font-sans">
+          <span class="material-symbols-outlined text-[16px]">arrow_back</span>
           <span>Anterior</span>
         </button>
 
-        <span class="text-xs text-slate-400 font-semibold tracking-wider">
-          Producto ${_currentIndex + 1} de ${_kioskProducts.length}
+        <span class="text-[10px] text-slate-500 font-bold uppercase tracking-[0.3em] font-sans mt-3 sm:mt-0">
+          Exposición N° ${_currentIndex + 1} de ${_kioskProducts.length}
         </span>
 
-        <button id="kiosk-next-btn" class="flex items-center gap-2 px-6 py-3 rounded-2xl bg-red-600 hover:bg-red-500 text-white font-bold transition-all shadow-lg shadow-red-600/30 active:scale-95">
+        <button id="kiosk-next-btn" class="flex items-center gap-2 px-5 py-2.5 rounded-none bg-[#1a1a1a] hover:bg-[#1a1a1a]/90 text-white text-xs font-black uppercase tracking-widest transition-all shadow-md active:scale-95 font-sans">
           <span>Siguiente</span>
-          <span class="material-symbols-outlined">arrow_forward</span>
+          <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
         </button>
       </div>
 
     </div>
   `;
 
+  // Listeners de navegación
   document.getElementById("kiosk-prev-btn")?.addEventListener("click", () => {
     _currentIndex = (_currentIndex - 1 + _kioskProducts.length) % _kioskProducts.length;
     renderKioskUI(container);
