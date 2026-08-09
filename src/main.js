@@ -237,7 +237,6 @@ function buildNavLinks(containerId, rol, mobile = false) {
             { id: "pos",           label: "Ventas (POS)",        icon: "point_of_sale", roles: ["Administrador", "Vendedor"] },
             { id: "sales-history", label: "Historial Ventas",   icon: "history",       roles: ["Administrador", "Vendedor"] },
             { id: "credits",       label: "Créditos",            icon: "credit_score",  roles: ["Administrador", "Vendedor"] },
-            { id: "vales_fisicos", label: "Vales Físicos",       icon: "photo_camera",  roles: ["Administrador", "Vendedor"] },
             { id: "expenses",      label: "Egresos",             icon: "payments",      roles: ["Administrador"] },
             { id: "nominas",       label: "Nóminas",             icon: "request_quote", roles: ["Administrador"] }
           ]
@@ -249,6 +248,7 @@ function buildNavLinks(containerId, rol, mobile = false) {
           items: [
             { id: "inventory",     label: "Catálogo General",    icon: "inventory_2",   roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
             { id: "imei",          label: "Equipos IMEI",        icon: "phone_android", roles: ["Administrador", "Vendedor"] },
+            { id: "kiosk",         label: "Modo Kiosco",         icon: "tv",            roles: ["Administrador", "Vendedor"] },
             { id: "reventas",      label: "Reventas",            icon: "storefront",    roles: ["Administrador", "Vendedor"] },
             { id: "technical",     label: "Servicio Técnico",    icon: "build",         roles: ["Administrador", "Técnico de reparación"] }
           ]
