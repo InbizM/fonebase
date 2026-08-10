@@ -381,13 +381,25 @@ export const login = async (email, password) => {
     const user = results[0]?.[0];
     if (!user) return { success: false, mensaje: "Credenciales incorrectas" };
     
-    // Bypass temporal de 2FA para desarrollo local rápido
-    const token = btoa(JSON.stringify({ email: user.email, nombre: user.nombre, rol: user.rol, exp: Date.now() + 24*60*60*1000 }));
-    setToken(token);
+    if (!user.totp_secret) {
+      const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+      let secret = "";
+      for (let i = 0; i < 16; i++) {
+        secret += alphabet.charAt(Math.floor(Math.random() * alphabet.length));
+      }
+      
+      await queryTurso({
+        sql: "UPDATE usuarios SET totp_secret = ? WHERE email = ?",
+        args: [{ type: "text", value: secret }, { type: "text", value: user.email.toLowerCase() }]
+      });
+      
+      const otpauthUrl = `otpauth://totp/FoneBase:${user.email}?secret=${secret}&issuer=FoneBase`;
+      const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
+      
+      return { success: true, step: "setup-totp", secret, qrCodeUrl, nombre: user.nombre };
+    }
     
-    const fullUser = { nombre: user.nombre, rol: user.rol, email: user.email, token };
-    localStorage.setItem("adminpro_user", JSON.stringify(fullUser));
-    return { success: true, ...fullUser };
+    return { success: true, step: "totp", nombre: user.nombre };
   } catch (err) {
     return { success: false, mensaje: "Error en base de datos: " + err.message };
   }

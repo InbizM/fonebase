@@ -522,11 +522,41 @@ async function handleLoginStep1(e) {
   btn.disabled = true; btn.textContent = "Verificando...";
   try {
     const res = await login(email, pwd);
-    if (res.success && res.token) {
-      saveSession({ email: res.email, nombre: res.nombre, rol: res.rol }, res.token);
-      showApp(res.nombre, res.rol);
-      showToast(`¡Bienvenido, ${res.nombre}! 👋`, "success");
-      document.getElementById("login-form").reset();
+    if (res.success) {
+      _pendingEmail = email;
+      const elSetupContainer = document.getElementById("totp-setup-container");
+      const elPinHint = document.getElementById("pin-hint");
+      
+      if (res.step === "setup-totp") {
+        if (elSetupContainer) elSetupContainer.classList.remove("hidden");
+        const elQr = document.getElementById("totp-qr");
+        const elSecret = document.getElementById("totp-secret-text");
+        if (elQr) elQr.src = res.qrCodeUrl;
+        if (elSecret) elSecret.textContent = res.secret;
+        if (elPinHint) elPinHint.textContent = "Escanea el código QR en tu app autenticadora e ingresa el código de 6 dígitos.";
+      } else {
+        if (elSetupContainer) elSetupContainer.classList.add("hidden");
+        if (elPinHint) elPinHint.textContent = "Ingresa el código de 6 dígitos de tu aplicación autenticadora.";
+      }
+      
+      // Rellena el avatar del login con las iniciales del usuario e ingresa el nombre
+      const elAvatar = document.getElementById("login-user-avatar");
+      const elName = document.getElementById("login-user-name");
+      if (elAvatar) {
+        elAvatar.textContent = (res.nombre ? res.nombre.charAt(0) : "U").toUpperCase();
+        elAvatar.className = "w-16 h-16 rounded-full bg-indigo-600/10 border border-indigo-600/30 flex items-center justify-center font-black text-xl text-indigo-500 select-none uppercase tracking-wider shadow-inner transition-all duration-300";
+      }
+      if (elName) {
+        elName.textContent = res.nombre || "";
+      }
+      
+      // Ejecuta showStep("pin"), limpia el input del pin y ponle el foco
+      showStep("pin");
+      const pinInput = document.getElementById("login-pin");
+      if (pinInput) {
+        pinInput.value = "";
+        pinInput.focus();
+      }
     } else {
       showToast(res.mensaje || "Credenciales incorrectas", "error");
     }
