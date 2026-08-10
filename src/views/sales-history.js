@@ -265,6 +265,18 @@ async function loadSalesHistory() {
   try {
     container.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-on-surface-variant italic text-sm">Cargando todas las ventas...</td></tr>`;
     _ventas = await getVentas();
+
+    // Filtrar ventas si el usuario no es Administrador
+    try {
+      const user = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
+      if (user.rol && user.rol !== "Administrador") {
+        const loggedInUser = (user.nombre || "").toLowerCase().trim();
+        _ventas = _ventas.filter(v => (v.vendedor || "").toLowerCase().trim() === loggedInUser);
+      }
+    } catch (e) {
+      console.error("Error al filtrar ventas en historial:", e);
+    }
+
     _filteredVentas = [..._ventas];
     renderTable();
   } catch (err) {

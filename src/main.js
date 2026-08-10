@@ -390,11 +390,43 @@ function showApp(nombre, rol) {
   
   const userRol = rol || 'Vendedor';
   
+  // Lógica para el Rol de Kiosco
+  const elSidebar = document.getElementById("desktop-sidebar");
+  const elHeader = document.getElementById("app-header");
+  const elMobileNav = document.getElementById("app-mobile-nav");
+  const elMainContent = document.getElementById("main-content");
+
+  if (userRol === "Kiosco") {
+    elSidebar?.classList.add("hidden");
+    elSidebar?.classList.remove("md:flex");
+    elHeader?.classList.add("hidden");
+    elMobileNav?.classList.add("hidden");
+    elMobileNav?.classList.remove("flex");
+    if (elMainContent) {
+      elMainContent.className = "min-h-screen w-full";
+    }
+  } else {
+    elSidebar?.classList.remove("hidden");
+    elSidebar?.classList.add("md:flex");
+    elHeader?.classList.remove("hidden");
+    elMobileNav?.classList.remove("hidden");
+    elMobileNav?.classList.add("flex");
+    if (elMainContent) {
+      elMainContent.className = "pt-14 md:ml-[260px] pb-40 md:pb-8 min-h-screen";
+    }
+  }
+  
   onBeforeRoute((viewId) => {
     try {
       closeScanner();
     } catch (e) {
       console.warn("[Router] No se pudo cerrar el escáner al cambiar de ruta:", e);
+    }
+    if (userRol === "Kiosco") {
+      if (viewId !== "kiosk") {
+        return "kiosk";
+      }
+      return;
     }
     let allowed = false;
     let found = false;

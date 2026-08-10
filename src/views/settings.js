@@ -27,6 +27,17 @@ function loadProfile() {
       if (elRole) elRole.textContent = user.rol || "Administrador";
       if (elEmail) elEmail.textContent = user.email || "No disponible";
       if (elAvatar) elAvatar.textContent = (user.nombre ? user.nombre.charAt(0) : "U").toUpperCase();
+
+      // RBAC en Ajustes
+      const leftCol = document.getElementById("settings-left-col");
+      const rightCol = document.getElementById("settings-right-col");
+      if (user.rol !== "Administrador") {
+        if (rightCol) rightCol.classList.add("hidden");
+        if (leftCol) leftCol.className = "lg:col-span-12 space-y-6";
+      } else {
+        if (rightCol) rightCol.classList.remove("hidden");
+        if (leftCol) leftCol.className = "lg:col-span-5 space-y-6";
+      }
     }
   } catch (e) {
     console.error("Error loading profile", e);

@@ -680,6 +680,7 @@ function setupFlashWizardEvents() {
 
   document.getElementById("pos-btn-venta-flash")?.addEventListener("click", openModalHandler);
   document.getElementById("pos-btn-venta-flash-mobile")?.addEventListener("click", openModalHandler);
+  document.getElementById("pos-header-venta-flash")?.addEventListener("click", openModalHandler);
   document.getElementById("pos-pay-btn-flash")?.addEventListener("click", openModalHandler);
   document.getElementById("pos-pay-btn-flash-mobile")?.addEventListener("click", openModalHandler);
 
