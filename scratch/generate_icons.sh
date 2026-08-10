@@ -18,28 +18,28 @@ echo "Generando ic_launcher.png y ic_launcher_round.png..."
 
 # mipmap-mdpi: 48x48
 mkdir -p "$RES_DIR/mipmap-mdpi"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 48x48 "$RES_DIR/mipmap-mdpi/ic_launcher.png"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 48x48 "$RES_DIR/mipmap-mdpi/ic_launcher_round.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 36x36 -gravity center -extent 48x48 "$RES_DIR/mipmap-mdpi/ic_launcher.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 36x36 -gravity center -extent 48x48 "$RES_DIR/mipmap-mdpi/ic_launcher_round.png"
 
 # mipmap-hdpi: 72x72
 mkdir -p "$RES_DIR/mipmap-hdpi"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 72x72 "$RES_DIR/mipmap-hdpi/ic_launcher.png"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 72x72 "$RES_DIR/mipmap-hdpi/ic_launcher_round.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 54x54 -gravity center -extent 72x72 "$RES_DIR/mipmap-hdpi/ic_launcher.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 54x54 -gravity center -extent 72x72 "$RES_DIR/mipmap-hdpi/ic_launcher_round.png"
 
 # mipmap-xhdpi: 96x96
 mkdir -p "$RES_DIR/mipmap-xhdpi"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 96x96 "$RES_DIR/mipmap-xhdpi/ic_launcher.png"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 96x96 "$RES_DIR/mipmap-xhdpi/ic_launcher_round.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 72x72 -gravity center -extent 96x96 "$RES_DIR/mipmap-xhdpi/ic_launcher.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 72x72 -gravity center -extent 96x96 "$RES_DIR/mipmap-xhdpi/ic_launcher_round.png"
 
 # mipmap-xxhdpi: 144x144
 mkdir -p "$RES_DIR/mipmap-xxhdpi"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 144x144 "$RES_DIR/mipmap-xxhdpi/ic_launcher.png"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 144x144 "$RES_DIR/mipmap-xxhdpi/ic_launcher_round.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 108x108 -gravity center -extent 144x144 "$RES_DIR/mipmap-xxhdpi/ic_launcher.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 108x108 -gravity center -extent 144x144 "$RES_DIR/mipmap-xxhdpi/ic_launcher_round.png"
 
 # mipmap-xxxhdpi: 192x192
 mkdir -p "$RES_DIR/mipmap-xxxhdpi"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 192x192 "$RES_DIR/mipmap-xxxhdpi/ic_launcher.png"
-$CONVERT_BIN -background none "$FAVICON_SVG" -resize 192x192 "$RES_DIR/mipmap-xxxhdpi/ic_launcher_round.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 144x144 -gravity center -extent 192x192 "$RES_DIR/mipmap-xxxhdpi/ic_launcher.png"
+$CONVERT_BIN -background none "$FAVICON_SVG" -resize 144x144 -gravity center -extent 192x192 "$RES_DIR/mipmap-xxxhdpi/ic_launcher_round.png"
 
 # 2. Generar ic_launcher_foreground.png a partir del favicon_foreground.svg (transparente)
 echo "Generando ic_launcher_foreground.png..."
@@ -49,19 +49,19 @@ cp "$FAVICON_SVG" "$FAVICON_FG_SVG"
 sed -i '7d' "$FAVICON_FG_SVG"
 
 # mipmap-mdpi: 108x108
-$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 108x108 "$RES_DIR/mipmap-mdpi/ic_launcher_foreground.png"
+$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 60x60 -gravity center -extent 108x108 "$RES_DIR/mipmap-mdpi/ic_launcher_foreground.png"
 
 # mipmap-hdpi: 162x162
-$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 162x162 "$RES_DIR/mipmap-hdpi/ic_launcher_foreground.png"
+$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 90x90 -gravity center -extent 162x162 "$RES_DIR/mipmap-hdpi/ic_launcher_foreground.png"
 
 # mipmap-xhdpi: 216x216
-$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 216x216 "$RES_DIR/mipmap-xhdpi/ic_launcher_foreground.png"
+$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 120x120 -gravity center -extent 216x216 "$RES_DIR/mipmap-xhdpi/ic_launcher_foreground.png"
 
 # mipmap-xxhdpi: 324x324
-$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 324x324 "$RES_DIR/mipmap-xxhdpi/ic_launcher_foreground.png"
+$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 180x180 -gravity center -extent 324x324 "$RES_DIR/mipmap-xxhdpi/ic_launcher_foreground.png"
 
 # mipmap-xxxhdpi: 432x432
-$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 432x432 "$RES_DIR/mipmap-xxxhdpi/ic_launcher_foreground.png"
+$CONVERT_BIN -background none "$FAVICON_FG_SVG" -resize 240x240 -gravity center -extent 432x432 "$RES_DIR/mipmap-xxxhdpi/ic_launcher_foreground.png"
 
 # Eliminar el archivo temporal
 rm "$FAVICON_FG_SVG"
