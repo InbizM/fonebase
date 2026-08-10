@@ -1,4 +1,4 @@
-import { getInventario, crearProducto, actualizarProducto, eliminarProducto, uploadFoto, analyzeLabelImage, analyzeImeiLabel } from "../api.js";
+import { getInventario, crearProducto, actualizarProducto, eliminarProducto, uploadFoto, analyzeLabelImage, analyzeImeiLabel, getAjustesEmpresa } from "../api.js";
 
 async function compressImage(base64Str, maxWidth = 1024, maxHeight = 1024, quality = 0.75) {
   return new Promise((resolve, reject) => {
@@ -931,6 +931,13 @@ export function initInventory() {
     }
   });
 
+  // Catalog PDF Button listeners
+  const triggerPdfCatalog = () => {
+    generatePdfCatalog();
+  };
+  document.getElementById("inv-pdf-btn")?.addEventListener("click", triggerPdfCatalog);
+  document.getElementById("inv-pdf-btn-desktop")?.addEventListener("click", triggerPdfCatalog);
+
   // Number formatters
   document.getElementById("inv-costo")?.addEventListener("input", formatNumberInput);
   document.getElementById("inv-venta")?.addEventListener("input", formatNumberInput);
@@ -1182,4 +1189,728 @@ export function initInventory() {
   });
 
   return loadInventario;
+}
+
+// ---- Generador de Catálogo PDF ----
+async function generatePdfCatalog() {
+  const btnMobile = document.getElementById("inv-pdf-btn");
+  const btnDesktop = document.getElementById("inv-pdf-btn-desktop");
+  
+  const setButtonsLoading = (isLoading) => {
+    if (btnMobile) {
+      btnMobile.disabled = isLoading;
+      btnMobile.innerHTML = isLoading 
+        ? `<span class="material-symbols-outlined animate-spin text-[16px]">progress_activity</span><span>PDF</span>`
+        : `<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span><span>PDF</span>`;
+    }
+    if (btnDesktop) {
+      btnDesktop.disabled = isLoading;
+      btnDesktop.innerHTML = isLoading 
+        ? `<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span><span>Cargando...</span>`
+        : `<span class="material-symbols-outlined text-[18px]">picture_as_pdf</span><span>Generar Catálogo PDF</span>`;
+    }
+  };
+
+  setButtonsLoading(true);
+
+  try {
+    const settings = await getAjustesEmpresa().catch(() => null) || {};
+    const storeName = settings.nombre || "ADMINPRO";
+    const storePhone = settings.telefono || "";
+    const storeLogo = settings.logo || "";
+    const storeAddress = settings.direccion || "";
+    const storeCity = settings.ciudad || "";
+
+    // Count in-stock products per category
+    const categoryCounts = {};
+    productos.forEach(p => {
+      if (Number(p.stockActual || 0) > 0 && Number(p.precioVenta || 0) > 0) {
+        const cat = p.categoria || "Otros";
+        categoryCounts[cat] = (categoryCounts[cat] || 0) + 1;
+      }
+    });
+
+    const categories = Object.keys(categoryCounts).sort();
+
+    if (categories.length === 0) {
+      showToast("No hay productos con stock en el inventario para generar el catálogo", "warning");
+      setButtonsLoading(false);
+      return;
+    }
+
+    // Create modal element
+    const modalId = "inv-catalog-options-modal";
+    let modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+
+    modal = document.createElement("div");
+    modal.id = modalId;
+    modal.className = "fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm";
+    
+    modal.innerHTML = `
+      <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[90vh]">
+        <!-- Header -->
+        <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-indigo-600 text-[22px]">picture_as_pdf</span>
+            <h3 class="text-base font-black text-slate-800 dark:text-slate-100">Opciones de Catálogo PDF</h3>
+          </div>
+          <button id="catalog-modal-close" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 transition-colors">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+
+        <!-- Scrollable Form -->
+        <div class="p-6 overflow-y-auto space-y-4 flex-1">
+          <!-- Store Name -->
+          <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Nombre del Almacén</label>
+            <input id="cat-opt-name" type="text" value="${storeName}" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-600 dark:text-slate-200" />
+          </div>
+
+          <!-- Store Phone -->
+          <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Contacto / WhatsApp</label>
+            <input id="cat-opt-phone" type="text" value="${storePhone}" placeholder="+57 300 000 0000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-600 dark:text-slate-200" />
+          </div>
+
+          <!-- Tagline -->
+          <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Lema o Mensaje de Portada</label>
+            <input id="cat-opt-tagline" type="text" value="Disponibilidad Inmediata & Garantía" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm outline-none focus:border-indigo-600 dark:text-slate-200" />
+          </div>
+
+          <!-- Categories Checklist -->
+          <div>
+            <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Categorías a Incluir</label>
+            <div class="space-y-2 max-h-[200px] overflow-y-auto p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
+              ${categories.map(cat => `
+                <label class="flex items-center gap-3 p-1 hover:bg-slate-100 dark:hover:bg-slate-800/80 rounded-lg cursor-pointer transition-colors">
+                  <input type="checkbox" data-category="${cat}" checked class="rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 w-4 h-4" />
+                  <span class="text-sm font-semibold text-slate-700 dark:text-slate-300 flex-1">${cat}</span>
+                  <span class="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">${categoryCounts[cat]} prod.</span>
+                </label>
+              `).join("")}
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer Actions -->
+        <div class="px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-100 dark:border-slate-800 flex gap-2 justify-end">
+          <button id="catalog-modal-cancel" class="px-4 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all">Cancelar</button>
+          <button id="catalog-modal-generate" class="px-4 py-2 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-all shadow-md shadow-indigo-600/25">Generar PDF</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Event handlers
+    const closeModal = () => {
+      modal.remove();
+    };
+
+    document.getElementById("catalog-modal-close").onclick = closeModal;
+    document.getElementById("catalog-modal-cancel").onclick = closeModal;
+
+    document.getElementById("catalog-modal-generate").onclick = async () => {
+      const customName = document.getElementById("cat-opt-name").value.trim() || storeName;
+      const customPhone = document.getElementById("cat-opt-phone").value.trim() || storePhone;
+      const customTagline = document.getElementById("cat-opt-tagline").value.trim() || "Catálogo de Productos";
+      
+      // Get selected categories
+      const selectedCats = Array.from(modal.querySelectorAll("input[data-category]:checked")).map(el => el.dataset.category);
+
+      if (selectedCats.length === 0) {
+        showToast("Debes seleccionar al menos una categoría", "warning");
+        return;
+      }
+
+      closeModal();
+      showToast("Generando Catálogo PDF...", "info");
+
+      // Filter products based on selected categories and stock
+      const catalogProducts = productos.filter(p => 
+        selectedCats.includes(p.categoria || "Otros") && 
+        Number(p.stockActual || 0) > 0 && 
+        Number(p.precioVenta || 0) > 0
+      );
+
+      if (catalogProducts.length === 0) {
+        showToast("No hay productos con stock en las categorías seleccionadas", "warning");
+        return;
+      }
+
+      // Group products by category
+      const productsByCategory = {};
+      catalogProducts.forEach(p => {
+        const cat = p.categoria || "Otros";
+        if (!productsByCategory[p.categoria || "Otros"]) productsByCategory[p.categoria || "Otros"] = [];
+        productsByCategory[p.categoria || "Otros"].push(p);
+      });
+
+      // Prepare Print container
+      const printDiv = document.createElement("div");
+      printDiv.className = "print-catalog-container";
+
+      // 1. Dynamic Print Styles
+      const styleId = "print-catalog-styles";
+      let styleTag = document.getElementById(styleId);
+      if (styleTag) styleTag.remove();
+      
+      styleTag = document.createElement("style");
+      styleTag.id = styleId;
+      styleTag.innerHTML = `
+        @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap');
+
+        @page {
+          size: A4 portrait;
+          margin: 0;
+        }
+
+        @media print {
+          /* Hide all existing page elements */
+          body > *:not(.print-catalog-container) {
+            display: none !important;
+          }
+          
+          html, body {
+            background: #D6D2C9 !important;
+            color: #111111 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            font-family: 'IBM Plex Mono', monospace !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          .print-catalog-container {
+            display: block !important;
+            width: 100% !important;
+            background: #D6D2C9 !important;
+          }
+          
+          /* Cover Page styling (Portada Negra, Letra Crema) */
+          .catalog-cover {
+            page-break-after: always;
+            break-after: page;
+            height: 100vh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 3.5rem 3rem;
+            box-sizing: border-box;
+            background: #111111 !important;
+            color: #E8E4DC !important;
+            position: relative;
+            overflow: hidden;
+          }
+
+          .catalog-cover-grid {
+            position: absolute;
+            inset: 0;
+            background-image: linear-gradient(90deg, #3A3A3A 1px, transparent 1px), linear-gradient(0deg, #3A3A3A 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.18;
+            pointer-events: none;
+          }
+
+          .catalog-cover-header {
+            position: relative;
+            z-index: 2;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+          }
+
+          .catalog-cover-logo-img {
+            max-height: 80px;
+            max-width: 220px;
+            object-fit: contain;
+            margin-bottom: 1rem;
+            filter: drop-shadow(0 2px 8px rgba(255,255,255,0.1));
+          }
+
+          .catalog-cover-store {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 3.8rem;
+            line-height: 0.9;
+            letter-spacing: 2px;
+            color: #E8E4DC;
+            text-transform: uppercase;
+            margin: 0;
+          }
+
+          .catalog-cover-tagline {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #E8E4DC;
+            opacity: 0.75;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-top: 0.6rem;
+          }
+
+          .catalog-cover-red-line {
+            width: 60px;
+            height: 4px;
+            background-color: #E6171A;
+            margin-top: 1rem;
+          }
+
+          .catalog-cover-middle {
+            position: relative;
+            z-index: 2;
+            margin: 1.5rem 0;
+            padding: 2.2rem;
+            background: #111111 !important;
+            border: 1px solid #3A3A3A;
+          }
+
+          .catalog-cover-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 5rem;
+            line-height: 0.88;
+            color: #E8E4DC;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 0 0 1rem 0;
+          }
+
+          .catalog-cover-badge {
+            display: inline-block;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #34D399;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            border: 1px solid #34D399;
+            padding: 0.35rem 0.75rem;
+            margin-bottom: 1.5rem;
+          }
+
+          .catalog-cover-date {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.78rem;
+            color: #E8E4DC;
+            opacity: 0.65;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-top: 1px solid #3A3A3A;
+            padding-top: 1rem;
+            margin: 0;
+          }
+
+          .catalog-cover-footer {
+            position: relative;
+            z-index: 2;
+            background: #111111 !important;
+            border: 1px solid #3A3A3A;
+            padding: 1.25rem 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+          }
+
+          .catalog-cover-contact {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #E8E4DC;
+            letter-spacing: 1px;
+          }
+
+          .catalog-cover-contact-phone {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.6rem;
+            color: #34D399;
+            letter-spacing: 1.5px;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+          }
+
+          .catalog-cover-address {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            color: #E8E4DC;
+            opacity: 0.6;
+            text-align: right;
+            line-height: 1.4;
+          }
+
+          /* Catalog Pages (Páginas Internas Beige) */
+          .catalog-page {
+            page-break-after: always;
+            break-after: page;
+            height: 100vh;
+            width: 100%;
+            padding: 2.25rem 2rem 1.75rem 2rem;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            background: #D6D2C9 !important;
+            color: #111111 !important;
+            font-family: 'IBM Plex Mono', monospace;
+            position: relative;
+          }
+
+          .catalog-page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 2px solid #111111;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.25rem;
+          }
+
+          .catalog-page-section-title {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+          }
+
+          .catalog-page-section-bar {
+            width: 8px;
+            height: 2rem;
+            background: #E6171A;
+            display: inline-block;
+          }
+
+          .catalog-page-section-text {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 2.4rem;
+            line-height: 1;
+            color: #111111;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+          }
+
+          .catalog-page-store-name {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #3A3A3A;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+          }
+
+          /* 2-Column Grid */
+          .catalog-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.25rem;
+            flex-grow: 1;
+            align-content: start;
+          }
+
+          /* Catalog Card with Thin Line Border (#3A3A3A) */
+          .catalog-card {
+            display: flex;
+            flex-direction: column;
+            background: #E8E4DC !important;
+            border: 1px solid #3A3A3A;
+            padding: 1rem;
+            box-sizing: border-box;
+            height: calc((100vh - 10.5rem) / 2);
+            justify-content: space-between;
+            position: relative;
+          }
+
+          .catalog-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+          }
+
+          .catalog-card-brand {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: #3A3A3A;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+          }
+
+          .catalog-card-stock-badge {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.65rem;
+            font-weight: 700;
+            background: #111111 !important;
+            color: #34D399 !important;
+            border: 1px solid #34D399;
+            padding: 0.15rem 0.4rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .catalog-card-image-box {
+            height: 48%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #D6D2C9 !important;
+            border: 1px solid #3A3A3A;
+            padding: 0.5rem;
+            margin-bottom: 0.6rem;
+            overflow: hidden;
+          }
+
+          .catalog-card-image {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+          }
+
+          .catalog-card-no-image {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #3A3A3A;
+          }
+
+          .catalog-card-body {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            flex-grow: 1;
+          }
+
+          .catalog-card-title {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.5rem;
+            line-height: 1.05;
+            color: #111111;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 0 0 0.35rem 0;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+          }
+
+          .catalog-card-specs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+            margin-bottom: 0.5rem;
+          }
+
+          .catalog-card-spec-tag {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.62rem;
+            font-weight: 600;
+            background: #D6D2C9;
+            color: #111111;
+            border: 1px solid #3A3A3A;
+            padding: 0.1rem 0.35rem;
+            text-transform: uppercase;
+          }
+
+          /* Poster Style Price Tag Box */
+          .catalog-card-price-box {
+            background: #111111 !important;
+            border: 1px solid #3A3A3A;
+            padding: 0.4rem 0.6rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: auto;
+          }
+
+          .catalog-card-price-label {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: #E8E4DC;
+            opacity: 0.75;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+          }
+
+          .catalog-card-price-value {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.6rem;
+            line-height: 1;
+            color: #34D399 !important;
+            letter-spacing: 1px;
+            margin-top: 2px;
+          }
+
+          /* Internal Page Footer */
+          .catalog-page-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #3A3A3A;
+            padding-top: 0.6rem;
+            margin-top: auto;
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.72rem;
+            color: #3A3A3A;
+            font-weight: 600;
+          }
+
+          .catalog-footer-phone-val {
+            font-family: 'Bebas Neue', sans-serif;
+            font-size: 1.1rem;
+            color: #E6171A;
+            letter-spacing: 1px;
+            margin-left: 0.3rem;
+            vertical-align: middle;
+          }
+        }
+      `;
+
+      // 2. Calculate total pages
+      const chunkSize = 4;
+      let totalInternalPages = 0;
+      for (const items of Object.values(productsByCategory)) {
+        totalInternalPages += Math.ceil(items.length / chunkSize);
+      }
+      const totalPages = totalInternalPages + 1;
+
+      // 3. Generate HTML structure
+      let catalogHtml = '';
+
+      // Portada (Cover Page)
+      catalogHtml += `
+        <div class="catalog-cover">
+          <div class="catalog-cover-grid"></div>
+          
+          <div class="catalog-cover-header">
+            ${storeLogo ? `<img class="catalog-cover-logo-img" src="${storeLogo}">` : ''}
+            <h1 class="catalog-cover-store">${customName}</h1>
+            <p class="catalog-cover-tagline">${customTagline}</p>
+            <div class="catalog-cover-red-line"></div>
+          </div>
+          
+          <div class="catalog-cover-middle">
+            <h2 class="catalog-cover-title">Catálogo de Productos</h2>
+            <div class="catalog-cover-badge">DISPONIBILIDAD INMEDIATA &bull; GARANTÍA REAL</div>
+            <p class="catalog-cover-date">VIGENTE: ${new Date().toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          </div>
+          
+          <div class="catalog-cover-footer">
+            <div class="catalog-cover-contact">
+              CONTACTO / PEDIDOS: 
+              ${customPhone ? `<span class="catalog-cover-contact-phone">${customPhone}</span>` : ''}
+            </div>
+            <div class="catalog-cover-address">
+              ${storeAddress ? `${storeAddress}` : ''} ${storeCity ? ` &bull; ${storeCity}` : ''}<br/>
+              COMPRAS AL POR MAYOR Y ENVÍOS NACIONALES
+            </div>
+          </div>
+        </div>
+      `;
+
+      // Páginas Internas (Products Pages)
+      let currentPageIndex = 1;
+      for (const [category, items] of Object.entries(productsByCategory)) {
+        items.sort((a, b) => {
+          const brandA = (a.marca || "").toLowerCase();
+          const brandB = (b.marca || "").toLowerCase();
+          if (brandA !== brandB) return brandA.localeCompare(brandB);
+          return (a.nombre || "").localeCompare(b.nombre || "");
+        });
+
+        for (let i = 0; i < items.length; i += chunkSize) {
+          const chunk = items.slice(i, i + chunkSize);
+          currentPageIndex++;
+
+          catalogHtml += `
+            <div class="catalog-page">
+              <div class="catalog-page-header">
+                <div class="catalog-page-section-title">
+                  <span class="catalog-page-section-bar"></span>
+                  <span class="catalog-page-section-text">${category}</span>
+                </div>
+                <span class="catalog-page-store-name">${customName}</span>
+              </div>
+              
+              <div class="catalog-grid">
+                ${chunk.map(p => {
+                  const priceVal = Number(String(p.precioVenta).replace(/\D/g, "") || 0);
+                  const priceFmt = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 }).format(priceVal);
+                  
+                  const specs = [];
+                  if (p.ram) specs.push(`RAM: ${p.ram}`);
+                  if (p.memoria || p.almacenamiento) specs.push(`MEM: ${p.memoria || p.almacenamiento}`);
+                  if (p.color) specs.push(p.color);
+                  const specsHtml = specs.map(s => `<span class="catalog-card-spec-tag">${s}</span>`).join('');
+
+                  return `
+                    <div class="catalog-card">
+                      <div class="catalog-card-header">
+                        <span class="catalog-card-brand">${p.marca || 'GENÉRICO'}</span>
+                        <span class="catalog-card-stock-badge">STOCK: ${p.stockActual}</span>
+                      </div>
+                      
+                      <div class="catalog-card-image-box">
+                        ${p.imagen 
+                          ? `<img class="catalog-card-image" src="${p.imagen}" referrerpolicy="no-referrer">` 
+                          : `<div class="catalog-card-no-image">
+                               <span class="material-symbols-outlined" style="font-size: 3rem; color: #3A3A3A;">smartphone</span>
+                             </div>`}
+                      </div>
+                      
+                      <div class="catalog-card-body">
+                        <h3 class="catalog-card-title">${p.nombre}</h3>
+                        ${specsHtml ? `<div class="catalog-card-specs">${specsHtml}</div>` : ''}
+                        
+                        <div class="catalog-card-price-box">
+                          <span class="catalog-card-price-label">PRECIO DE VENTA</span>
+                          <span class="catalog-card-price-value">${priceFmt}</span>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+              
+              <div class="catalog-page-footer">
+                <div>PEDIDOS: ${customPhone ? `<span class="catalog-footer-phone-val">${customPhone}</span>` : 'CONTACTAR ALMACÉN'}</div>
+                <div>PÁGINA ${currentPageIndex} DE ${totalPages}</div>
+              </div>
+            </div>
+          `;
+        }
+      }
+
+      printDiv.innerHTML = catalogHtml;
+      
+      // Clean up helper
+      const cleanup = () => {
+        printDiv.remove();
+        styleTag.remove();
+        window.removeEventListener('afterprint', cleanup);
+      };
+
+      // Append styles & content, print, then clean up
+      document.head.appendChild(styleTag);
+      document.body.appendChild(printDiv);
+      
+      // Listen for print completion/cancellation
+      window.addEventListener('afterprint', cleanup);
+      
+      // Small timeout to allow images to layout properly
+      setTimeout(() => {
+        window.print();
+      }, 350);
+    };
+
+  } catch (err) {
+    console.error("Error generating catalog options:", err);
+    showToast("Error al abrir ajustes del catálogo: " + err.message, "error");
+  } finally {
+    setButtonsLoading(false);
+  }
 }

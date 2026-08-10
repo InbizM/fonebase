@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">FoneBase</string>
+    <string name="title_activity_main">FoneBase</string>
+    <string name="package_name">com.fonebase.admin</string>
+    <string name="custom_url_scheme">com.fonebase.admin</string>
+</resources>

@@ -228,3 +228,6 @@ function renderChart(labels, values) {
     `;
   }).join("");
 }
+
+
+

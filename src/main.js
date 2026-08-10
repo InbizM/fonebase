@@ -35,6 +35,7 @@ import { navigate, registerView, onRouteChange, onBeforeRoute } from "./router.j
 import { closeScanner } from "./scanner.js";
 import { initInventory } from "./views/inventory.js";
 import { initDashboard } from "./views/dashboard.js";
+import { initAssistant } from "./views/assistant.js";
 import { initPOS } from "./views/pos.js";
 import { initIMEI } from "./views/imei.js";
 import { initClients } from "./views/clients.js";
@@ -51,7 +52,7 @@ import { initSettings } from "./views/settings.js";
 import { initValesFisicos } from "./views/vales.js";
 import { initKiosk } from "./views/kiosk.js";
 import { showToast, showConfirm } from "./toast.js";
-import { login, verifyPin, logout, setToken, getToken, getAjustesEmpresa } from "./api.js";
+import { login, verifyPin, logout, setToken, getToken, getAjustesEmpresa, getDashboard, getCreditos, getTareas } from "./api.js";
 
 let _pendingEmail = "";
 let _companySettings = null;
@@ -123,7 +124,13 @@ function clearSession() {
 // Navigation Groups
 // ============================================================
 const NAV_GROUPS = [
-  { label: "Inicio", items: [{ id: "dashboard", label: "Dashboard", icon: "dashboard", roles: ["Administrador", "Vendedor", "Técnico de reparación"] }] },
+  {
+    label: "Inicio",
+    items: [
+      { id: "dashboard", label: "Dashboard", icon: "dashboard", roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
+      { id: "assistant", label: "Asistente IA", icon: "forum", roles: ["Administrador", "Vendedor", "Técnico de reparación"] }
+    ]
+  },
   {
     label: "Operaciones",
     items: [
@@ -234,6 +241,7 @@ function buildNavLinks(containerId, rol, mobile = false) {
           iconColor: "text-primary",
           items: [
             { id: "dashboard", label: "Dashboard", icon: "dashboard", roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
+            { id: "assistant", label: "Asistente IA", icon: "forum", roles: ["Administrador", "Vendedor", "Técnico de reparación"] },
             { id: "pos",           label: "Ventas (POS)",        icon: "point_of_sale", roles: ["Administrador", "Vendedor"] },
             { id: "sales-history", label: "Historial Ventas",   icon: "history",       roles: ["Administrador", "Vendedor"] },
             { id: "credits",       label: "Créditos",            icon: "credit_score",  roles: ["Administrador", "Vendedor"] },
@@ -424,6 +432,7 @@ function showApp(nombre, rol) {
 
   registerView("inventory", initInventory());
   registerView("dashboard", initDashboard());
+  registerView("assistant", initAssistant());
   registerView("pos", initPOS());
   registerView("imei", initIMEI());
   registerView("clients", initClients());
@@ -586,7 +595,6 @@ async function initNotifications() {
 
 async function checkAlerts() {
   try {
-    const { getDashboard } = await import("./api.js");
     const data = await getDashboard();
     
     const alerts = [];
@@ -605,7 +613,6 @@ async function checkAlerts() {
     }
 
     // 2. Ordenes en Mora/Vencidas
-    const { getCreditos } = await import("./api.js");
     const creditos = await getCreditos();
     const creditosMora = creditos.filter(c => c.estado === "En Mora");
     creditosMora.forEach(c => {
@@ -619,7 +626,6 @@ async function checkAlerts() {
     });
 
     // 3. Tareas pendientes para hoy o vencidas
-    const { getTareas } = await import("./api.js");
     const tareas = await getTareas();
     const pendingTareas = tareas.filter(t => t.estado !== "Completada" && new Date(t.fecha_vencimiento) <= new Date());
     pendingTareas.forEach(t => {

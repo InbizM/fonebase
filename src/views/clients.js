@@ -20,6 +20,22 @@ export function initClients() {
       _isLoaded = true;
     }
     
+    const pendingQuery = localStorage.getItem("clients_search_query");
+    if (pendingQuery !== null) {
+      localStorage.removeItem("clients_search_query");
+      if (elSearch) {
+        elSearch.value = pendingQuery;
+        const q = pendingQuery.toLowerCase().trim();
+        const filtered = _clientes.filter(c => 
+          (c.cedula || "").toLowerCase().includes(q) ||
+          (c.nombre || "").toLowerCase().includes(q) ||
+          (c.telefono || "").toLowerCase().includes(q)
+        );
+        renderTable(filtered);
+        return;
+      }
+    }
+    
     renderTable(_clientes);
   };
 }

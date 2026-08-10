@@ -43,6 +43,36 @@ const mapArgs = (d) => d.map(v => {
   return { type: 'text', value: String(v !== undefined && v !== null ? v : '') };
 });
 
+// Auto-creación de tabla prestamos_empleados si no existe
+queryTurso(`
+  CREATE TABLE IF NOT EXISTS prestamos_empleados (
+    id_prestamo TEXT PRIMARY KEY,
+    fecha TEXT,
+    empleado TEXT,
+    tipo TEXT,
+    monto REAL,
+    producto_id TEXT,
+    producto_nombre TEXT,
+    cantidad INTEGER,
+    estado TEXT,
+    notas TEXT
+  )
+`).catch(err => console.error("Error al crear tabla prestamos_empleados:", err));
+
+// Auto-creación de tabla metas_financieras si no existe
+queryTurso(`
+  CREATE TABLE IF NOT EXISTS metas_financieras (
+    id_meta TEXT PRIMARY KEY,
+    titulo TEXT,
+    monto_objetivo REAL,
+    tipo_calculo TEXT,
+    fecha_inicio TEXT,
+    fecha_limite TEXT,
+    estado TEXT,
+    notas TEXT
+  )
+`).catch(err => console.error("Error al crear tabla metas_financieras:", err));
+
 // ── COMPRESIÓN DE IMÁGENES POR CANVAS ──
 export function compressImage(base64Data, maxWidth = 1024, maxHeight = 1024, quality = 0.8) {
   return new Promise((resolve) => {
@@ -626,6 +656,119 @@ export const eliminarValeFisico = (id) => queryTurso({
   args: [{ type: "integer", value: Number(id) }]
 });
 
+// ── PRÉSTAMOS PARA EMPLEADOS ──
+export const getPrestamos = async () => {
+  const results = await queryTurso("SELECT * FROM prestamos_empleados ORDER BY fecha DESC");
+  return (results[0] || []).map(p => ({
+    ...p,
+    id: p.id_prestamo
+  }));
+};
+
+export const crearPrestamo = (d) => queryTurso({
+  sql: "INSERT INTO prestamos_empleados (id_prestamo, fecha, empleado, tipo, monto, producto_id, producto_nombre, cantidad, estado, notas) VALUES (?,?,?,?,?,?,?,?,?,?)",
+  args: mapArgs([
+    `PR-${Date.now()}`,
+    d.fecha || new Date().toISOString(),
+    d.empleado,
+    d.tipo || 'Dinero',
+    Number(d.monto || 0),
+    d.producto_id || '',
+    d.producto_nombre || '',
+    Number(d.cantidad || 0),
+    d.estado || 'Pendiente',
+    d.notas || ''
+  ])
+});
+
+export const actualizarPrestamoEstado = (id, estado) => queryTurso({
+  sql: "UPDATE prestamos_empleados SET estado = ? WHERE id_prestamo = ?",
+  args: [{ type: "text", value: estado }, { type: "text", value: id }]
+});
+
+export const eliminarPrestamo = (id) => queryTurso({
+  sql: "DELETE FROM prestamos_empleados WHERE id_prestamo = ?",
+  args: [{ type: "text", value: id }]
+});
+
+// ── METAS FINANCIERAS DE NEGOCIO ──
+export const getMetas = async () => {
+  const results = await queryTurso("SELECT * FROM metas_financieras ORDER BY fecha_inicio DESC");
+  return (results[0] || []).map(m => ({
+    ...m,
+    id: m.id_meta
+  }));
+};
+
+export const crearMeta = (d) => queryTurso({
+  sql: "INSERT INTO metas_financieras (id_meta, titulo, monto_objetivo, tipo_calculo, fecha_inicio, fecha_limite, estado, notas) VALUES (?,?,?,?,?,?,?,?)",
+  args: mapArgs([
+    `META-${Date.now()}`,
+    d.titulo || '',
+    Number(d.monto_objetivo || 0),
+    d.tipo_calculo || 'Ventas',
+    d.fecha_inicio || new Date().toISOString().split('T')[0],
+    d.fecha_limite || new Date().toISOString().split('T')[0],
+    d.estado || 'Activa',
+    d.notas || ''
+  ])
+});
+
+export const eliminarMeta = (id) => queryTurso({
+  sql: "DELETE FROM metas_financieras WHERE id_meta = ?",
+  args: [{ type: "text", value: id }]
+});
+
+export const getMetasProgreso = async () => {
+  const metas = (await queryTurso("SELECT * FROM metas_financieras ORDER BY fecha_inicio DESC"))[0] || [];
+  if (metas.length === 0) return [];
+
+  const requests = [];
+  metas.forEach(meta => {
+    const startDate = (meta.fecha_inicio || '').substring(0, 10);
+    const endDate = (meta.fecha_limite || '').substring(0, 10);
+
+    // Consulta de ventas en el rango
+    requests.push({
+      sql: "SELECT COALESCE(SUM(CAST(total AS REAL)), 0) as val FROM ventas WHERE date(fecha) >= date(?) AND date(fecha) <= date(?)",
+      args: [{ type: "text", value: startDate }, { type: "text", value: endDate }]
+    });
+
+    // Consulta de egresos en el rango
+    requests.push({
+      sql: "SELECT COALESCE(SUM(CAST(monto AS REAL)), 0) as val FROM egresos WHERE date(fecha) >= date(?) AND date(fecha) <= date(?)",
+      args: [{ type: "text", value: startDate }, { type: "text", value: endDate }]
+    });
+  });
+
+  const batchResults = await queryTurso(requests);
+  
+  let resultIdx = 0;
+  return metas.map(meta => {
+    const salesVal = batchResults[resultIdx]?.[0]?.val || 0;
+    resultIdx++;
+    
+    const egresosVal = batchResults[resultIdx]?.[0]?.val || 0;
+    resultIdx++;
+    
+    let acumulado = 0;
+    if (meta.tipo_calculo === 'Ventas') {
+      acumulado = salesVal;
+    } else if (meta.tipo_calculo === 'Utilidad') {
+      acumulado = salesVal - egresosVal;
+    }
+    
+    const porcentaje = meta.monto_objetivo > 0 ? (acumulado / meta.monto_objetivo) * 100 : 0;
+    
+    return {
+      ...meta,
+      id: meta.id_meta,
+      acumulado,
+      porcentaje
+    };
+  });
+};
+
 export const procesarValeOcrConQwen = async (base64Data) => {
   const prompt = 'Responde ÚNICAMENTE un objeto JSON válido con los campos: "cliente" (string), "producto" (string), "cantidad" (número), "monto" (número), "fecha" (YYYY-MM-DD). No incluyas explicaciones ni bloques de texto.';
 
@@ -718,3 +861,140 @@ export const procesarValeOcrConQwen = async (base64Data) => {
 
   throw new Error("No se pudo extraer la información del vale: " + lastError);
 };
+
+// ── AGENTE INTELIGENTE POR VOZ Y TEXTO (QWEN 3.7 FLASH VIA OPENROUTER) ──
+export async function enviarComandoVozIA(instruccion) {
+  const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
+  const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
+
+  let ingresosHoy = 0, egresosHoy = 0, utilidad = 0, stockCritico = 0;
+  let vendedores = [];
+  try {
+    const dash = await getDashboard();
+    ingresosHoy = dash.ingresosHoy || 0;
+    egresosHoy = dash.egresosHoy || 0;
+    utilidad = dash.utilidad || 0;
+    stockCritico = dash.stockCritico || 0;
+  } catch (e) {
+    console.error("No se pudo obtener datos del dashboard para la IA:", e);
+  }
+
+  try {
+    vendedores = await getVendedores();
+  } catch (e) {
+    console.error("No se pudo obtener vendedores para la IA:", e);
+  }
+
+  const systemPrompt = `
+Eres el Asistente de Voz Inteligente de FoneBase, potenciado por Qwen 3.7 Flash.
+Tu objetivo es ayudar al usuario a gestionar su negocio. Puedes responder preguntas sobre el estado actual o estructurar órdenes de acción.
+
+DATOS DE CONTEXTO ACTUALES DEL SISTEMA:
+- Fecha y hora actual: ${new Date().toLocaleString('es-CO')}
+- Estadísticas de hoy: Ventas/Ingresos: $${ingresosHoy}, Egresos: $${egresosHoy}, Utilidad: $${utilidad}, Stock crítico: ${stockCritico}
+- Vendedores/Equipo: ${vendedores.map(v => v.nombre).join(', ')}
+
+Si el usuario solicita una acción, responde con un JSON válido estructurando la acción para que el sistema la ejecute automáticamente.
+Las acciones válidas que el sistema puede ejecutar son:
+
+1. Registrar un egreso/gasto:
+   {
+     "response": "Explicación amigable de lo que se va a hacer",
+     "action": {
+       "type": "registrar_egreso",
+       "categoria": "Categoría (ej: Servicios, Arriendo, Suministros, Salarios, Repuestos, Publicidad, Otros)",
+       "concepto": "Concepto o descripción detallada del gasto",
+       "responsable": "Nombre del responsable (selecciona uno de la lista si coincide o el indicado por el usuario)",
+       "monto": 15000
+     }
+   }
+
+2. Crear una tarea pendiente:
+   {
+     "response": "Explicación amigable de la tarea creada",
+     "action": {
+       "type": "crear_tarea",
+       "tarea": "Título o descripción de la tarea",
+       "fecha_inicio": "YYYY-MM-DD (hoy)",
+       "fecha_vencimiento": "YYYY-MM-DD (fecha límite sugerida o indicada)",
+       "prioridad": "Prioridad ('Baja', 'Media', 'Alta')",
+       "responsable": "Nombre del responsable",
+       "notas": "Notas adicionales",
+       "color": "Hex de color sugerido según prioridad (ej. #ef4444 para Alta, #f59e0b para Media, #3b82f6 para Baja)"
+     }
+   }
+
+3. Buscar o filtrar clientes:
+   {
+     "response": "Mensaje de búsqueda",
+     "action": {
+       "type": "buscar_cliente",
+       "query": "Nombre, teléfono o documento a buscar"
+     }
+   }
+
+4. Navegar a una sección:
+   {
+     "response": "Te estoy llevando a la sección...",
+     "action": {
+       "type": "ir_a",
+       "destino": "nombre de la vista (dashboard, pos, inventory, clients, credits, technical, expenses, nominas, tasks, settings, kiosk)"
+     }
+   }
+
+Si el usuario hace una pregunta sobre el negocio (por ejemplo, "¿cuánto hemos vendido hoy?" o "¿cuál es la utilidad hoy?"), responde usando los datos del CONTEXTO ACTUAL. En ese caso, la acción ('action') debe ser null (o no incluirse).
+Ejemplo de respuesta de consulta:
+{
+  "response": "Hoy hemos vendido $150.000 COP y tenemos unos egresos de $20.000 COP, dejando una utilidad neta de $130.000 COP.",
+  "action": null
+}
+
+REGLAS DE RESPUESTA:
+- Responde ÚNICAMENTE con un JSON válido. No rodees tu respuesta con bloques de código markdown (\`\`\`json ... \`\`\`), ni agregues texto antes o después.
+- Asegúrate de que el JSON sea perfectamente parseable con JSON.parse.
+- Si no entiendes la petición o no coincide con ninguna acción, responde con un mensaje cordial aclarando tus capacidades en el campo 'response', con 'action' en null.
+`;
+
+  try {
+    const response = await fetch(openRouterUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openRouterApiKey}`,
+        "HTTP-Referer": "https://adminpro.local",
+        "X-Title": "FoneBase Voice Commander"
+      },
+      body: JSON.stringify({
+        model: "qwen/qwen3.7-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: instruccion }
+        ],
+        temperature: 0.2,
+        max_tokens: 1000
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    let text = data.choices[0]?.message?.content || "";
+    
+    text = text.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+    const firstBrace = text.indexOf("{");
+    const lastBrace = text.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      text = text.substring(firstBrace, lastBrace + 1);
+    }
+    
+    return JSON.parse(text);
+  } catch (e) {
+    console.error("Error al procesar comando de voz con Qwen:", e);
+    return {
+      response: `No he podido procesar tu solicitud. Error: ${e.message}`,
+      action: null
+    };
+  }
+}

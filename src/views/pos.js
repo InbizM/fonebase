@@ -52,6 +52,7 @@ export function initPOS() {
     if (!_isLoaded) {
       await loadProductos();
       setupEvents();
+      setupFlashWizardEvents();
       ctxCliente = elCanvasCliente.getContext("2d");
       ctxVendedor = elCanvasVendedor.getContext("2d");
       setupCanvas(elCanvasFull, (c) => ctxFull = c);
@@ -665,11 +666,361 @@ async function procesarVenta() {
   finally { _isProcessing = false; elModalConfirm.textContent = "Confirmar y Facturar"; elModalConfirm.disabled = false; }
 }
 
+let _flashCurrentStep = 1;
+let _flashSelectedProduct = null;
+let _flashNegotiatedPrice = 0;
+
+function setupFlashWizardEvents() {
+  const openModalHandler = () => {
+    if (isMobile()) {
+      closeSheet();
+    }
+    openFlashWizardModal();
+  };
+
+  document.getElementById("pos-btn-venta-flash")?.addEventListener("click", openModalHandler);
+  document.getElementById("pos-btn-venta-flash-mobile")?.addEventListener("click", openModalHandler);
+  document.getElementById("pos-pay-btn-flash")?.addEventListener("click", openModalHandler);
+  document.getElementById("pos-pay-btn-flash-mobile")?.addEventListener("click", openModalHandler);
+
+  document.getElementById("pos-flash-close-btn")?.addEventListener("click", closeFlashWizardModal);
+  document.getElementById("pos-flash-modal-overlay")?.addEventListener("click", closeFlashWizardModal);
+
+  const searchInput = document.getElementById("pos-flash-search");
+  if (searchInput) {
+    searchInput.addEventListener("input", (e) => {
+      renderFlashAccessoriesList(e.target.value);
+    });
+  }
+
+  const priceInput = document.getElementById("pos-flash-price-input");
+  if (priceInput) {
+    priceInput.addEventListener("input", (e) => {
+      const val = parseFloat(e.target.value);
+      _flashNegotiatedPrice = isNaN(val) ? 0 : val;
+    });
+  }
+
+  document.getElementById("pos-flash-back-btn")?.addEventListener("click", () => {
+    if (_flashCurrentStep > 1) {
+      _flashCurrentStep--;
+      renderFlashStep();
+    }
+  });
+
+  document.getElementById("pos-flash-next-btn")?.addEventListener("click", () => {
+    if (_flashCurrentStep === 1) {
+      if (!_flashSelectedProduct) {
+        return showToast("Selecciona un accesorio para continuar", "warning");
+      }
+      _flashCurrentStep = 2;
+      renderFlashStep();
+    } else if (_flashCurrentStep === 2) {
+      const pInput = document.getElementById("pos-flash-price-input");
+      const val = parseFloat(pInput?.value);
+      if (isNaN(val) || val < 0) {
+        return showToast("Ingresa un precio de venta válido", "warning");
+      }
+      _flashNegotiatedPrice = val;
+      _flashCurrentStep = 3;
+      renderFlashStep();
+    }
+  });
+
+  document.getElementById("pos-flash-confirm-btn")?.addEventListener("click", confirmarVentaFlashWizard);
+}
+
+function openFlashWizardModal() {
+  _flashCurrentStep = 1;
+  _flashSelectedProduct = null;
+  _flashNegotiatedPrice = 0;
+
+  const searchInput = document.getElementById("pos-flash-search");
+  if (searchInput) searchInput.value = "";
+
+  renderFlashStep();
+  renderFlashAccessoriesList();
+
+  const modal = document.getElementById("pos-flash-wizard-modal");
+  if (modal) {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
+}
+
+function closeFlashWizardModal() {
+  const modal = document.getElementById("pos-flash-wizard-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
+  _flashCurrentStep = 1;
+  _flashSelectedProduct = null;
+  _flashNegotiatedPrice = 0;
+}
+
+function getAccesoriosList() {
+  return _productos.filter(p => {
+    if (!p) return false;
+    const cat = (p.categoria || "").toLowerCase();
+    const nombre = (p.nombre || "").toLowerCase();
+    if (p.stockActual <= 0) return false;
+    if (p.tipo === "equipo" || cat.includes("celular") || nombre.includes("celular") || nombre.includes("teléfono")) {
+      return false;
+    }
+    return true;
+  });
+}
+
+function renderFlashAccessoriesList(filterQuery = "") {
+  const container = document.getElementById("pos-flash-products-list");
+  if (!container) return;
+
+  const q = filterQuery.toLowerCase().trim();
+  let items = getAccesoriosList();
+
+  if (q) {
+    items = items.filter(p => (p.nombre && p.nombre.toLowerCase().includes(q)) || (p.sku && p.sku.toLowerCase().includes(q)) || (p.marca && p.marca.toLowerCase().includes(q)));
+  }
+
+  if (items.length === 0) {
+    container.innerHTML = `
+      <div class="p-6 text-center text-slate-400 italic text-xs bg-slate-50 rounded-2xl border border-slate-100">
+        <span class="material-symbols-outlined text-3xl mb-1 text-slate-300 block">search_off</span>
+        No se encontraron accesorios disponibles en inventario
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = items.map(p => `
+    <div onclick="window.posSelectFlashProduct('${p.id}')"
+      class="p-3 bg-slate-50 hover:bg-amber-50/80 border border-slate-200 hover:border-amber-400 rounded-2xl cursor-pointer flex items-center justify-between gap-3 transition-all active:scale-[0.99] group">
+      <div class="flex items-center gap-3 min-w-0 flex-1">
+        <div class="w-11 h-11 rounded-xl bg-white border border-slate-200 flex items-center justify-center overflow-hidden flex-shrink-0">
+          ${p.imagen ? `<img src="${p.imagen}" class="w-full h-full object-cover group-hover:scale-110 transition-transform" />` : `<span class="material-symbols-outlined text-slate-400 text-xl">widgets</span>`}
+        </div>
+        <div class="min-w-0 flex-1">
+          <h4 class="font-black text-xs text-slate-900 truncate uppercase group-hover:text-amber-900 transition-colors">${p.nombre}</h4>
+          <div class="flex items-center gap-2 mt-0.5">
+            <span class="text-[9px] font-bold px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded">${p.marca || 'GENÉRICO'}</span>
+            <span class="text-[10px] text-slate-500 font-medium">Stock: ${p.stockActual}</span>
+          </div>
+        </div>
+      </div>
+      <div class="text-right flex-shrink-0">
+        <div class="font-black text-sm text-slate-900">$${new Intl.NumberFormat('es-CO').format(p.precioVenta || 0)}</div>
+        <span class="text-[10px] font-bold text-amber-600 group-hover:underline">Elegir →</span>
+      </div>
+    </div>
+  `).join("");
+}
+
+window.posSelectFlashProduct = function(productId) {
+  const prod = _productos.find(p => p.id === productId);
+  if (!prod) return;
+  _flashSelectedProduct = prod;
+  _flashNegotiatedPrice = prod.precioVenta || 0;
+  
+  const nameEl = document.getElementById("pos-flash-item-name");
+  const brandEl = document.getElementById("pos-flash-item-brand");
+  const stockEl = document.getElementById("pos-flash-item-stock");
+  const imgCont = document.getElementById("pos-flash-item-img-container");
+  const priceDisplay = document.getElementById("pos-flash-normal-price-display");
+  const priceInput = document.getElementById("pos-flash-price-input");
+
+  if (nameEl) nameEl.textContent = prod.nombre;
+  if (brandEl) brandEl.textContent = prod.marca || "GENÉRICO";
+  if (stockEl) stockEl.textContent = `Stock: ${prod.stockActual}`;
+  if (priceDisplay) priceDisplay.textContent = `$${new Intl.NumberFormat('es-CO').format(prod.precioVenta || 0)}`;
+  if (priceInput) priceInput.value = _flashNegotiatedPrice;
+  if (imgCont) {
+    imgCont.innerHTML = prod.imagen ? `<img src="${prod.imagen}" class="w-full h-full object-cover" />` : `<span class="material-symbols-outlined text-slate-400 text-3xl">widgets</span>`;
+  }
+
+  _flashCurrentStep = 2;
+  renderFlashStep();
+};
+
+function renderFlashStep() {
+  const s1 = document.getElementById("pos-flash-step-1-content");
+  const s2 = document.getElementById("pos-flash-step-2-content");
+  const s3 = document.getElementById("pos-flash-step-3-content");
+
+  const ind1 = document.getElementById("pos-flash-step-indicator-1");
+  const ind2 = document.getElementById("pos-flash-step-indicator-2");
+  const ind3 = document.getElementById("pos-flash-step-indicator-3");
+  const line1 = document.getElementById("pos-flash-line-1");
+  const line2 = document.getElementById("pos-flash-line-2");
+
+  const backBtn = document.getElementById("pos-flash-back-btn");
+  const nextBtn = document.getElementById("pos-flash-next-btn");
+  const confirmBtn = document.getElementById("pos-flash-confirm-btn");
+
+  s1?.classList.add("hidden");
+  s2?.classList.add("hidden");
+  s3?.classList.add("hidden");
+
+  const setIndicatorState = (el, active) => {
+    const span = el?.querySelector("span");
+    if (active) {
+      el?.classList.remove("text-slate-400");
+      el?.classList.add("text-amber-600");
+      span?.classList.remove("bg-slate-200", "text-slate-600");
+      span?.classList.add("bg-amber-500", "text-white");
+    } else {
+      el?.classList.remove("text-amber-600");
+      el?.classList.add("text-slate-400");
+      span?.classList.remove("bg-amber-500", "text-white");
+      span?.classList.add("bg-slate-200", "text-slate-600");
+    }
+  };
+
+  setIndicatorState(ind1, _flashCurrentStep >= 1);
+  setIndicatorState(ind2, _flashCurrentStep >= 2);
+  setIndicatorState(ind3, _flashCurrentStep >= 3);
+
+  if (line1) {
+    if (_flashCurrentStep >= 2) {
+      line1.classList.remove("bg-slate-200");
+      line1.classList.add("bg-amber-500");
+    } else {
+      line1.classList.remove("bg-amber-500");
+      line1.classList.add("bg-slate-200");
+    }
+  }
+
+  if (line2) {
+    if (_flashCurrentStep >= 3) {
+      line2.classList.remove("bg-slate-200");
+      line2.classList.add("bg-amber-500");
+    } else {
+      line2.classList.remove("bg-amber-500");
+      line2.classList.add("bg-slate-200");
+    }
+  }
+
+  if (_flashCurrentStep === 1) {
+    s1?.classList.remove("hidden");
+    backBtn?.classList.add("hidden");
+    nextBtn?.classList.add("hidden");
+    confirmBtn?.classList.add("hidden");
+  } else if (_flashCurrentStep === 2) {
+    s2?.classList.remove("hidden");
+    backBtn?.classList.remove("hidden");
+    nextBtn?.classList.remove("hidden");
+    confirmBtn?.classList.add("hidden");
+  } else if (_flashCurrentStep === 3) {
+    s3?.classList.remove("hidden");
+    
+    const prodSum = document.getElementById("pos-flash-summary-product");
+    const normSum = document.getElementById("pos-flash-summary-normal-price");
+    const finSum = document.getElementById("pos-flash-summary-final-price");
+
+    if (prodSum) prodSum.textContent = _flashSelectedProduct?.nombre || "Accesorio";
+    if (normSum) normSum.textContent = `$${new Intl.NumberFormat('es-CO').format(_flashSelectedProduct?.precioVenta || 0)}`;
+    if (finSum) finSum.textContent = `$${new Intl.NumberFormat('es-CO').format(_flashNegotiatedPrice || 0)}`;
+
+    backBtn?.classList.remove("hidden");
+    nextBtn?.classList.add("hidden");
+    confirmBtn?.classList.remove("hidden");
+  }
+}
+
+async function confirmarVentaFlashWizard() {
+  if (_isProcessing) return;
+  if (!_flashSelectedProduct) {
+    return showToast("No se seleccionó ningún accesorio", "warning");
+  }
+
+  _isProcessing = true;
+  const confirmBtn = document.getElementById("pos-flash-confirm-btn");
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = `<span class="material-symbols-outlined text-[18px] animate-spin">sync</span> Procesando...`;
+  }
+
+  showToast("Procesando Venta Flash...", "info");
+
+  try {
+    const user = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
+    const precioOriginal = Number(_flashSelectedProduct.precioVenta || 0);
+    const precioFinal = Number(_flashNegotiatedPrice || 0);
+    const descuento = precioOriginal > precioFinal ? precioOriginal - precioFinal : 0;
+
+    const ventaData = {
+      cedula: "9999999999",
+      cliente: "Cliente Flash",
+      direccion: "N/A",
+      ciudad: "N/A",
+      telefono: "N/A",
+      productoNombre: _flashSelectedProduct.nombre,
+      productoId: _flashSelectedProduct.id,
+      items: [{
+        id: _flashSelectedProduct.id,
+        nombre: _flashSelectedProduct.nombre,
+        qty: 1,
+        precioManual: precioFinal,
+        precioVenta: precioFinal
+      }],
+      subtotal: precioOriginal > 0 ? precioOriginal : precioFinal,
+      descuento: descuento,
+      total: precioFinal,
+      metodo: "Efectivo",
+      vendedor: user.nombre || "Vendedor",
+      firmaComprador: "",
+      firmaVendedor: "",
+      evidencia: "",
+      tipoFactura: "flash",
+      tipoVenta: "venta",
+      imeis: "N/A",
+      emisor: {
+        nombre: _ajustesEmpresa?.nombre || "WAYIRA PHONE",
+        propietario: _ajustesEmpresa?.propietario || "Yeison Rangel Rangel",
+        nit: _ajustesEmpresa?.nit || "1193400777-2",
+        direccion: (_ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (_ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
+        contacto: _ajustesEmpresa?.contacto || "3016807310",
+        correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
+        condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
+        logo: _ajustesEmpresa?.logo || "",
+        logo_size: _ajustesEmpresa?.logo_size || 40,
+        mostrar_nombre: _ajustesEmpresa?.mostrar_nombre !== 0
+      }
+    };
+
+    const res = await registrarVenta(ventaData);
+    if (res.success) {
+      showToast("⚡ Venta Flash registrada con éxito", "success");
+
+      // Imprimir ticket directamente
+      imprimirTicket({ ...ventaData, idFactura: res.idFactura }, "", "");
+
+      closeFlashWizardModal();
+      await loadProductos();
+      renderProductos(_productos);
+    } else {
+      showToast("Error al guardar venta flash", "error");
+    }
+  } catch (err) {
+    showToast(err.message || "Error al procesar la venta flash", "error");
+  } finally {
+    _isProcessing = false;
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = `<span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">bolt</span><span>Confirmar y Finalizar Venta ⚡</span>`;
+    }
+  }
+}
+
 function imprimirTicket(v, firmaC, firmaV) {
   let title = "COMPROBANTE DE VENTA";
   let badgeText = "PAGADO";
   let badgeStyle = "background: #dcfce7; color: #166534;"; // green
-  if (v.tipoVenta === "credito") {
+  if (v.tipoFactura === "flash") {
+    title = "COMPROBANTE VENTA FLASH";
+    badgeText = "FLASH";
+    badgeStyle = "background: #f3e8ff; color: #6b21a8;"; // purple
+  } else if (v.tipoVenta === "credito") {
     title = "COMPROBANTE DE CRÉDITO";
     badgeText = "CRÉDITO";
     badgeStyle = "background: #fee2e2; color: #991b1b;"; // red
@@ -682,17 +1033,25 @@ function imprimirTicket(v, firmaC, firmaV) {
   const now = new Date();
   const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${now.getMinutes()}`;
   
-  const imeiObj = JSON.parse(v.imeis || "{}");
-  const imeiText = Object.values(imeiObj).flat().join(", ");
+  let imeiText = "";
+  try {
+    const imeiObj = JSON.parse(v.imeis || "{}");
+    imeiText = Object.values(imeiObj).flat().join(", ");
+  } catch (e) {
+    if (v.imeis && v.imeis !== "N/A" && v.imeis !== "{}") {
+      imeiText = v.imeis;
+    }
+  }
 
-  let itemsHtml = _carrito.map(i => `
+  const listaItems = (v.items && v.items.length > 0) ? v.items : _carrito;
+  let itemsHtml = listaItems.map(i => `
     <tr>
       <td style="padding: 3px 0; border-bottom: 1px solid #eee;">
-        <div style="font-weight: 800;">${i.nombre.substring(0,25)}</div>
-        <div style="color: #555;">${i.qty} x $${new Intl.NumberFormat('es-CO').format(i.precioManual || 0)}</div>
+        <div style="font-weight: 800;">${(i.nombre || v.productoNombre || "Producto").substring(0,25)}</div>
+        <div style="color: #555;">${i.qty || 1} x $${new Intl.NumberFormat('es-CO').format(i.precioManual !== undefined && i.precioManual !== null ? i.precioManual : (i.precioVenta || v.total || 0))}</div>
       </td>
       <td style="text-align: right; vertical-align: bottom; padding: 3px 0; border-bottom: 1px solid #eee; font-weight: 800;">
-        $${new Intl.NumberFormat('es-CO').format((i.precioManual || 0) * i.qty)}
+        $${new Intl.NumberFormat('es-CO').format((i.precioManual !== undefined && i.precioManual !== null ? i.precioManual : (i.precioVenta || v.total || 0)) * (i.qty || 1))}
       </td>
     </tr>
   `).join("");
@@ -795,7 +1154,7 @@ function imprimirTicket(v, firmaC, firmaV) {
             <div class="section-title">ATENDIDO POR</div>
             <div class="bold text-sm">${v.vendedor || 'Vendedor'}</div>
             <div class="text-xs text-slate-400" style="font-style: italic;">Vendedor Autorizado</div>
-            <div class="text-xs bold" style="color: #dc2626; background: #fef2f2; display: inline-block; padding: 1px 4px; border-radius: 4px; margin-top: 2px;">DIGITAL</div>
+            <div class="text-xs bold" style="color: #dc2626; background: #fef2f2; display: inline-block; padding: 1px 4px; border-radius: 4px; margin-top: 2px; text-transform: uppercase;">${v.tipoFactura || 'DIGITAL'}</div>
           </div>
         </div>
         <div style="border-top: 1px solid #f1f5f9; margin: 6px 0;"></div>
