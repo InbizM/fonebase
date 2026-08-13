@@ -258,56 +258,86 @@ function setupEvents() {
     }
   });
   
-  // Evento de previsualización
-  const previewBtn = document.getElementById("set-store-preview-btn");
-  if (previewBtn) previewBtn.replaceWith(previewBtn.cloneNode(true));
-  const actualPreviewBtn = document.getElementById("set-store-preview-btn");
-  
+  // Evento de previsualización de factura
   const previewModal = document.getElementById("set-store-preview-modal");
   const previewClose = document.getElementById("set-store-preview-close");
   const previewCloseBg = document.getElementById("set-store-preview-close-bg");
-  
-  actualPreviewBtn?.addEventListener("click", () => {
-    const mostrarNombre = document.getElementById("set-store-mostrar-nombre")?.checked;
-    const nameEl = document.getElementById("preview-ticket-name");
-    if (nameEl) {
-      if (mostrarNombre) {
-        nameEl.textContent = document.getElementById("set-store-nombre").value.trim() || "MI ALMACÉN";
-        nameEl.classList.remove("hidden");
-      } else {
-        nameEl.classList.add("hidden");
+
+  const openInvoicePreview = () => {
+    try {
+      const mostrarNombre = document.getElementById("set-store-mostrar-nombre")?.checked;
+      const nameEl = document.getElementById("preview-ticket-name");
+      if (nameEl) {
+        if (mostrarNombre) {
+          nameEl.textContent = document.getElementById("set-store-nombre")?.value.trim() || "MI ALMACÉN";
+          nameEl.classList.remove("hidden");
+        } else {
+          nameEl.classList.add("hidden");
+        }
       }
+
+      const nitEl = document.getElementById("preview-ticket-nit");
+      if (nitEl) nitEl.textContent = document.getElementById("set-store-nit")?.value.trim() || "900.123.456-1";
+
+      const addrEl = document.getElementById("preview-ticket-address");
+      if (addrEl) addrEl.textContent = document.getElementById("set-store-direccion")?.value.trim() || "Calle ...";
+
+      const cityEl = document.getElementById("preview-ticket-city");
+      if (cityEl) cityEl.textContent = document.getElementById("set-store-ciudad")?.value.trim() || "Ciudad";
+
+      const telEl = document.getElementById("preview-ticket-tel");
+      if (telEl) telEl.textContent = document.getElementById("set-store-telefono")?.value.trim() || "000";
+
+      const condEl = document.getElementById("preview-ticket-conditions");
+      if (condEl) condEl.textContent = document.getElementById("set-store-condiciones")?.value.trim() || "GARANTIA: Equipos probados y encendidos...";
+
+      const logoBox = document.getElementById("preview-ticket-logo-box");
+      const logoImgBox = document.getElementById("preview-ticket-logo-img-box");
+      const logoImg = document.getElementById("preview-ticket-logo-img");
+
+      if (_logoBase64 && logoImg) {
+        logoImg.src = _logoBase64;
+        const chosenHeight = parseInt(document.getElementById("set-store-logo-size")?.value || "40", 10);
+        logoImg.style.width = "auto";
+        logoImg.style.height = "auto";
+        logoImg.style.maxHeight = chosenHeight + "px";
+        logoImg.style.maxWidth = "100%";
+        if (logoBox) logoBox.classList.add("hidden");
+        if (logoImgBox) logoImgBox.classList.remove("hidden");
+      } else {
+        if (logoBox) logoBox.classList.remove("hidden");
+        if (logoImgBox) logoImgBox.classList.add("hidden");
+      }
+
+      if (previewModal) {
+        previewModal.classList.remove("hidden");
+        previewModal.classList.add("flex");
+      }
+    } catch (err) {
+      console.error("Error al previsualizar factura:", err);
     }
-    document.getElementById("preview-ticket-nit").textContent = document.getElementById("set-store-nit").value.trim() || "00000000";
-    document.getElementById("preview-ticket-address").textContent = document.getElementById("set-store-direccion").value.trim() || "Calle ...";
-    document.getElementById("preview-ticket-city").textContent = document.getElementById("set-store-ciudad").value.trim() || "Ciudad";
-    document.getElementById("preview-ticket-tel").textContent = document.getElementById("set-store-telefono").value.trim() || "000";
-    document.getElementById("preview-ticket-conditions").textContent = document.getElementById("set-store-condiciones").value.trim() || "Garantía...";
-    
-    const logoBox = document.getElementById("preview-ticket-logo-box");
-    const logoImgBox = document.getElementById("preview-ticket-logo-img-box");
-    const logoImg = document.getElementById("preview-ticket-logo-img");
-    
-    if (_logoBase64) {
-      logoImg.src = _logoBase64;
-      const chosenHeight = parseInt(document.getElementById("set-store-logo-size")?.value || "40", 10);
-      logoImg.style.width = "auto";
-      logoImg.style.height = "auto";
-      logoImg.style.maxHeight = chosenHeight + "px";
-      logoImg.style.maxWidth = "100%";
-      logoBox.classList.add("hidden");
-      logoImgBox.classList.remove("hidden");
-    } else {
-      logoBox.classList.remove("hidden");
-      logoImgBox.classList.add("hidden");
+  };
+
+  const previewBtn = document.getElementById("set-store-preview-btn");
+  if (previewBtn) {
+    previewBtn.replaceWith(previewBtn.cloneNode(true));
+    document.getElementById("set-store-preview-btn")?.addEventListener("click", openInvoicePreview);
+  }
+
+  const topPreviewBtn = document.getElementById("set-store-top-preview-btn");
+  if (topPreviewBtn) {
+    topPreviewBtn.replaceWith(topPreviewBtn.cloneNode(true));
+    document.getElementById("set-store-top-preview-btn")?.addEventListener("click", openInvoicePreview);
+  }
+
+  const closePreviewModal = () => {
+    if (previewModal) {
+      previewModal.classList.add("hidden");
+      previewModal.classList.remove("flex");
     }
-    
-    previewModal.classList.remove("hidden");
-  });
-  
-  const closeModal = () => previewModal.classList.add("hidden");
-  previewClose?.addEventListener("click", closeModal);
-  previewCloseBg?.addEventListener("click", closeModal);
+  };
+  previewClose?.addEventListener("click", closePreviewModal);
+  previewCloseBg?.addEventListener("click", closePreviewModal);
 
   // ── AJUSTES DE CONECTIVIDAD Y APIS ──
   const apiForm = document.getElementById("api-settings-form");

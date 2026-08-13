@@ -404,15 +404,25 @@ body {
   right: 0 !important;
   bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
   overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  box-sizing: border-box !important;
 }
 @media (min-width: 768px) {
   .assistant-main-content {
-    position: static !important;
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: 260px !important;
+    margin-left: 0 !important;
+    width: calc(100% - 260px) !important;
     height: 100vh !important;
     height: 100dvh !important;
-    margin-left: 260px !important;
-    width: calc(100% - 260px) !important;
     overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    box-sizing: border-box !important;
   }
 }
 

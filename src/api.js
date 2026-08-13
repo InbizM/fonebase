@@ -366,6 +366,93 @@ function base32Decode(str) {
   return new Uint8Array(bytes);
 }
 
+function sha1(msgBytes) {
+  let h0 = 0x67452301, h1 = 0xEFCDAB89, h2 = 0x98BADCFE, h3 = 0x10325476, h4 = 0xC3D2E1F0;
+  const len = msgBytes.length;
+  const bitLen = len * 8;
+  const padLen = ((len + 8) % 64 < 56) ? (56 - (len + 8) % 64) : (120 - (len + 8) % 64);
+  const padded = new Uint8Array(len + 1 + padLen + 8);
+  padded.set(msgBytes);
+  padded[len] = 0x80;
+
+  const view = new DataView(padded.buffer);
+  view.setUint32(padded.length - 4, bitLen, false);
+
+  const w = new Uint32Array(80);
+  for (let i = 0; i < padded.length; i += 64) {
+    for (let t = 0; t < 16; t++) {
+      w[t] = view.getUint32(i + t * 4, false);
+    }
+    for (let t = 16; t < 80; t++) {
+      const val = w[t - 3] ^ w[t - 8] ^ w[t - 14] ^ w[t - 16];
+      w[t] = (val << 1) | (val >>> 31);
+    }
+
+    let a = h0, b = h1, c = h2, d = h3, e = h4;
+    for (let t = 0; t < 80; t++) {
+      let f, k;
+      if (t < 20) {
+        f = (b & c) | ((~b) & d);
+        k = 0x5A827999;
+      } else if (t < 40) {
+        f = b ^ c ^ d;
+        k = 0x6ED9EBA1;
+      } else if (t < 60) {
+        f = (b & c) | (b & d) | (c & d);
+        k = 0x8F1BBCDC;
+      } else {
+        f = b ^ c ^ d;
+        k = 0xCA62C1D6;
+      }
+      const temp = (((a << 5) | (a >>> 27)) + f + e + k + w[t]) >>> 0;
+      e = d;
+      d = c;
+      c = (b << 30) | (b >>> 2);
+      b = a;
+      a = temp;
+    }
+    h0 = (h0 + a) >>> 0;
+    h1 = (h1 + b) >>> 0;
+    h2 = (h2 + c) >>> 0;
+    h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0;
+  }
+  const res = new Uint8Array(20);
+  const resView = new DataView(res.buffer);
+  resView.setUint32(0, h0, false);
+  resView.setUint32(4, h1, false);
+  resView.setUint32(8, h2, false);
+  resView.setUint32(12, h3, false);
+  resView.setUint32(16, h4, false);
+  return res;
+}
+
+function hmacSha1Fallback(keyBytes, msgBytes) {
+  let key = keyBytes;
+  if (key.length > 64) {
+    key = sha1(key);
+  }
+  const ipad = new Uint8Array(64);
+  const opad = new Uint8Array(64);
+  ipad.fill(0x36);
+  opad.fill(0x5c);
+
+  for (let i = 0; i < key.length; i++) {
+    ipad[i] ^= key[i];
+    opad[i] ^= key[i];
+  }
+
+  const innerMsg = new Uint8Array(64 + msgBytes.length);
+  innerMsg.set(ipad, 0);
+  innerMsg.set(msgBytes, 64);
+  const innerHash = sha1(innerMsg);
+
+  const outerMsg = new Uint8Array(64 + 20);
+  outerMsg.set(opad, 0);
+  outerMsg.set(innerHash, 64);
+  return sha1(outerMsg);
+}
+
 async function generateTOTP(secretBase32, timeOffsetSteps = 0) {
   try {
     const keyBytes = base32Decode(secretBase32);
@@ -380,21 +467,25 @@ async function generateTOTP(secretBase32, timeOffsetSteps = 0) {
       temp = Math.floor(temp / 256);
     }
     
-    const cryptoKey = await window.crypto.subtle.importKey(
-      "raw",
-      keyBytes,
-      { name: "HMAC", hash: { name: "SHA-1" } },
-      false,
-      ["sign"]
-    );
+    let hmac;
+    if (window.crypto && window.crypto.subtle && typeof window.crypto.subtle.importKey === "function") {
+      const cryptoKey = await window.crypto.subtle.importKey(
+        "raw",
+        keyBytes,
+        { name: "HMAC", hash: { name: "SHA-1" } },
+        false,
+        ["sign"]
+      );
+      const signatureBuffer = await window.crypto.subtle.sign(
+        "HMAC",
+        cryptoKey,
+        msgBytes
+      );
+      hmac = new Uint8Array(signatureBuffer);
+    } else {
+      hmac = hmacSha1Fallback(keyBytes, msgBytes);
+    }
     
-    const signatureBuffer = await window.crypto.subtle.sign(
-      "HMAC",
-      cryptoKey,
-      msgBytes
-    );
-    
-    const hmac = new Uint8Array(signatureBuffer);
     const offset = hmac[hmac.length - 1] & 15;
     const binary = ((hmac[offset] & 127) << 24) |
                    ((hmac[offset + 1] & 255) << 16) |
@@ -746,7 +837,13 @@ export const crearProducto = (d) => {
   }
   return queryTurso({ sql: "INSERT INTO inventario VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", args: mapArgs(argsList) });
 };
-export const actualizarProducto = (id, d) => queryTurso({ sql: "UPDATE inventario SET id=?, nombre=?, marca=?, categoria=?, tipo=?, costo=?, precio_venta=?, stock_minimo=?, stock_actual=?, ubicacion=?, sku=?, imagen=?, fijado=? WHERE id=?", args: [...mapArgs(d), { type: "text", value: id }] });
+export const actualizarProducto = (id, d) => {
+  const list = Array.isArray(d) ? (d.length === 13 ? d.slice(1) : d) : [];
+  return queryTurso({
+    sql: "UPDATE inventario SET nombre=?, marca=?, categoria=?, tipo=?, costo=?, precio_venta=?, stock_minimo=?, stock_actual=?, ubicacion=?, sku=?, imagen=?, fijado=? WHERE id=?",
+    args: [...mapArgs(list), { type: "text", value: String(id || "") }]
+  });
+};
 export const pinProducto = (id, fijado) => queryTurso({ sql: "UPDATE inventario SET fijado=? WHERE id=?", args: [{ type: "integer", value: fijado }, { type: "text", value: id }] });
 export const eliminarProducto = (id) => queryTurso({ sql: "DELETE FROM inventario WHERE id = ?", args: [{ type: "text", value: id }] });
 
@@ -1226,8 +1323,7 @@ INSTRUCCIONES CRÍTICAS PARA RECONOCIMIENTO DE DISPOSITIVOS MÓVILES (IMEI, RAM,
 4. INTENCIÓN DE REGISTRO POR IMAGEN (DIFERENCIA ENTRE PRODUCTO E IMEI):
    - Si detectas números IMEI de 15 dígitos legibles en la imagen (por ejemplo, en una etiqueta de código de barras), debes generar una acción de tipo "crear_equipo" para registrar la unidad IMEI específica en la tabla de equipos.
    - Si NO encuentras ningún número IMEI de 15 dígitos legible en la imagen, pero sí identificas el modelo de un teléfono celular y especificaciones técnicas (como Tecno Spark, 128GB ROM, 8GB RAM), o si el usuario pide registrarlo en inventario sin aportar IMEI, debes generar una acción de tipo "crear_producto" en lugar de "crear_equipo". Esto creará la plantilla del producto celular en el inventario general (Categoría: "Celulares", Tipo: "Físico") de manera que quede registrado en inventario de inmediato, tal como lo haría con un accesorio o cualquier otro producto del almacén.
-   - Para cualquier otro producto no celular (como forros, cargadores, vidrios templados o repuestos), genera siempre una acción de tipo "crear_producto".
-   - Establece valores en 0 o vacíos para campos ausentes (costo: 0, precioVenta: 0, etc.) en lugar de omitir la operación o responder que falta información. El asistente debe proceder a escribir la información en la base de datos de manera proactiva.
+   - Si el usuario solicita registrar o agregar un producto/equipo PERO NO indica datos esenciales (como precio de venta, costo o cantidad de stock), y estos no se leen claramente en la imagen adjunta, NO ejecutes la acción con valores en 0 de manera a ciegas. En su lugar, responde de forma amable pidiendo los datos faltantes necesarios (ej: "¿A qué precio de venta y costo deseas registrar el producto y cuál es la cantidad inicial de stock?"). Si la orden contiene los datos necesarios o una foto clara, genera la acción inmediatamente.
 
 DATOS DE CONTEXTO ACTUALES DEL SISTEMA:
 - Fecha y hora actual: ${new Date().toLocaleString('es-CO')}

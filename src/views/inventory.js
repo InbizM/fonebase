@@ -515,10 +515,10 @@ async function saveProduct() {
       document.getElementById("inv-marca").value,
       categoria,
       document.getElementById("inv-tipo").value,
-      document.getElementById("inv-costo").value.replace(/\D/g, ""),
-      document.getElementById("inv-venta").value.replace(/\D/g, ""),
-      document.getElementById("inv-stock-min").value,
-      document.getElementById("inv-stock-act").value,
+      Number(document.getElementById("inv-costo").value.replace(/\D/g, "")) || 0,
+      Number(document.getElementById("inv-venta").value.replace(/\D/g, "")) || 0,
+      Number(document.getElementById("inv-stock-min").value) || 0,
+      Number(document.getElementById("inv-stock-act").value) || 0,
       document.getElementById("inv-ubicacion").value,
       document.getElementById("inv-sku").value,
       imagenUrl,
@@ -570,17 +570,22 @@ async function saveProduct() {
   }
 }
 
-// ---- Public interface (called from HTML onclick) ----
 let _detailId = null;
 
 window.inventoryView = {
   openDetail(id) {
-    const p = productos.find(x => x.id === id);
-    if (!p) return;
-    _detailId = id;
+    const targetId = String(id || "").trim();
+    const p = productos.find(x => String(x.id || "").trim() === targetId || String(x.sku || "").trim() === targetId);
+    if (!p) {
+      showToast("Producto no encontrado", "error");
+      return;
+    }
+    _detailId = p.id;
     const fmt = v => Number(String(v || 0).replace(/\D/g, "")||0).toLocaleString("es-CO");
     const user = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
-    const isTecnico = user.rol === "Técnico de reparación";
+    const userRol = String(user.rol || "").trim().toLowerCase();
+    const isTecnico = userRol === "técnico de reparación" || userRol === "tecnico";
+    const isAdmin = !userRol || userRol === "administrador" || userRol.includes("admin");
 
     // Populate detail modal
     document.getElementById("inv-d-nombre").textContent    = p.nombre || '—';
@@ -598,7 +603,6 @@ window.inventoryView = {
     if (p.imagen) { img.src = p.imagen; imgWrap.classList.remove("hidden"); }
     else { imgWrap.classList.add("hidden"); }
     
-    const isAdmin = user.rol === "Administrador";
     const editBtn = document.getElementById("inv-detail-edit-btn");
     if (editBtn) {
       if (isAdmin) editBtn.classList.remove("hidden");
@@ -606,102 +610,147 @@ window.inventoryView = {
     }
 
     const dm = document.getElementById("inv-detail-modal");
-    dm.classList.remove("hidden"); dm.classList.add("flex");
+    if (dm) {
+      dm.classList.remove("hidden"); 
+      dm.classList.add("flex");
+    }
   },
   openEdit(id) {
-    const p = productos.find(x => x.id === id);
-    if (!p) return;
-    editingId = id;
-    
-    _selectedScanImages = [];
-    renderScanThumbnails();
-    
-    // Close detail modal if open
-    const dm = document.getElementById("inv-detail-modal");
-    dm.classList.add("hidden"); dm.classList.remove("flex");
+    try {
+      const targetId = String(id || "").trim();
+      const p = productos.find(x => String(x.id || "").trim() === targetId || String(x.sku || "").trim() === targetId);
+      if (!p) {
+        showToast("Producto no encontrado", "error");
+        return;
+      }
+      editingId = p.id;
+      
+      _selectedScanImages = [];
+      renderScanThumbnails();
+      
+      // Close detail modal if open
+      const dm = document.getElementById("inv-detail-modal");
+      if (dm) {
+        dm.classList.add("hidden"); 
+        dm.classList.remove("flex");
+      }
 
-    let nombreBase = p.nombre || "";
-    let ramVal = "";
-    let memoriaVal = "";
-    let colorVal = "";
+      let nombreBase = p.nombre || "";
+      let ramVal = "";
+      let memoriaVal = "";
+      let colorVal = "";
 
-    const catLower = (p.categoria || "").trim().toLowerCase();
-    if (catLower === "celular" || catLower === "celulares") {
-      const specRegex = /\(([^/)]+)(?:\s*\/\s*([^/)]+))?(?:\s*\/\s*([^/)]+))?\)$/;
-      const match = nombreBase.match(specRegex);
-      if (match) {
-        nombreBase = nombreBase.replace(specRegex, "").trim();
-        const parts = [match[1], match[2], match[3]].filter(Boolean).map(x => x.trim());
-        if (parts.length === 3) {
-          ramVal = parts[0];
-          memoriaVal = parts[1];
-          colorVal = parts[2];
-        } else if (parts.length === 2) {
-          if (parts[0].toLowerCase().includes("ram")) {
+      const catLower = (p.categoria || "").trim().toLowerCase();
+      if (catLower === "celular" || catLower === "celulares") {
+        const specRegex = /\(([^/)]+)(?:\s*\/\s*([^/)]+))?(?:\s*\/\s*([^/)]+))?\)$/;
+        const match = nombreBase.match(specRegex);
+        if (match) {
+          nombreBase = nombreBase.replace(specRegex, "").trim();
+          const parts = [match[1], match[2], match[3]].filter(Boolean).map(x => x.trim());
+          if (parts.length === 3) {
             ramVal = parts[0];
             memoriaVal = parts[1];
-          } else if (parts[1].toLowerCase().includes("ram")) {
-            ramVal = parts[1];
-            memoriaVal = parts[0];
-          } else {
-            if (/\b\d+\s*(?:GB|TB)\b/i.test(parts[0])) {
+            colorVal = parts[2];
+          } else if (parts.length === 2) {
+            if (parts[0].toLowerCase().includes("ram")) {
+              ramVal = parts[0];
+              memoriaVal = parts[1];
+            } else if (parts[1].toLowerCase().includes("ram")) {
+              ramVal = parts[1];
               memoriaVal = parts[0];
-              colorVal = parts[1];
             } else {
               memoriaVal = parts[0];
               colorVal = parts[1];
             }
-          }
-        } else if (parts.length === 1) {
-          if (parts[0].toLowerCase().includes("ram")) {
-            ramVal = parts[0];
-          } else if (/\b\d+\s*(?:GB|TB)\b/i.test(parts[0])) {
-            memoriaVal = parts[0];
-          } else {
-            colorVal = parts[0];
+          } else if (parts.length === 1) {
+            if (parts[0].toLowerCase().includes("ram")) {
+              ramVal = parts[0];
+            } else if (/\b\d+\s*(?:GB|TB)\b/i.test(parts[0])) {
+              memoriaVal = parts[0];
+            } else {
+              colorVal = parts[0];
+            }
           }
         }
       }
-    }
 
-    if (ramVal) {
-      ramVal = ramVal.replace(/\s*RAM\b/gi, "").trim();
-    }
+      if (ramVal) {
+        ramVal = ramVal.replace(/\s*RAM\b/gi, "").trim();
+      }
 
-    document.getElementById("inv-id").value = p.id;
-    document.getElementById("inv-nombre").value = nombreBase;
-    document.getElementById("inv-ram").value = ramVal;
-    document.getElementById("inv-memoria").value = memoriaVal;
-    document.getElementById("inv-color").value = colorVal;
-    document.getElementById("inv-marca").value = p.marca || "";
-    document.getElementById("inv-categoria").value = p.categoria || "";
-    document.getElementById("inv-tipo").value = p.tipo || "Físico";
-    if (window.syncCustomSelectUI) window.syncCustomSelectUI("inv-tipo-container", p.tipo || "Físico");
-    document.getElementById("inv-costo").value = p.costo ? new Intl.NumberFormat("es-CO").format(p.costo) : "";
-    document.getElementById("inv-venta").value = p.precioVenta ? new Intl.NumberFormat("es-CO").format(p.precioVenta) : "";
-    document.getElementById("inv-stock-min").value = p.stockMinimo ?? "";
-    document.getElementById("inv-stock-act").value = p.stockActual ?? "";
-    document.getElementById("inv-ubicacion").value = p.ubicacion || "";
-    document.getElementById("inv-sku").value = p.sku || "";
-    document.getElementById("inv-existing-img").value = p.imagen || "";
-    if (p.imagen) {
-      document.getElementById("inv-img-preview").innerHTML =
-        `<img src="${p.imagen}" class="w-full h-full object-cover">`;
-    }
-    
-    // Initialize checkbox and clear file inputs
-    document.getElementById("inv-fijado").checked = p.fijado === 1;
-    const fileCam = document.getElementById("inv-img-file-camera");
-    const fileGal = document.getElementById("inv-img-file-gallery");
-    if (fileCam) fileCam.value = "";
-    if (fileGal) fileGal.value = "";
-    const labelCam = document.getElementById("inv-label-file-camera");
-    const labelGal = document.getElementById("inv-label-file-gallery");
-    if (labelCam) labelCam.value = "";
-    if (labelGal) labelGal.value = "";
+      const invIdEl = document.getElementById("inv-id");
+      if (invIdEl) invIdEl.value = p.id;
 
-    openModal("Editar Producto");
-    toggleSpecsContainer();
+      const invNombreEl = document.getElementById("inv-nombre");
+      if (invNombreEl) invNombreEl.value = nombreBase;
+
+      const invRamEl = document.getElementById("inv-ram");
+      if (invRamEl) invRamEl.value = ramVal;
+
+      const invMemoriaEl = document.getElementById("inv-memoria");
+      if (invMemoriaEl) invMemoriaEl.value = memoriaVal;
+
+      const invColorEl = document.getElementById("inv-color");
+      if (invColorEl) invColorEl.value = colorVal;
+
+      const invMarcaEl = document.getElementById("inv-marca");
+      if (invMarcaEl) invMarcaEl.value = p.marca || "";
+
+      const invCategoriaEl = document.getElementById("inv-categoria");
+      if (invCategoriaEl) invCategoriaEl.value = p.categoria || "";
+
+      const invTipoEl = document.getElementById("inv-tipo");
+      if (invTipoEl) invTipoEl.value = p.tipo || "Físico";
+      if (window.syncCustomSelectUI) window.syncCustomSelectUI("inv-tipo-container", p.tipo || "Físico");
+
+      const invCostoEl = document.getElementById("inv-costo");
+      if (invCostoEl) invCostoEl.value = (p.costo || p.costo === 0) ? new Intl.NumberFormat("es-CO").format(p.costo) : "";
+
+      const invVentaEl = document.getElementById("inv-venta");
+      if (invVentaEl) invVentaEl.value = (p.precioVenta || p.precioVenta === 0) ? new Intl.NumberFormat("es-CO").format(p.precioVenta) : "";
+
+      const invStockMinEl = document.getElementById("inv-stock-min");
+      if (invStockMinEl) invStockMinEl.value = p.stockMinimo ?? "";
+
+      const invStockActEl = document.getElementById("inv-stock-act");
+      if (invStockActEl) invStockActEl.value = p.stockActual ?? "";
+
+      const invUbicacionEl = document.getElementById("inv-ubicacion");
+      if (invUbicacionEl) invUbicacionEl.value = p.ubicacion || "";
+
+      const invSkuEl = document.getElementById("inv-sku");
+      if (invSkuEl) invSkuEl.value = p.sku || "";
+
+      const invExistingImgEl = document.getElementById("inv-existing-img");
+      if (invExistingImgEl) invExistingImgEl.value = p.imagen || "";
+
+      const invImgPreviewEl = document.getElementById("inv-img-preview");
+      if (invImgPreviewEl) {
+        if (p.imagen) {
+          invImgPreviewEl.innerHTML = `<img src="${p.imagen}" class="w-full h-full object-cover">`;
+        } else {
+          invImgPreviewEl.innerHTML = `<span class="material-symbols-outlined text-3xl text-on-surface-variant/40">add_photo_alternate</span>`;
+        }
+      }
+
+      const invFijadoEl = document.getElementById("inv-fijado");
+      if (invFijadoEl) invFijadoEl.checked = p.fijado === 1 || p.fijado === true;
+
+      const fileCam = document.getElementById("inv-img-file-camera");
+      const fileGal = document.getElementById("inv-img-file-gallery");
+      if (fileCam) fileCam.value = "";
+      if (fileGal) fileGal.value = "";
+      const labelCam = document.getElementById("inv-label-file-camera");
+      const labelGal = document.getElementById("inv-label-file-gallery");
+      if (labelCam) labelCam.value = "";
+      if (labelGal) labelGal.value = "";
+
+      openModal("Editar Producto");
+      toggleSpecsContainer();
+    } catch (err) {
+      console.error("Error en openEdit:", err);
+      showToast("Error al abrir edición: " + err.message, "error");
+    }
   },
   async deleteProduct(id) {
     const ok = await showConfirm("Confirmación", "¿Eliminar este producto?");

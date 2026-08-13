@@ -63,14 +63,25 @@
       right: 0 !important;
       bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
       overflow: hidden !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-sizing: border-box !important;
     }
     @media (min-width: 768px) {
       .assistant-main-content {
-        position: static !important;
-        height: 100dvh !important;
-        margin-left: 260px !important;
+        position: fixed !important;
+        top: 0 !important;
+        bottom: 0 !important;
+        right: 0 !important;
+        left: 260px !important;
+        margin-left: 0 !important;
         width: calc(100% - 260px) !important;
+        height: 100vh !important;
+        height: 100dvh !important;
         overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+        box-sizing: border-box !important;
       }
     }
   </style>
@@ -899,21 +910,27 @@
       <section data-view="assistant" class="hidden h-full w-full flex flex-col bg-transparent">
         <div class="flex-1 flex flex-col min-h-0 w-full bg-transparent">
           
-          <!-- Top Flat Bar with New Chat and History Buttons -->
-          <div class="w-full max-w-3xl mx-auto px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-3 flex justify-end gap-2 shrink-0 bg-transparent">
-            <button id="show-chats-list-btn" type="button" class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-primary transition-colors flex items-center gap-1 active:scale-95 py-1.5 px-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/40" title="Historial de chats">
-              <span class="material-symbols-outlined text-[14px]">chat</span>
-              <span>Historial</span>
-            </button>
-            <button id="clear-chat-history-btn" type="button" class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 active:scale-95 py-1.5 px-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/40" title="Nuevo Chat">
-              <span class="material-symbols-outlined text-[14px]">add_circle</span>
-              <span>Nuevo Chat</span>
-            </button>
+          <!-- Top Bar with Status and Action Buttons -->
+          <div class="w-full max-w-4xl mx-auto px-4 md:px-8 pt-[calc(env(safe-area-inset-top,0px)+16px)] md:pt-6 pb-2 md:pb-4 flex items-center justify-between shrink-0 bg-transparent">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Asistente IA</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="show-chats-list-btn" type="button" class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-primary transition-colors flex items-center gap-1 active:scale-95 py-1.5 px-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/40" title="Historial de chats">
+                <span class="material-symbols-outlined text-[14px]">chat</span>
+                <span>Historial</span>
+              </button>
+              <button id="clear-chat-history-btn" type="button" class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 active:scale-95 py-1.5 px-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/40" title="Nuevo Chat">
+                <span class="material-symbols-outlined text-[14px]">add_circle</span>
+                <span>Nuevo Chat</span>
+              </button>
+            </div>
           </div>
 
 
           <!-- Chat Messages Scroll Area -->
-          <div id="voice-chat-history" class="flex-1 overflow-y-auto px-4 py-6 md:py-8 space-y-6 flex flex-col w-full max-w-3xl mx-auto bg-transparent no-scrollbar">
+          <div id="voice-chat-history" class="flex-1 overflow-y-auto px-4 md:px-8 py-4 md:py-6 space-y-6 flex flex-col w-full max-w-4xl mx-auto bg-transparent no-scrollbar">
             <!-- Mensaje Inicial Bienvenida (Estilo robot con avatar) -->
             <div class="self-start w-full flex items-start gap-3.5 py-4 px-1 border-b border-slate-100 dark:border-slate-800/40 animate-chat-bubble">
               <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shrink-0 shadow-md">
@@ -927,10 +944,10 @@
           </div>
 
           <!-- Chat Bottom Input Area (Flotante y Centrado) -->
-          <div class="px-4 pb-6 pt-2 shrink-0 w-full bg-gradient-to-t from-background via-background/95 to-transparent">
+          <div class="px-4 md:px-8 pb-6 md:pb-8 pt-2 shrink-0 w-full bg-gradient-to-t from-background via-background/95 to-transparent">
             
             <!-- Image Preview Area (Multiselect) -->
-            <div id="assistant-image-preview-container" class="hidden max-w-3xl mx-auto mb-3 px-2.5 py-2.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-lg">
+            <div id="assistant-image-preview-container" class="hidden max-w-4xl mx-auto mb-3 px-2.5 py-2.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-lg">
               <div class="flex items-center justify-between mb-2">
                 <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Imágenes cargadas para análisis</span>
                 <button id="assistant-image-clear-all-btn" type="button" class="text-[9px] font-bold text-slate-400 hover:text-red-500 transition-colors uppercase tracking-wider">Quitar todas</button>
@@ -941,7 +958,7 @@
             </div>
 
             <!-- Reply Banner Container -->
-            <div id="assistant-reply-container" class="hidden max-w-3xl mx-auto mb-3 px-3 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-lg transition-all">
+            <div id="assistant-reply-container" class="hidden max-w-4xl mx-auto mb-3 px-3 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-lg transition-all">
               <div class="flex-1 min-w-0">
                 <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Respondiendo a</p>
                 <p id="assistant-reply-text" class="text-xs text-slate-600 dark:text-slate-300 truncate mt-0.5 font-medium"></p>
@@ -952,7 +969,7 @@
             </div>
 
             <!-- Floating Input Card -->
-            <div class="max-w-3xl mx-auto bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl md:rounded-full px-3 py-2 flex items-center gap-2 shadow-xl hover:shadow-2xl transition-all duration-300">
+            <div class="max-w-4xl mx-auto bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl md:rounded-full px-3 py-2 flex items-center gap-2 shadow-xl hover:shadow-2xl transition-all duration-300">
               
               <!-- Hidden Image Inputs -->
               <input id="assistant-file-camera" type="file" accept="image/*" capture="environment" multiple class="hidden" />
@@ -4001,10 +4018,16 @@
                   <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Datos de Factura / Almacén</p>
                   <h3 class="text-sm font-bold text-slate-800 mt-1">Configuración del Establecimiento</h3>
                 </div>
-                <button type="button" id="settings-add-local-btn" class="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl active:scale-95 transition-all flex items-center gap-1.5 shrink-0">
-                  <span class="material-symbols-outlined text-[16px] text-primary">add_home_work</span>
-                  Agregar Sucursal
-                </button>
+                <div class="flex items-center gap-2">
+                  <button type="button" id="set-store-top-preview-btn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-xl active:scale-95 transition-all flex items-center gap-1.5 shrink-0" title="Ver Vista Previa de Factura">
+                    <span class="material-symbols-outlined text-[16px]">visibility</span>
+                    Ver Factura
+                  </button>
+                  <button type="button" id="settings-add-local-btn" class="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl active:scale-95 transition-all flex items-center gap-1.5 shrink-0">
+                    <span class="material-symbols-outlined text-[16px] text-primary">add_home_work</span>
+                    Agregar Sucursal
+                  </button>
+                </div>
               </div>
               
               <form id="store-settings-form" class="p-5 space-y-4">
@@ -4020,7 +4043,7 @@
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>
                   <div>
-                    <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Propietario</label>
+                    <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Administrador</label>
                     <input id="set-store-propietario" type="text" required placeholder="Ej: Juan Pérez"
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>

@@ -393,6 +393,7 @@ function setActiveNav(viewId) {
   if (viewId === "assistant") {
     elHeader?.classList.add("hidden");
     document.body.style.overflow = "hidden";
+    window.scrollTo(0, 0);
     if (elMainContent) {
       elMainContent.className = "assistant-main-content";
     }
