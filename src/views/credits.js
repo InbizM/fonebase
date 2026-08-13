@@ -483,12 +483,12 @@ async function imprimirTicketAbono(cred, monto, nota) {
   `).join("");
 
   const emisor = {
-    nombre: ajustes?.nombre || "WAYIRA PHONE",
-    propietario: ajustes?.propietario || "Yeison Rangel Rangel",
-    nit: ajustes?.nit || "1193400777-2",
-    direccion: (ajustes?.direccion || "Calle 12 No. 10 - 108") + ", " + (ajustes?.ciudad || "Maicao - La Guajira"),
-    contacto: ajustes?.contacto || "3016807310",
-    correo: ajustes?.correo || "yeison0021@hotmail.com",
+    nombre: ajustes?.nombre || "MI NEGOCIO",
+    propietario: ajustes?.propietario || "Juan Pérez",
+    nit: ajustes?.nit || "900.123.456-1",
+    direccion: (ajustes?.direccion || "Calle 123 No. 45 - 67") + ", " + (ajustes?.ciudad || "Bogotá - Cundinamarca"),
+    contacto: ajustes?.contacto || "3001234567",
+    correo: ajustes?.correo || "contacto@miempresa.com",
     condiciones: ajustes?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.",
     logo: ajustes?.logo || "",
     logo_size: ajustes?.logo_size || 40,

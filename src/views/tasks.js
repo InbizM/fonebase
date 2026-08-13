@@ -50,8 +50,10 @@ function bindEvents() {
   document.getElementById("meta-form")?.addEventListener("submit", saveMeta);
 
   // Custom Selects
-  window.setupCustomSelect("task-input-priority-container", "task-input-priority");
-  window.setupCustomSelect("meta-input-type-container", "meta-input-type");
+  if (typeof window.setupCustomSelect === "function") {
+    window.setupCustomSelect("task-input-priority-container", "task-input-priority");
+    window.setupCustomSelect("meta-input-type-container", "meta-input-type");
+  }
 }
 
 async function loadTasks() {

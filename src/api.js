@@ -1,9 +1,22 @@
+import { showToast } from "./toast.js";
+
 // ============================================================
 // api.js — FoneBase API Service (V12 EXPENSES ID FIX)
 // ============================================================
 
-const TURSO_URL = "https://adminpro-adminpro.aws-us-west-2.turso.io/v2/pipeline";
-const TURSO_TOKEN = "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzcyOTIwOTMsImlkIjoiMDE5ZGNlZGItOTIwMS03NGVkLWIwZGYtZjg4MTQ3NjlhODcxIiwicmlkIjoiNWIwMWViNTctYTgxYS00OTI0LWIzMDUtZjk1Y2EwMjUzNmRkIn0.oruUZmv_ZLWlKA2ctQnghAD5PIiJSIeR4nzbZia-q-f1r12IHhLv1hDw9CsReABIceaVRHPS52JMZ4j3lcZ1Bw";
+export function getTursoConfig() {
+  const customUrl = localStorage.getItem("fonebase_custom_turso_url");
+  const customToken = localStorage.getItem("fonebase_custom_turso_token");
+  return {
+    url: customUrl || "https://adminpro-adminpro.aws-us-west-2.turso.io/v2/pipeline",
+    token: customToken || "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJpYXQiOjE3NzcyOTIwOTMsImlkIjoiMDE5ZGNlZGItOTIwMS03NGVkLWIwZGYtZjg4MTQ3NjlhODcxIiwicmlkIjoiNWIwMWViNTctYTgxYS00OTI0LWIzMDUtZjk1Y2EwMjUzNmRkIn0.oruUZmv_ZLWlKA2ctQnghAD5PIiJSIeR4nzbZia-q-f1r12IHhLv1hDw9CsReABIceaVRHPS52JMZ4j3lcZ1Bw"
+  };
+}
+
+export function getOpenRouterApiKey() {
+  const customKey = localStorage.getItem("fonebase_custom_openrouter_key");
+  return customKey || atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
+}
 
 let _gasToken = localStorage.getItem("adminpro_gas_token") || "";
 
@@ -17,61 +30,277 @@ export const logout = () => {
   location.reload();
 };
 
-async function queryTurso(sqls) {
-  const requests = Array.isArray(sqls)
-    ? sqls.map(s => (typeof s === 'string' ? { type: "execute", stmt: { sql: s } } : (s.type ? s : { type: "execute", stmt: s })))
-    : [{ type: "execute", stmt: (typeof sqls === 'string' ? { sql: sqls } : sqls) }];
-  const res = await fetch(TURSO_URL, { method: "POST", headers: { "Authorization": `Bearer ${TURSO_TOKEN}`, "Content-Type": "application/json" }, body: JSON.stringify({ requests }) });
-  const data = await res.json();
-  if (data.error) throw new Error(data.error.message);
-  const results = (data.results || []).map(r => {
-    if (!r.response || !r.response.result) return [];
-    const { cols, rows } = r.response.result;
-    return rows.map(row => {
-      const obj = {};
-      cols.forEach((col, i) => { obj[col.name] = row[i].value; });
-      return obj;
-    });
-  });
-  results.success = true;
-  return results;
+// Helper functions for Offline Mode
+function isWriteQuery(sqls) {
+  const checkStr = (str) => {
+    if (typeof str !== 'string') return false;
+    return /\b(INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\b/i.test(str);
+  };
+  const getSqlString = (item) => {
+    if (!item) return "";
+    if (typeof item === 'string') return item;
+    if (item.sql) return item.sql;
+    if (item.stmt) {
+      if (typeof item.stmt === 'string') return item.stmt;
+      if (item.stmt.sql) return item.stmt.sql;
+    }
+    return "";
+  };
+  if (Array.isArray(sqls)) {
+    return sqls.some(item => checkStr(getSqlString(item)));
+  }
+  return checkStr(getSqlString(sqls));
 }
-const mapArgs = (d) => d.map(v => {
+
+function isMigration(sqls) {
+  const checkStr = (str) => {
+    if (typeof str !== 'string') return false;
+    return /\b(CREATE\s+TABLE|ALTER\s+TABLE)\b/i.test(str);
+  };
+  const getSqlString = (item) => {
+    if (!item) return "";
+    if (typeof item === 'string') return item;
+    if (item.sql) return item.sql;
+    if (item.stmt) {
+      if (typeof item.stmt === 'string') return item.stmt;
+      if (item.stmt.sql) return item.stmt.sql;
+    }
+    return "";
+  };
+  if (Array.isArray(sqls)) {
+    return sqls.some(item => checkStr(getSqlString(item)));
+  }
+  return checkStr(getSqlString(sqls));
+}
+
+function queueWrite(sqls) {
+  let queue = [];
+  try {
+    queue = JSON.parse(localStorage.getItem("adminpro_offline_queue") || "[]");
+  } catch (e) {
+    queue = [];
+  }
+  queue.push(sqls);
+  localStorage.setItem("adminpro_offline_queue", JSON.stringify(queue));
+  showToast("⚠️ Sin conexión. Operación guardada en el teléfono para sincronizar.", "warning");
+}
+
+let isSyncing = false;
+
+export async function syncOfflineQueue() {
+  if (isSyncing) return;
+  if (!navigator.onLine) return;
+
+  let queue = [];
+  try {
+    queue = JSON.parse(localStorage.getItem("adminpro_offline_queue") || "[]");
+  } catch (e) {
+    queue = [];
+  }
+
+  if (queue.length === 0) return;
+
+  isSyncing = true;
+
+  // Ping ligero a Turso
+  try {
+    const config = getTursoConfig();
+    const res = await fetch(config.url, { 
+      method: "POST", 
+      headers: { "Authorization": `Bearer ${config.token}`, "Content-Type": "application/json" }, 
+      body: JSON.stringify({ requests: [{ type: "execute", stmt: { sql: "SELECT 1" } }] }) 
+    });
+    if (!res.ok) throw new Error("Ping failed");
+  } catch (e) {
+    console.warn("Ping a Turso fallido en syncOfflineQueue, abortando.");
+    isSyncing = false;
+    return;
+  }
+
+  let processedCount = 0;
+  while (queue.length > 0) {
+    const sqls = queue[0];
+    try {
+      await queryTurso(sqls, true); // bypassQueue = true
+      queue.shift();
+      localStorage.setItem("adminpro_offline_queue", JSON.stringify(queue));
+      processedCount++;
+    } catch (err) {
+      console.error("Error procesando consulta en cola de sincronización:", err);
+      break;
+    }
+  }
+
+  isSyncing = false;
+
+  if (processedCount > 0 && queue.length === 0) {
+    showToast("🔄 ¡Conexión restablecida! Todos los datos locales se sincronizaron con la nube.", "success");
+    setTimeout(() => {
+      location.reload();
+    }, 1500);
+  }
+}
+
+export function applyLocalContextToSql(sql) {
+  if (typeof sql !== "string") return sql;
+  
+  const activeLocal = localStorage.getItem("fonebase_active_local_id") || "1";
+  const prefix = `local${activeLocal}_`;
+  
+  const localTables = [
+    "inventario", "equipos", "ventas", "egresos", "servicio_tecnico", 
+    "creditos", "reventas", "vales_fisicos", "tareas", "nominas", 
+    "prestamos_empleados"
+  ];
+  
+  let newSql = sql;
+  
+  localTables.forEach(table => {
+    const regex = new RegExp(`\\b${table}\\b`, 'g');
+    newSql = newSql.replace(regex, `${prefix}${table}`);
+  });
+  
+  return newSql;
+}
+
+export async function queryTurso(sqls, bypassQueue = false) {
+  let processedSqls;
+  if (Array.isArray(sqls)) {
+    processedSqls = sqls.map(s => {
+      if (typeof s === "string") {
+        return applyLocalContextToSql(s);
+      } else if (s && typeof s === "object") {
+        const copy = { ...s };
+        if (copy.sql) copy.sql = applyLocalContextToSql(copy.sql);
+        return copy;
+      }
+      return s;
+    });
+  } else if (typeof sqls === "string") {
+    processedSqls = applyLocalContextToSql(sqls);
+  } else if (sqls && typeof sqls === "object") {
+    processedSqls = { ...sqls };
+    if (processedSqls.sql) processedSqls.sql = applyLocalContextToSql(processedSqls.sql);
+  } else {
+    processedSqls = sqls;
+  }
+
+  if (!bypassQueue && isWriteQuery(processedSqls) && !navigator.onLine) {
+    if (!isMigration(processedSqls)) {
+      queueWrite(processedSqls);
+      const simulated = [];
+      simulated.success = true;
+      simulated.offline = true;
+      simulated.message = "Operación guardada localmente por estar offline";
+      return simulated;
+    }
+  }
+
+  try {
+    const requests = Array.isArray(processedSqls)
+      ? processedSqls.map(s => (typeof s === 'string' ? { type: "execute", stmt: { sql: s } } : (s.type ? s : { type: "execute", stmt: s })))
+      : [{ type: "execute", stmt: (typeof processedSqls === 'string' ? { sql: processedSqls } : processedSqls) }];
+    const config = getTursoConfig();
+    const res = await fetch(config.url, { method: "POST", headers: { "Authorization": `Bearer ${config.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ requests }) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const results = (data.results || []).map(r => {
+      if (!r.response || !r.response.result) return [];
+      const { cols, rows } = r.response.result;
+      return rows.map(row => {
+        const obj = {};
+        cols.forEach((col, i) => { obj[col.name] = row[i].value; });
+        return obj;
+      });
+    });
+    results.success = true;
+
+    if (isWriteQuery(processedSqls)) {
+      setTimeout(syncOfflineQueue, 100);
+    } else {
+      localStorage.setItem("turso_read_cache_" + JSON.stringify(processedSqls), JSON.stringify(results));
+    }
+
+    return results;
+  } catch (error) {
+    if (!bypassQueue && isWriteQuery(processedSqls)) {
+      if (!isMigration(processedSqls)) {
+        queueWrite(processedSqls);
+        const simulated = [];
+        simulated.success = true;
+        simulated.offline = true;
+        simulated.message = "Operación guardada localmente por fallo de red";
+        return simulated;
+      }
+      throw error;
+    } else if (isWriteQuery(processedSqls)) {
+      throw error;
+    } else {
+      const cacheKey = "turso_read_cache_" + JSON.stringify(processedSqls);
+      const cached = localStorage.getItem(cacheKey);
+      if (cached) {
+        console.warn("Recuperando datos desde caché local debido a error en la consulta:", error);
+        try {
+          const parsed = JSON.parse(cached);
+          parsed.success = true;
+          parsed.fromCache = true;
+          return parsed;
+        } catch (e) {
+          console.error("Error al deserializar caché:", e);
+        }
+      }
+      throw error;
+    }
+  }
+}
+export const mapArgs = (d) => d.map(v => {
   if (typeof v === 'number') {
     return { type: 'float', value: v };
   }
   return { type: 'text', value: String(v !== undefined && v !== null ? v : '') };
 });
 
-// Auto-creación de tabla prestamos_empleados si no existe
-queryTurso(`
-  CREATE TABLE IF NOT EXISTS prestamos_empleados (
-    id_prestamo TEXT PRIMARY KEY,
-    fecha TEXT,
-    empleado TEXT,
-    tipo TEXT,
-    monto REAL,
-    producto_id TEXT,
-    producto_nombre TEXT,
-    cantidad INTEGER,
-    estado TEXT,
-    notas TEXT
-  )
-`).catch(err => console.error("Error al crear tabla prestamos_empleados:", err));
+export async function inicializarEsquemaBaseDeDatos() {
+  const schemas = [
+    `CREATE TABLE IF NOT EXISTS usuarios (email TEXT PRIMARY KEY, password TEXT, nombre TEXT, rol TEXT, estado TEXT)`,
+    `CREATE TABLE IF NOT EXISTS clientes (id TEXT PRIMARY KEY, nombre TEXT, telefono TEXT, direccion TEXT, email TEXT, tipo TEXT, fecha_registro TEXT)`,
+    `CREATE TABLE IF NOT EXISTS inventario (id TEXT PRIMARY KEY, nombre TEXT, marca TEXT, categoria TEXT, tipo TEXT, costo REAL, precio_venta REAL, stock_minimo INTEGER, stock_actual INTEGER, ubicacion TEXT, sku TEXT, imagen TEXT, fijado INTEGER DEFAULT 0)`,
+    `CREATE TABLE IF NOT EXISTS equipos (imei1 TEXT PRIMARY KEY, imei2 TEXT, id_producto TEXT, marca TEXT, nombre TEXT, proveedor TEXT, costo REAL, venta REAL, estado TEXT, fecha_ingreso TEXT)`,
+    `CREATE TABLE IF NOT EXISTS ventas (id_factura TEXT PRIMARY KEY, fecha TEXT, cedula TEXT, cliente TEXT, direccion TEXT, producto_nombre TEXT, cantidad TEXT, cantidad_items TEXT, imeis TEXT, subtotal REAL, descuento REAL, total REAL, metodo TEXT, vendedor TEXT, firma_vendedor TEXT, firma_comprador TEXT, evidencia TEXT, ciudad TEXT, telefono TEXT, tipo_factura TEXT)`,
+    `CREATE TABLE IF NOT EXISTS egresos (id_gasto TEXT PRIMARY KEY, fecha TEXT, categoria TEXT, concepto TEXT, responsable TEXT, monto REAL, nota TEXT)`,
+    `CREATE TABLE IF NOT EXISTS servicio_tecnico (id_orden TEXT PRIMARY KEY, cliente TEXT, telefono TEXT, equipo TEXT, imei_serie TEXT, falla TEXT, clave_patron TEXT, repuestos TEXT, costo_taller REAL, abono REAL, precio_final REAL, estado TEXT, evidencias TEXT)`,
+    `CREATE TABLE IF NOT EXISTS creditos (id_credito TEXT PRIMARY KEY, cliente TEXT, telefono TEXT, id_factura_ref TEXT, fecha_deuda TEXT, tipo TEXT, valor_total REAL, total_abonado REAL, saldo_pendiente REAL, estado TEXT, detalle TEXT, historial_abonos TEXT)`,
+    `CREATE TABLE IF NOT EXISTS reventas (id_reventa TEXT PRIMARY KEY, fecha TEXT, producto TEXT, categoria TEXT, costo_proveedor REAL, precio_venta REAL, proveedor TEXT, utilidad REAL)`,
+    `CREATE TABLE IF NOT EXISTS proveedores (id_prov TEXT PRIMARY KEY, nombre TEXT, nit TEXT, telefono TEXT, direccion TEXT, ciudad TEXT, contacto TEXT, correo TEXT, estado TEXT DEFAULT 'Activo')`,
+    `CREATE TABLE IF NOT EXISTS marcas_categorias (nombre TEXT PRIMARY KEY, tipo TEXT)`,
+    `CREATE TABLE IF NOT EXISTS vales_fisicos (id INTEGER PRIMARY KEY AUTOINCREMENT, cliente TEXT, producto TEXT, cantidad INTEGER, monto REAL, estado TEXT, fecha TEXT, foto_base64 TEXT)`,
+    `CREATE TABLE IF NOT EXISTS tareas (id TEXT PRIMARY KEY, tarea TEXT, fecha_inicio TEXT, fecha_vencimiento TEXT, prioridad TEXT, estado TEXT, responsable TEXT, notas TEXT, color TEXT)`,
+    `CREATE TABLE IF NOT EXISTS nominas (id_nomina TEXT PRIMARY KEY, fecha TEXT, empleado TEXT, periodo TEXT, salario_base REAL, deducciones REAL, bonificaciones REAL, total_pagar REAL, estado TEXT, notas TEXT)`,
+    `CREATE TABLE IF NOT EXISTS prestamos_empleados (id_prestamo TEXT PRIMARY KEY, fecha TEXT, empleado TEXT, tipo TEXT, monto REAL, producto_id TEXT, producto_nombre TEXT, cantidad INTEGER, estado TEXT, notas TEXT)`,
+    `CREATE TABLE IF NOT EXISTS metas_financieras (id_meta TEXT PRIMARY KEY, titulo TEXT, monto_objetivo REAL, tipo_calculo TEXT, fecha_inicio TEXT, fecha_limite TEXT, estado TEXT, notas TEXT)`,
+    `CREATE TABLE IF NOT EXISTS ajustes_empresa (id INTEGER PRIMARY KEY, nombre TEXT, nit TEXT, propietario TEXT, telefono TEXT, direccion TEXT, ciudad TEXT, contacto TEXT, correo TEXT, condiciones TEXT, logo TEXT, logo_size INTEGER, mostrar_nombre INTEGER)`
+  ];
 
-// Auto-creación de tabla metas_financieras si no existe
-queryTurso(`
-  CREATE TABLE IF NOT EXISTS metas_financieras (
-    id_meta TEXT PRIMARY KEY,
-    titulo TEXT,
-    monto_objetivo REAL,
-    tipo_calculo TEXT,
-    fecha_inicio TEXT,
-    fecha_limite TEXT,
-    estado TEXT,
-    notas TEXT
-  )
-`).catch(err => console.error("Error al crear tabla metas_financieras:", err));
+  for (const sql of schemas) {
+    try {
+      await queryTurso(sql, true);
+    } catch (e) {
+      console.error("Error al inicializar tabla:", e);
+    }
+  }
+
+  // Insertar fila por defecto con el ID del local activo en ajustes_empresa si no existe
+  try {
+    const activeLocal = localStorage.getItem("fonebase_active_local_id") || "1";
+    const name = activeLocal === "1" ? "MI NEGOCIO" : `Sucursal ${activeLocal}`;
+    await queryTurso(`INSERT OR IGNORE INTO ajustes_empresa (id, nombre, nit, propietario, telefono, direccion, ciudad, contacto, correo, condiciones, logo, logo_size, mostrar_nombre) VALUES (${activeLocal}, '${name}', '900.123.456-1', 'Juan Pérez', '3001234567', 'Calle 123 No. 45 - 67', 'Bogotá - Cundinamarca', '3001234567', 'contacto@miempresa.com', 'GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.', '', 40, 1)`, true);
+  } catch (e) {
+    console.error("Error al insertar ajustes_empresa inicial:", e);
+  }
+}
+
+// Inicializar base de datos
+inicializarEsquemaBaseDeDatos().catch(err => console.error("Error al arrancar base de datos:", err));
 
 // ── COMPRESIÓN DE IMÁGENES POR CANVAS ──
 export function compressImage(base64Data, maxWidth = 1024, maxHeight = 1024, quality = 0.8) {
@@ -282,7 +511,7 @@ async function callGeminiDirect(base64Data, mimeType, mode = "label") {
   // ============================================================
   // ANALISIS DE IMAGEN CON IA (EXCLUSIVO QWEN 3.7 FLASH VIA OPENROUTER)
   // ============================================================
-  const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
+  const openRouterApiKey = getOpenRouterApiKey();
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
   
   const openRouterContent = [{ type: "text", text: prompt }];
@@ -463,9 +692,62 @@ export const actualizarCliente = (id, d) => queryTurso({ sql: "UPDATE clientes S
 export const eliminarCliente = (id) => queryTurso({ sql: "DELETE FROM clientes WHERE id = ?", args: [{ type: "text", value: id }] });
 
 // ── INVENTARIO ──
-export const getInventario = async () => (await queryTurso("SELECT * FROM inventario ORDER BY id DESC"))[0].map(r => ({ ...r, stockActual: r.stock_actual, stockMinimo: r.stock_minimo, precioVenta: r.precio_venta, costo: r.costo }));
-export const crearProducto = (d) => queryTurso({ sql: "INSERT INTO inventario VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", args: mapArgs(d) });
-export const actualizarProducto = (id, d) => queryTurso({ sql: "UPDATE inventario SET id=?, nombre=?, marca=?, categoria=?, tipo=?, costo=?, precio_venta=?, stock_minimo=?, stock_actual=?, ubicacion=?, sku=?, imagen=? WHERE id=?", args: [...mapArgs(d), { type: "text", value: id }] });
+export const getInventario = async () => {
+  try {
+    await queryTurso("ALTER TABLE inventario ADD COLUMN fijado INTEGER DEFAULT 0");
+  } catch (e) {
+    // Column might already exist
+  }
+  let results = (await queryTurso("SELECT * FROM inventario ORDER BY fijado DESC, id DESC"))[0] || [];
+
+  const expectedProducts = [
+    { sku: "FORRO-SILICONA", id: "PROD-FORROSIL", name: "Forro Protector Silicona", costo: 5000, precio: 15000, stock: 100 },
+    { sku: "VIDRIO-9D", id: "PROD-VIDRIO9D", name: "Vidrio Templado 9D", costo: 2000, precio: 10000, stock: 200 },
+    { sku: "VIDRIO-CER", id: "PROD-VIDRIOCER", name: "Vidrio Templado Cerámico", costo: 3000, precio: 12000, stock: 150 }
+  ];
+
+  let needsRequery = false;
+  for (const prod of expectedProducts) {
+    const exists = results.some(r => r.sku === prod.sku);
+    if (!exists) {
+      const item = [
+        prod.id,
+        prod.name,
+        "Universal",
+        "Accesorios",
+        "Accesorio",
+        prod.costo,
+        prod.precio,
+        0,
+        prod.stock,
+        "Vitrina A",
+        prod.sku,
+        "",
+        1 // fijado = 1
+      ];
+      await queryTurso({
+        sql: "INSERT INTO inventario VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        args: mapArgs(item)
+      });
+      needsRequery = true;
+    }
+  }
+
+  if (needsRequery) {
+    results = (await queryTurso("SELECT * FROM inventario ORDER BY fijado DESC, id DESC"))[0] || [];
+  }
+
+  return results.map(r => ({ ...r, stockActual: r.stock_actual, stockMinimo: r.stock_minimo, precioVenta: r.precio_venta, costo: r.costo, fijado: r.fijado || 0 }));
+};
+export const crearProducto = (d) => {
+  const argsList = [...d];
+  if (argsList.length === 12) {
+    argsList.push(0);
+  }
+  return queryTurso({ sql: "INSERT INTO inventario VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", args: mapArgs(argsList) });
+};
+export const actualizarProducto = (id, d) => queryTurso({ sql: "UPDATE inventario SET id=?, nombre=?, marca=?, categoria=?, tipo=?, costo=?, precio_venta=?, stock_minimo=?, stock_actual=?, ubicacion=?, sku=?, imagen=?, fijado=? WHERE id=?", args: [...mapArgs(d), { type: "text", value: id }] });
+export const pinProducto = (id, fijado) => queryTurso({ sql: "UPDATE inventario SET fijado=? WHERE id=?", args: [{ type: "integer", value: fijado }, { type: "text", value: id }] });
 export const eliminarProducto = (id) => queryTurso({ sql: "DELETE FROM inventario WHERE id = ?", args: [{ type: "text", value: id }] });
 
 // ── EQUIPOS ──
@@ -639,13 +921,38 @@ export const eliminarTarea = (id) => queryTurso({ sql: "DELETE FROM tareas WHERE
 
 // ── CONFIGURACIÓN DE EMPRESA ──
 export const getAjustesEmpresa = async () => {
-  const results = await queryTurso("SELECT * FROM ajustes_empresa WHERE id = 1");
+  const activeLocal = localStorage.getItem("fonebase_active_local_id") || "1";
+  const results = await queryTurso(`SELECT * FROM ajustes_empresa WHERE id = ${activeLocal}`);
   return results[0]?.[0] || null;
 };
-export const saveAjustesEmpresa = (c) => queryTurso({
-  sql: "UPDATE ajustes_empresa SET nombre=?, nit=?, propietario=?, telefono=?, direccion=?, ciudad=?, contacto=?, correo=?, condiciones=?, logo=?, logo_size=?, mostrar_nombre=? WHERE id=1",
-  args: mapArgs([c.nombre, c.nit, c.propietario, c.telefono, c.direccion, c.ciudad, c.contacto, c.correo, c.condiciones, c.logo || '', c.logo_size || 40, c.mostrar_nombre !== undefined ? c.mostrar_nombre : 1])
-});
+export const saveAjustesEmpresa = (c) => {
+  const activeLocal = localStorage.getItem("fonebase_active_local_id") || "1";
+  return queryTurso({
+    sql: `UPDATE ajustes_empresa SET nombre=?, nit=?, propietario=?, telefono=?, direccion=?, ciudad=?, contacto=?, correo=?, condiciones=?, logo=?, logo_size=?, mostrar_nombre=? WHERE id=${activeLocal}`,
+    args: mapArgs([c.nombre, c.nit, c.propietario, c.telefono, c.direccion, c.ciudad, c.contacto, c.correo, c.condiciones, c.logo || '', c.logo_size || 40, c.mostrar_nombre !== undefined ? c.mostrar_nombre : 1])
+  });
+};
+
+export const getLocalesConfigurados = async () => {
+  const res = await queryTurso("SELECT id, nombre FROM ajustes_empresa", true);
+  return res[0] || [];
+};
+
+export const crearNuevoLocal = async (nombre) => {
+  const locales = await getLocalesConfigurados();
+  let nextId = 1;
+  locales.forEach(l => {
+    const idNum = parseInt(l.id, 10);
+    if (idNum >= nextId) nextId = idNum + 1;
+  });
+
+  await queryTurso({
+    sql: "INSERT INTO ajustes_empresa (id, nombre, nit, propietario, telefono, direccion, ciudad, contacto, correo, condiciones, logo, logo_size, mostrar_nombre) VALUES (?, ?, '900.123.456-1', 'Juan Pérez', '3001234567', 'Calle 123 No. 45 - 67', 'Bogotá - Cundinamarca', '3001234567', 'contacto@miempresa.com', 'GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.', '', 40, 1)",
+    args: mapArgs([nextId, nombre])
+  }, true);
+
+  return nextId;
+};
 
 // ── VALES FÍSICOS ──
 export const getValesFisicos = async () => {
@@ -784,7 +1091,7 @@ export const getMetasProgreso = async () => {
 export const procesarValeOcrConQwen = async (base64Data) => {
   const prompt = 'Responde ÚNICAMENTE un objeto JSON válido con los campos: "cliente" (string), "producto" (string), "cantidad" (número), "monto" (número), "fecha" (YYYY-MM-DD). No incluyas explicaciones ni bloques de texto.';
 
-  const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
+  const openRouterApiKey = getOpenRouterApiKey();
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
 
   const models = [
@@ -875,8 +1182,8 @@ export const procesarValeOcrConQwen = async (base64Data) => {
 };
 
 // ── AGENTE INTELIGENTE POR VOZ Y TEXTO (QWEN 3.7 FLASH VIA OPENROUTER) ──
-export async function enviarComandoVozIA(instruccion) {
-  const openRouterApiKey = atob("c2stb3ItdjEtYTIyYjlmMmQ5ODI4NDhhMGYyMjg4OWJhMDc0MTg0NWFlMWEzMzcyNjg5NDViODQ5MDkwNjZkNzNhZjRlYTllZg==");
+export async function enviarComandoVozIA(instruccion, base64Image = null, historial = []) {
+  const openRouterApiKey = getOpenRouterApiKey();
   const openRouterUrl = "https://openrouter.ai/api/v1/chat/completions";
 
   let ingresosHoy = 0, egresosHoy = 0, utilidad = 0, stockCritico = 0;
@@ -900,6 +1207,27 @@ export async function enviarComandoVozIA(instruccion) {
   const systemPrompt = `
 Eres el Asistente de Voz Inteligente de FoneBase, potenciado por Qwen 3.7 Flash.
 Tu objetivo es ayudar al usuario a gestionar su negocio. Puedes responder preguntas sobre el estado actual o estructurar órdenes de acción.
+
+INSTRUCCIONES CRÍTICAS PARA RECONOCIMIENTO DE DISPOSITIVOS MÓVILES (IMEI, RAM, ALMACENAMIENTO/ROM, COLOR):
+1. RECONOCIMIENTO DE IMEI:
+   - Un IMEI de teléfono celular consta SIEMPRE de exactamente 15 dígitos numéricos (ej: 356251200774692).
+   - En las etiquetas o stickers de las cajas, los IMEIs suelen estar etiquetados como "IMEI1", "IMEI 1", "IMEI2", "IMEI 2" o arriba/abajo de códigos de barras.
+   - Extrae siempre el IMEI Principal de 15 dígitos como "imei1" y el Secundario de 15 dígitos como "imei2".
+   - NO confundas los IMEIs con números de serie (S/N) que contienen letras, ni con IDs FCC de menor longitud.
+
+2. RECONOCIMIENTO DE MEMORIA Y RAM:
+   - Las especificaciones de memoria/almacenamiento y RAM suelen expresarse juntas en las cajas en formatos como "128+4 GB", "256+8 GB", "64/3 GB" o "4GB RAM / 128GB ROM".
+   - El número de menor capacidad (ej: 3, 4, 6, 8) representa la memoria RAM. Extráelo en el campo "ram" (ej: "4GB").
+   - El número de mayor capacidad (ej: 64, 128, 256, 512) representa la memoria de almacenamiento/ROM. Extráelo en el campo "memoria" (ej: "128GB").
+
+3. RECONOCIMIENTO DE COLOR:
+   - Identifica palabras que designen colores en español o inglés en las etiquetas (ej: "INK BLACK", "Negro", "Blue", "Azul", "Verde", "Verdoso") y colócalas en el campo "color".
+
+4. INTENCIÓN DE REGISTRO POR IMAGEN (DIFERENCIA ENTRE PRODUCTO E IMEI):
+   - Si detectas números IMEI de 15 dígitos legibles en la imagen (por ejemplo, en una etiqueta de código de barras), debes generar una acción de tipo "crear_equipo" para registrar la unidad IMEI específica en la tabla de equipos.
+   - Si NO encuentras ningún número IMEI de 15 dígitos legible en la imagen, pero sí identificas el modelo de un teléfono celular y especificaciones técnicas (como Tecno Spark, 128GB ROM, 8GB RAM), o si el usuario pide registrarlo en inventario sin aportar IMEI, debes generar una acción de tipo "crear_producto" en lugar de "crear_equipo". Esto creará la plantilla del producto celular en el inventario general (Categoría: "Celulares", Tipo: "Físico") de manera que quede registrado en inventario de inmediato, tal como lo haría con un accesorio o cualquier otro producto del almacén.
+   - Para cualquier otro producto no celular (como forros, cargadores, vidrios templados o repuestos), genera siempre una acción de tipo "crear_producto".
+   - Establece valores en 0 o vacíos para campos ausentes (costo: 0, precioVenta: 0, etc.) en lugar de omitir la operación o responder que falta información. El asistente debe proceder a escribir la información en la base de datos de manera proactiva.
 
 DATOS DE CONTEXTO ACTUALES DEL SISTEMA:
 - Fecha y hora actual: ${new Date().toLocaleString('es-CO')}
@@ -931,7 +1259,7 @@ Las acciones válidas que el sistema puede ejecutar son:
        "fecha_vencimiento": "YYYY-MM-DD (fecha límite sugerida o indicada)",
        "prioridad": "Prioridad ('Baja', 'Media', 'Alta')",
        "responsable": "Nombre del responsable",
-       "notas": "Notas adicionales",
+       "notes": "Notas adicionales",
        "color": "Hex de color sugerido según prioridad (ej. #ef4444 para Alta, #f59e0b para Media, #3b82f6 para Baja)"
      }
    }
@@ -954,6 +1282,135 @@ Las acciones válidas que el sistema puede ejecutar son:
      }
    }
 
+5. Registrar/Crear un nuevo cliente (escribir información de clientes):
+   {
+     "response": "Explicación amigable",
+     "action": {
+       "type": "crear_cliente",
+       "cedula": "Cédula o documento",
+       "nombre": "Nombre completo",
+       "telefono": "Teléfono",
+       "direccion": "Dirección",
+       "email": "Correo electrónico",
+       "tipo": "Tipo de cliente ('Natural' o 'Jurídico')"
+     }
+   }
+
+6. Crear/Agregar un producto al inventario (escribir información de inventario):
+   {
+     "response": "Explicación amigable",
+     "action": {
+       "type": "crear_producto",
+       "nombre": "Nombre del producto",
+       "marca": "Marca",
+       "categoria": "Categoría (ej: Celulares, Accesorios, Repuestos)",
+       "tipo": "Tipo ('Accesorio', 'Repuesto', 'Físico', 'Reventa')",
+       "costo": 5000,
+       "precioVenta": 15000,
+       "stockMinimo": 2,
+       "stockActual": 10,
+       "ubicacion": "Ubicación en tienda (ej: Vitrina A)",
+       "sku": "SKU o código opcional",
+       "ram": "Memoria RAM del celular si aplica (ej: 4GB)",
+       "memoria": "Capacidad de almacenamiento del celular si aplica (ej: 128GB)",
+       "color": "Color del celular si aplica (ej: Azul)"
+     }
+   }
+
+7. Registrar un equipo IMEI (escribir información de equipos):
+   {
+     "response": "Explicación amigable",
+     "action": {
+       "type": "crear_equipo",
+       "imei1": "IMEI 1 de 15 dígitos",
+       "imei2": "IMEI 2 de 15 dígitos (opcional)",
+       "marca": "Marca del equipo",
+       "nombre": "Nombre/Modelo del equipo",
+       "proveedor": "Nombre del proveedor",
+       "costo": 500000,
+       "venta": 850000,
+       "estado": "Disponible",
+       "ram": "Memoria RAM del celular (ej: 4GB)",
+       "memoria": "Capacidad de almacenamiento del celular (ej: 128GB)",
+       "color": "Color del celular (ej: Azul)"
+     }
+   }
+
+8. Registrar orden de Servicio Técnico (escribir información de órdenes de reparación):
+   {
+     "response": "Explicación amigable",
+     "action": {
+       "type": "crear_servicio_tecnico",
+       "cliente": "Nombre del cliente",
+       "telefono": "Teléfono del cliente",
+       "equipo": "Modelo/Marca del celular a reparar",
+       "imei_serie": "IMEI o número de serie del equipo",
+       "falla": "Descripción del daño/falla reportado",
+       "clave_patron": "Clave, PIN o patrón de bloqueo (si lo indica)",
+       "repuestos": "Repuestos requeridos",
+       "costo_taller": 20000,
+       "abono": 10000,
+       "precio_final": 50000,
+       "estado": "Recibido"
+     }
+   }
+
+9. Registrar/Crear un Crédito de deuda (escribir información de créditos):
+   {
+     "response": "Explicación amigable",
+     "action": {
+       "type": "crear_credito",
+       "cliente": "Nombre del cliente deudor",
+       "telefono": "Teléfono del cliente",
+       "total": 50000,
+       "detalle": "Detalle del crédito (ej: saldo por compra de cargador)"
+     }
+   }
+
+10. Registrar/Crear un Vale Físico de mercancía (escribir información de vales):
+    {
+      "response": "Explicación amigable",
+      "action": {
+        "type": "crear_vale_fisico",
+        "cliente": "Nombre del cliente/vendedor",
+        "producto": "Nombre del producto retirado",
+        "cantidad": 1,
+        "monto": 15000,
+        "estado": "Pendiente"
+      }
+    }
+
+11. Registrar/Crear una Reventa rápida (escribir información de reventas):
+    {
+      "response": "Explicación amigable",
+      "action": {
+        "type": "crear_reventa",
+        "producto": "Nombre del producto",
+        "categoria": "Categoría (ej: Celulares, Accesorios)",
+        "costo": 10000,
+        "precio": 20000,
+        "proveedor": "Nombre del proveedor"
+      }
+    }
+
+12. Actualizar/Editar/Modificar un producto del inventario:
+    {
+      "response": "Explicación amigable del producto que se va a actualizar",
+      "action": {
+        "type": "actualizar_producto",
+        "nombre_actual": "Nombre actual del producto a buscar (ej: Tecno KN3)",
+        "nuevo_nombre": "Nuevo nombre a asignar (ej: Tecno Spark Go 2024)",
+        "ram": "Memoria RAM si aplica (ej: 8GB)",
+        "memoria": "Almacenamiento/ROM si aplica (ej: 128GB)",
+        "color": "Color si aplica",
+        "costo": 5000,
+        "precioVenta": 15000,
+        "stockMinimo": 2,
+        "stockActual": 10,
+        "sku": "SKU"
+      }
+    }
+
 Si el usuario hace una pregunta sobre el negocio (por ejemplo, "¿cuánto hemos vendido hoy?" o "¿cuál es la utilidad hoy?"), responde usando los datos del CONTEXTO ACTUAL. En ese caso, la acción ('action') debe ser null (o no incluirse).
 Ejemplo de respuesta de consulta:
 {
@@ -966,6 +1423,47 @@ REGLAS DE RESPUESTA:
 - Asegúrate de que el JSON sea perfectamente parseable con JSON.parse.
 - Si no entiendes la petición o no coincide con ninguna acción, responde con un mensaje cordial aclarando tus capacidades en el campo 'response', con 'action' en null.
 `;
+
+  let userContent = instruccion || "Procesa la instrucción.";
+  if (base64Image) {
+    const imagesArray = Array.isArray(base64Image) ? base64Image : [base64Image];
+    userContent = [
+      { type: "text", text: instruccion || "Analiza estas imágenes y responde a la petición." }
+    ];
+    imagesArray.forEach(img => {
+      if (img) {
+        userContent.push({
+          type: "image_url",
+          image_url: { url: img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}` }
+        });
+      }
+    });
+  }
+
+  const historyMessages = [];
+  if (historial && historial.length > 0) {
+    const recentHistory = historial.slice(-10); // Cargar los últimos 10 mensajes
+    recentHistory.forEach(msg => {
+      if (msg.sender === "user") {
+        let content = msg.text || "Procesa la imagen.";
+        if (msg.base64Image) {
+          const imgs = Array.isArray(msg.base64Image) ? msg.base64Image : [msg.base64Image];
+          content = [{ type: "text", text: msg.text || "Analiza estas imágenes." }];
+          imgs.forEach(img => {
+            if (img) {
+              content.push({
+                type: "image_url",
+                image_url: { url: img.startsWith("data:") ? img : `data:image/jpeg;base64,${img}` }
+              });
+            }
+          });
+        }
+        historyMessages.push({ role: "user", content });
+      } else if (msg.sender === "ai") {
+        historyMessages.push({ role: "assistant", content: msg.text || "" });
+      }
+    });
+  }
 
   try {
     const response = await fetch(openRouterUrl, {
@@ -980,7 +1478,8 @@ REGLAS DE RESPUESTA:
         model: "qwen/qwen3.7-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: instruccion }
+          ...historyMessages,
+          { role: "user", content: userContent }
         ],
         temperature: 0.2,
         max_tokens: 1000
@@ -1001,7 +1500,58 @@ REGLAS DE RESPUESTA:
       text = text.substring(firstBrace, lastBrace + 1);
     }
     
-    return JSON.parse(text);
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed === "object") {
+        if (!parsed.response && parsed.action) {
+          parsed.response = "He interpretado la instrucción del dispositivo exitosamente.";
+        }
+        return parsed;
+      }
+      return { response: text, action: null };
+    } catch (parseErr) {
+      console.warn("JSON.parse falló en enviarComandoVozIA, intentando fallback por Regex...", parseErr, "Raw text:", text);
+      
+      const responseMatch = text.match(/"response"\s*:\s*"([\s\S]*?)"\s*[,}]/);
+      let responseText = "";
+      
+      if (responseMatch) {
+        responseText = responseMatch[1].replace(/\\"/g, '"').trim();
+      } else {
+        if (text.includes("{")) {
+          const cleanText = text.replace(/\{[\s\S]*?\}/g, "").trim();
+          responseText = cleanText || "He interpretado la instrucción del dispositivo exitosamente.";
+        } else {
+          responseText = text.trim() || "He interpretado la instrucción del dispositivo exitosamente.";
+        }
+      }
+      
+      let actionObj = null;
+      const typeMatch = text.match(/"type"\s*:\s*"([^"]+)"/);
+      if (typeMatch) {
+        const actionType = typeMatch[1];
+        actionObj = { type: actionType };
+        
+        const fields = ["cedula", "nombre", "telefono", "direccion", "email", "tipo", "marca", "categoria", "costo", "precioVenta", "stockMinimo", "stockActual", "ubicacion", "sku", "imei1", "imei2", "proveedor", "venta", "estado", "cliente", "equipo", "imei_serie", "falla", "clave_patron", "repuestos", "costo_taller", "abono", "precio_final", "total", "detalle", "producto", "cantidad", "monto", "nombre_actual", "nuevo_nombre", "ram", "memoria", "color"];
+        
+        fields.forEach(f => {
+          const strMatch = text.match(new RegExp(`"${f}"\\s*:\\s*"([\\s\\S]*?)"\\s*[,}]`));
+          if (strMatch) {
+            actionObj[f] = strMatch[1].replace(/\\"/g, '"').trim();
+          } else {
+            const numMatch = text.match(new RegExp(`"${f}"\\s*:\\s*([0-9.]+)\\s*[,}]`));
+            if (numMatch) {
+              actionObj[f] = Number(numMatch[1]);
+            }
+          }
+        });
+      }
+      
+      return {
+        response: responseText,
+        action: actionObj
+      };
+    }
   } catch (e) {
     console.error("Error al procesar comando de voz con Qwen:", e);
     return {

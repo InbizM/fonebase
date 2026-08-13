@@ -56,6 +56,23 @@
       animation: wave-float-3 24s ease-in-out infinite;
       will-change: transform;
     }
+    .assistant-main-content {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+      overflow: hidden !important;
+    }
+    @media (min-width: 768px) {
+      .assistant-main-content {
+        position: static !important;
+        height: 100dvh !important;
+        margin-left: 260px !important;
+        width: calc(100% - 260px) !important;
+        overflow: hidden !important;
+      }
+    }
   </style>
 </head>
 <body class="bg-background text-on-background antialiased min-h-screen">
@@ -247,7 +264,21 @@
                    border-b border-surface-variant shadow-sm flex items-center px-5 gap-4 z-30">
       <!-- Mobile menu btn removed -->
       <!-- View title -->
-      <h1 id="header-title" class="font-bold text-on-surface text-[17px] flex-1 tracking-tight">Dashboard</h1>
+      <div class="flex items-center gap-2 flex-1 min-w-0">
+        <h1 id="header-title" class="font-bold text-on-surface text-[17px] truncate tracking-tight">Dashboard</h1>
+        <span id="app-offline-badge" class="hidden px-2.5 py-1 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-black text-[9px] uppercase tracking-wider rounded-lg border border-amber-500/20 flex items-center gap-1">
+          <span class="material-symbols-outlined text-[12px]" style="font-variation-settings:'FILL' 1">wifi_off</span>
+          Offline (Local)
+        </span>
+      </div>
+
+      <!-- Selector de Local/Establecimiento -->
+      <div class="flex items-center gap-1.5 mr-2">
+        <span class="material-symbols-outlined text-[18px] text-slate-400">store</span>
+        <select id="header-local-switcher" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-primary/30 max-w-[150px] cursor-pointer active:scale-95 transition-all">
+          <!-- Opciones dinámicas -->
+        </select>
+      </div>
       <!-- Actions -->
       <div class="flex items-center gap-2 relative">
         <button id="header-notification-btn" class="p-2 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-colors relative">
@@ -865,24 +896,21 @@
       </section>
 
       <!-- ASSISTANT VIEW -->
-      <section data-view="assistant" class="hidden h-[calc(100vh-3.5rem)] w-full flex flex-col bg-transparent">
+      <section data-view="assistant" class="hidden h-full w-full flex flex-col bg-transparent">
         <div class="flex-1 flex flex-col min-h-0 w-full bg-transparent">
           
-          <!-- Chat Header (Centrado y Elegante) -->
-          <div class="w-full border-b border-slate-100 dark:border-slate-800/60 bg-white/70 dark:bg-slate-900/70 backdrop-blur-md sticky top-0 z-20 shrink-0">
-            <div class="max-w-3xl mx-auto px-5 py-3.5 flex items-center justify-between">
-              <div class="flex items-center gap-2.5">
-                <div class="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-                  <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1">forum</span>
-                </div>
-                <div>
-                  <h3 class="font-black text-slate-800 dark:text-slate-100 text-sm leading-none">Asistente IA</h3>
-                  <span id="voice-status" class="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest block mt-1">Listo para asistirte</span>
-                </div>
-              </div>
-              <span id="voice-model-tag" class="px-2.5 py-1 bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 text-[9px] font-black rounded-full uppercase tracking-wider shadow-sm border border-green-100 dark:border-green-900/30">Qwen 3.7 Flash</span>
-            </div>
+          <!-- Top Flat Bar with New Chat and History Buttons -->
+          <div class="w-full max-w-3xl mx-auto px-4 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-3 flex justify-end gap-2 shrink-0 bg-transparent">
+            <button id="show-chats-list-btn" type="button" class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-primary transition-colors flex items-center gap-1 active:scale-95 py-1.5 px-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/40" title="Historial de chats">
+              <span class="material-symbols-outlined text-[14px]">chat</span>
+              <span>Historial</span>
+            </button>
+            <button id="clear-chat-history-btn" type="button" class="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 active:scale-95 py-1.5 px-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-100 dark:border-slate-800/40" title="Nuevo Chat">
+              <span class="material-symbols-outlined text-[14px]">add_circle</span>
+              <span>Nuevo Chat</span>
+            </button>
           </div>
+
 
           <!-- Chat Messages Scroll Area -->
           <div id="voice-chat-history" class="flex-1 overflow-y-auto px-4 py-6 md:py-8 space-y-6 flex flex-col w-full max-w-3xl mx-auto bg-transparent no-scrollbar">
@@ -892,7 +920,7 @@
                 <span class="material-symbols-outlined text-[18px]" style="font-variation-settings:'FILL' 1">smart_toy</span>
               </div>
               <div class="flex-1 space-y-2 text-slate-800 dark:text-slate-200 text-sm leading-relaxed font-medium">
-                ¡Hola! Soy tu asistente de Inteligencia Artificial para FoneBase. 🧠🤖<br><br>
+                ¡Hola! Soy tu asistente de Inteligencia Artificial para FoneBase.<br><br>
                 Puedo ayudarte a gestionar la tienda rápidamente. Háblame o escríbeme para realizar consultas o registrar información en tiempo real.
               </div>
             </div>
@@ -900,24 +928,83 @@
 
           <!-- Chat Bottom Input Area (Flotante y Centrado) -->
           <div class="px-4 pb-6 pt-2 shrink-0 w-full bg-gradient-to-t from-background via-background/95 to-transparent">
-            <div class="max-w-3xl mx-auto bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl md:rounded-full px-3 py-2 flex items-center gap-3 shadow-xl hover:shadow-2xl transition-all duration-300">
+            
+            <!-- Image Preview Area (Multiselect) -->
+            <div id="assistant-image-preview-container" class="hidden max-w-3xl mx-auto mb-3 px-2.5 py-2.5 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-lg">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Imágenes cargadas para análisis</span>
+                <button id="assistant-image-clear-all-btn" type="button" class="text-[9px] font-bold text-slate-400 hover:text-red-500 transition-colors uppercase tracking-wider">Quitar todas</button>
+              </div>
+              <div id="assistant-image-preview-list" class="flex flex-wrap gap-2.5">
+                <!-- Dynamically populated thumbnails -->
+              </div>
+            </div>
+
+            <!-- Reply Banner Container -->
+            <div id="assistant-reply-container" class="hidden max-w-3xl mx-auto mb-3 px-3 py-2 bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3 shadow-lg transition-all">
+              <div class="flex-1 min-w-0">
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Respondiendo a</p>
+                <p id="assistant-reply-text" class="text-xs text-slate-600 dark:text-slate-300 truncate mt-0.5 font-medium"></p>
+              </div>
+              <button id="assistant-reply-close-btn" type="button" class="text-slate-400 hover:text-red-500 transition-colors flex items-center justify-center p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 focus:outline-none">
+                <span class="material-symbols-outlined text-[16px]">close</span>
+              </button>
+            </div>
+
+            <!-- Floating Input Card -->
+            <div class="max-w-3xl mx-auto bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-2xl md:rounded-full px-3 py-2 flex items-center gap-2 shadow-xl hover:shadow-2xl transition-all duration-300">
               
-              <!-- Voice Microphone Button -->
-              <button id="voice-mic-btn" class="w-11 h-11 shrink-0 rounded-full bg-primary/5 dark:bg-primary/10 border border-primary/15 hover:bg-primary/15 dark:hover:bg-primary/20 flex items-center justify-center text-primary transition-all duration-300 relative active:scale-95 shadow-sm" title="Presionar para hablar">
-                <span class="material-symbols-outlined text-[20px] font-bold">mic</span>
-                <span id="voice-pulse" class="absolute inset-0 rounded-full bg-primary/20 animate-ping hidden"></span>
+              <!-- Hidden Image Inputs -->
+              <input id="assistant-file-camera" type="file" accept="image/*" capture="environment" multiple class="hidden" />
+              <input id="assistant-file-gallery" type="file" accept="image/*" multiple class="hidden" />
+
+              <!-- Cámara Button -->
+              <button type="button" onclick="document.getElementById('assistant-file-camera').click()" 
+                class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200/40 dark:border-slate-700/40 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-all active:scale-95 shadow-sm" 
+                title="Tomar foto">
+                <span class="material-symbols-outlined text-[18px]">photo_camera</span>
+              </button>
+
+              <!-- Galería Button -->
+              <button type="button" onclick="document.getElementById('assistant-file-gallery').click()" 
+                class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 rounded-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200/40 dark:border-slate-700/40 flex items-center justify-center text-slate-600 dark:text-slate-300 transition-all active:scale-95 shadow-sm" 
+                title="Importar de galería">
+                <span class="material-symbols-outlined text-[18px]">image</span>
               </button>
 
               <!-- Text Input -->
-              <input id="voice-input" type="text" placeholder="Hazme una pregunta o di un comando..." class="flex-1 bg-transparent border-none text-slate-800 dark:text-slate-100 text-sm focus:outline-none placeholder:text-slate-400/80 px-2" />
+              <div class="flex-1 min-w-0 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/40 dark:border-slate-700/40 rounded-full flex items-center gap-1 px-3 py-1">
+                <input id="voice-input" type="text" placeholder="Escribe un comando..." class="flex-1 min-w-0 bg-transparent border-none text-slate-800 dark:text-slate-100 text-sm focus:outline-none placeholder:text-slate-400/80 py-1.5 px-1" />
+                
+                <!-- Voice Microphone Button inside input -->
+                <button id="voice-mic-btn" type="button" class="w-8 h-8 shrink-0 rounded-full bg-transparent flex items-center justify-center text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 transition-all relative active:scale-95" title="Presionar para hablar">
+                  <span class="material-symbols-outlined text-[18px]">mic</span>
+                  <span id="voice-pulse" class="absolute inset-0 rounded-full bg-primary/20 animate-ping hidden"></span>
+                </button>
+              </div>
 
               <!-- Send Button -->
-              <button id="voice-send-btn" class="w-11 h-11 shrink-0 bg-primary hover:bg-primary/95 text-on-primary rounded-full shadow-md hover:shadow-lg transition-all flex items-center justify-center active:scale-95">
-                <span class="material-symbols-outlined text-[20px]">arrow_upward</span>
+              <button id="voice-send-btn" class="w-10 h-10 sm:w-11 sm:h-11 shrink-0 bg-primary hover:bg-primary/95 text-on-primary rounded-full shadow-sm hover:shadow transition-all flex items-center justify-center active:scale-95">
+                <span class="material-symbols-outlined text-[18px]">arrow_upward</span>
               </button>
 
             </div>
-            <p class="text-[9px] text-center text-slate-400 dark:text-slate-500 font-medium mt-2">potenciado por Qwen 3.7 Flash • habla o escribe un comando</p>
+          </div>
+
+          <!-- Modal de Historial de Chats -->
+          <div id="chats-history-modal" class="hidden fixed inset-0 z-50 items-center justify-center p-4">
+            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+            <div class="relative bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md z-10 overflow-hidden flex flex-col max-h-[80vh]">
+              <div class="flex items-center justify-between px-5 py-4 bg-slate-50 dark:bg-slate-800/20">
+                <h3 class="font-bold text-base text-slate-800 dark:text-slate-200">Historial de Chats</h3>
+                <button id="chats-history-modal-close-btn" class="p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+              <div id="chats-list-container" class="flex-1 overflow-y-auto p-4 space-y-2 bg-white dark:bg-slate-900">
+                <!-- La lista de chats se inyectará dinámicamente -->
+              </div>
+            </div>
           </div>
 
         </div>
@@ -1832,7 +1919,7 @@
                   </div>
                   <div>
                     <label class="block text-[10px] font-bold text-on-surface-variant mb-1 uppercase tracking-tighter">Ciudad</label>
-                    <input id="pos-cliente-ciudad" type="text" placeholder="Maicao..." class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
+                    <input id="pos-cliente-ciudad" type="text" placeholder="Ciudad..." class="w-full bg-surface-container-low border border-surface-variant rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-primary">
                   </div>
                 </div>
                 <div>
@@ -3823,14 +3910,84 @@
                   </div>
                   <div>
                     <p class="text-sm font-bold text-slate-800">CLAROCELL.COM</p>
-                    <p class="text-[11px] text-slate-400">NIT: 1193400777-2</p>
+                    <p class="text-[11px] text-slate-400">NIT: 900.123.456-1</p>
                   </div>
                 </div>
                 <span class="material-symbols-outlined text-slate-300 text-[18px]">chevron_right</span>
               </div>
             </div>
 
+            <!-- ── CONECTIVIDAD Y APIS ─────────────────── -->
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div class="px-5 pt-4 pb-2 border-b border-slate-50">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Conectividad y APIs</p>
+                <h3 class="text-sm font-bold text-slate-800 mt-1">Base de Datos y Modelos IA</h3>
+              </div>
+              
+              <form id="api-settings-form" class="p-5 space-y-4">
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">URL de Pipeline Turso</label>
+                  <input id="set-api-turso-url" type="text" placeholder="Por defecto (Base de datos compartida)"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Token de Autorización Turso</label>
+                  <input id="set-api-turso-token" type="password" placeholder="Por defecto (Token compartido)"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
+                </div>
+                <div>
+                  <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">API Key de OpenRouter (AI)</label>
+                  <input id="set-api-openrouter-key" type="password" placeholder="Por defecto (Clave integrada)"
+                    class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
+                </div>
+                
+                <div class="flex justify-end pt-2">
+                  <button type="submit" id="set-api-save-btn" class="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm rounded-xl active:scale-[0.98] transition-all flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px]">save</span> Guardar Ajustes de Conexión
+                  </button>
+                </div>
+              </form>
+            </div>
 
+            <!-- ── COPIAS DE SEGURIDAD (BACKUP) ─────────────────── -->
+            <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+              <div class="px-5 pt-4 pb-2 border-b border-slate-50">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Copias de Seguridad</p>
+                <h3 class="text-sm font-bold text-slate-800 mt-1">Copia de Seguridad y Restauración</h3>
+              </div>
+              
+              <div class="p-5 space-y-5">
+                <p class="text-xs text-slate-500 leading-relaxed font-semibold">
+                  Exporta una copia completa de toda la información (clientes, inventario, ventas, abonos, etc.) en un único archivo JSON para guardarlo en tu Google Drive. También puedes restaurarlo en cualquier momento.
+                </p>
+                
+                <div class="grid grid-cols-2 gap-4">
+                  <button type="button" id="set-backup-export-btn" class="py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-black text-xs rounded-xl border border-slate-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px] text-primary">download</span> Exportar JSON
+                  </button>
+                  
+                  <input type="file" id="set-backup-file-input" accept="application/json" class="hidden" />
+                  <button type="button" id="set-backup-import-btn" class="py-3.5 bg-slate-50 hover:bg-slate-100 text-slate-700 font-black text-xs rounded-xl border border-slate-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[18px] text-primary">upload_file</span> Restaurar JSON
+                  </button>
+                </div>
+
+                <!-- Google Drive Backup Instructions -->
+                <div class="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/50 dark:border-indigo-900/30 rounded-2xl p-4 space-y-2">
+                  <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-[20px]">backup</span>
+                    <h4 class="text-xs font-black text-indigo-950 dark:text-indigo-200 uppercase tracking-wider">Backup Automático con Drive</h4>
+                  </div>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                    Puedes automatizar las copias de seguridad de Turso a Google Drive cada 30 minutos usando Google Apps Script. 
+                    Encuentra el script listo para copiar en el directorio del proyecto en:
+                  </p>
+                  <div class="bg-white dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 px-3 py-2 rounded-lg font-mono text-[9px] text-slate-600 dark:text-slate-300 break-all select-all">
+                    adminpro/appscript/BackupTursoToDriveJSON.js
+                  </div>
+                </div>
+              </div>
+            </div>
 
           </div>
 
@@ -3839,9 +3996,15 @@
 
             <!-- ── DATOS DEL ALMACÉN Y FACTURA ─────────────────── -->
             <div class="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-              <div class="px-5 pt-4 pb-2 border-b border-slate-50">
-                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Datos de Factura / Almacén</p>
-                <h3 class="text-sm font-bold text-slate-800 mt-1">Configuración del Establecimiento</h3>
+              <div class="px-5 pt-4 pb-3 border-b border-slate-50 flex items-center justify-between gap-4">
+                <div>
+                  <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Datos de Factura / Almacén</p>
+                  <h3 class="text-sm font-bold text-slate-800 mt-1">Configuración del Establecimiento</h3>
+                </div>
+                <button type="button" id="settings-add-local-btn" class="px-3.5 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl active:scale-95 transition-all flex items-center gap-1.5 shrink-0">
+                  <span class="material-symbols-outlined text-[16px] text-primary">add_home_work</span>
+                  Agregar Sucursal
+                </button>
               </div>
               
               <form id="store-settings-form" class="p-5 space-y-4">
@@ -3853,37 +4016,37 @@
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">NIT / RUT</label>
-                    <input id="set-store-nit" type="text" required placeholder="Ej: 1193400777-2"
+                    <input id="set-store-nit" type="text" required placeholder="Ej: 900.123.456-1"
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Propietario</label>
-                    <input id="set-store-propietario" type="text" required placeholder="Ej: Yeison Rangel"
+                    <input id="set-store-propietario" type="text" required placeholder="Ej: Juan Pérez"
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Teléfono / Celular</label>
-                    <input id="set-store-telefono" type="text" required placeholder="Ej: 3016807310"
+                    <input id="set-store-telefono" type="text" required placeholder="Ej: 3001234567"
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Dirección</label>
-                    <input id="set-store-direccion" type="text" required placeholder="Ej: Calle 12 No. 10 - 108"
+                    <input id="set-store-direccion" type="text" required placeholder="Ej: Calle 123 No. 45 - 67"
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Ciudad / Departamento</label>
-                    <input id="set-store-ciudad" type="text" required placeholder="Ej: Maicao - La Guajira"
+                    <input id="set-store-ciudad" type="text" required placeholder="Ej: Bogotá - Cundinamarca"
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Correo Electrónico</label>
-                    <input id="set-store-correo" type="email" required placeholder="Ej: yeison0021@hotmail.com"
+                    <input id="set-store-correo" type="email" required placeholder="Ej: contacto@miempresa.com"
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>
                   <div>
                     <label class="block text-xs font-semibold text-slate-500 mb-1.5 uppercase tracking-wider">Contacto Auxiliar</label>
-                    <input id="set-store-contacto" type="text" placeholder="Ej: 3016807310"
+                    <input id="set-store-contacto" type="text" placeholder="Ej: 3001234567"
                       class="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30" />
                   </div>
                 </div>
@@ -3977,10 +4140,10 @@
                     <img id="preview-ticket-logo-img" class="w-10 h-10 mx-auto object-contain" />
                   </div>
                   <div id="preview-ticket-name" class="font-extrabold text-[10px] text-slate-900 uppercase">CLAROCELL.COM</div>
-                  <div class="text-slate-500 font-medium">NIT: <span id="preview-ticket-nit">1193400777-2</span></div>
-                  <div class="text-slate-500" id="preview-ticket-address">Calle 12 No. 10 - 108</div>
-                  <div class="text-slate-500" id="preview-ticket-city">Maicao - La Guajira</div>
-                  <div class="text-slate-500">Tel: <span id="preview-ticket-tel">3016807310</span></div>
+                  <div class="text-slate-500 font-medium">NIT: <span id="preview-ticket-nit">900.123.456-1</span></div>
+                  <div class="text-slate-500" id="preview-ticket-address">Calle 123 No. 45 - 67</div>
+                  <div class="text-slate-500" id="preview-ticket-city">Bogotá - Cundinamarca</div>
+                  <div class="text-slate-500">Tel: <span id="preview-ticket-tel">3001234567</span></div>
                 </div>
                 
                 <div class="border-t border-dashed border-slate-200 my-2"></div>
@@ -3993,7 +4156,7 @@
                   </div>
                   <div>Fecha: 11/06/2026 14:30</div>
                   <div>Método: Transferencia</div>
-                  <div>Atendido por: Yeison Rangel</div>
+                  <div>Atendido por: Juan Pérez</div>
                 </div>
                 
                 <div class="border-t border-dashed border-slate-200 my-2"></div>
@@ -4044,7 +4207,7 @@
                 <div class="grid grid-cols-2 gap-2 mt-3 text-[6px]">
                   <div class="text-center">
                     <div class="font-bold text-slate-400">FIRMA VEND.</div>
-                    <div class="border border-slate-200 rounded bg-slate-50 h-5 mt-0.5 flex items-center justify-center text-slate-300 font-serif italic">Yeison</div>
+                    <div class="border border-slate-200 rounded bg-slate-50 h-5 mt-0.5 flex items-center justify-center text-slate-300 font-serif italic">Juan Pérez</div>
                   </div>
                   <div class="text-center">
                     <div class="font-bold text-slate-400">FIRMA CLI.</div>
@@ -4072,8 +4235,8 @@
 
     <!-- MOBILE BOTTOM NAV -->
     <nav id="app-mobile-nav" class="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-surface-variant
-                flex md:hidden z-30 safe-area-bottom">
-      <div id="mobile-nav" class="flex w-full"></div>
+                flex md:hidden z-30 h-[calc(56px+env(safe-area-inset-bottom,0px))] pb-[env(safe-area-inset-bottom,0px)]">
+      <div id="mobile-nav" class="flex w-full h-full items-center"></div>
     </nav>
 
     <!-- MOBILE DRAWER (Extensión del menú) -->

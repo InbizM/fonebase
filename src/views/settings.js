@@ -1,5 +1,5 @@
-import { logout, getAjustesEmpresa, saveAjustesEmpresa } from "../api.js";
-import { showToast } from "../toast.js";
+import { logout, getAjustesEmpresa, saveAjustesEmpresa, queryTurso, mapArgs, crearNuevoLocal, getLocalesConfigurados } from "../api.js";
+import { showToast, showConfirm, showPrompt } from "../toast.js";
 
 let _logoBase64 = "";
 
@@ -7,8 +7,19 @@ export function initSettings() {
   return () => {
     loadProfile();
     loadCompanySettings();
+    loadAPISettings();
     setupEvents();
   };
+}
+
+function loadAPISettings() {
+  const urlInput = document.getElementById("set-api-turso-url");
+  const tokenInput = document.getElementById("set-api-turso-token");
+  const orInput = document.getElementById("set-api-openrouter-key");
+
+  if (urlInput) urlInput.value = localStorage.getItem("fonebase_custom_turso_url") || "";
+  if (tokenInput) tokenInput.value = localStorage.getItem("fonebase_custom_turso_token") || "";
+  if (orInput) orInput.value = localStorage.getItem("fonebase_custom_openrouter_key") || "";
 }
 
 function loadProfile() {
@@ -93,6 +104,26 @@ async function loadCompanySettings() {
 }
 
 function setupEvents() {
+  const addLocalBtn = document.getElementById("settings-add-local-btn");
+  if (addLocalBtn) {
+    addLocalBtn.replaceWith(addLocalBtn.cloneNode(true));
+  }
+  document.getElementById("settings-add-local-btn")?.addEventListener("click", async () => {
+    const nombre = await showPrompt("Nueva Sucursal", "Ingrese el nombre de la nueva sucursal / local:");
+    if (!nombre || !nombre.trim()) return;
+
+    try {
+      showToast("Creando sucursal...", "info");
+      const newId = await crearNuevoLocal(nombre.trim());
+      localStorage.setItem("fonebase_active_local_id", String(newId));
+      showToast("Sucursal creada con éxito. Cargando datos...", "success");
+      setTimeout(() => {
+        location.reload();
+      }, 1500);
+    } catch (err) {
+      showToast("Error al crear sucursal: " + err.message, "error");
+    }
+  });
 
   const toggle = document.getElementById("set-theme-toggle");
   if (toggle) {
@@ -277,4 +308,204 @@ function setupEvents() {
   const closeModal = () => previewModal.classList.add("hidden");
   previewClose?.addEventListener("click", closeModal);
   previewCloseBg?.addEventListener("click", closeModal);
+
+  // ── AJUSTES DE CONECTIVIDAD Y APIS ──
+  const apiForm = document.getElementById("api-settings-form");
+  if (apiForm) apiForm.replaceWith(apiForm.cloneNode(true));
+  const actualApiForm = document.getElementById("api-settings-form");
+
+  actualApiForm?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const saveBtn = document.getElementById("set-api-save-btn");
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Guardando...";
+
+    const customUrl = document.getElementById("set-api-turso-url").value.trim();
+    const customToken = document.getElementById("set-api-turso-token").value.trim();
+    const customOrKey = document.getElementById("set-api-openrouter-key").value.trim();
+
+    if (customUrl) {
+      localStorage.setItem("fonebase_custom_turso_url", customUrl);
+    } else {
+      localStorage.removeItem("fonebase_custom_turso_url");
+    }
+
+    if (customToken) {
+      localStorage.setItem("fonebase_custom_turso_token", customToken);
+    } else {
+      localStorage.removeItem("fonebase_custom_turso_token");
+    }
+
+    if (customOrKey) {
+      localStorage.setItem("fonebase_custom_openrouter_key", customOrKey);
+    } else {
+      localStorage.removeItem("fonebase_custom_openrouter_key");
+    }
+
+    showToast("Ajustes de conexión guardados. Recargando aplicación...", "success");
+    setTimeout(() => {
+      location.reload();
+    }, 1500);
+  });
+
+  // ── EXPORTACIÓN DE COPIA DE SEGURIDAD (JSON) ──
+  const exportBtn = document.getElementById("set-backup-export-btn");
+  if (exportBtn) exportBtn.replaceWith(exportBtn.cloneNode(true));
+  const actualExportBtn = document.getElementById("set-backup-export-btn");
+
+  actualExportBtn?.addEventListener("click", async () => {
+    actualExportBtn.disabled = true;
+    actualExportBtn.textContent = "Exportando...";
+    try {
+      const tables = [
+        "usuarios", "clientes", "inventario", "equipos", "ventas",
+        "egresos", "servicio_tecnico", "creditos", "reventas",
+        "proveedores", "marcas_categorias", "vales_fisicos", "tareas",
+        "nominas", "prestamos_empleados", "metas_financieras", "ajustes_empresa"
+      ];
+      const batchQueries = tables.map(name => `SELECT * FROM ${name}`);
+      const results = await queryTurso(batchQueries);
+      
+      const dataToExport = {
+        metadata: {
+          fecha: new Date().toISOString(),
+          origen: "FoneBase SQLite Cloud Backup",
+          total_tablas: tables.length
+        },
+        tablas: {}
+      };
+      
+      tables.forEach((name, idx) => {
+        dataToExport.tablas[name] = results[idx] || [];
+      });
+
+      const fileName = `backup_fonebase_${new Date().toISOString().split('T')[0]}.json`;
+      const fileContent = JSON.stringify(dataToExport, null, 2);
+
+      if (navigator.share) {
+        try {
+          const file = new File([fileContent], fileName, { type: "application/json" });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: "Copia de Seguridad FoneBase",
+              text: "Respaldo completo de base de datos FoneBase en formato JSON."
+            });
+            showToast("Copia de seguridad compartida correctamente", "success");
+            return;
+          }
+        } catch (shareErr) {
+          console.warn("No se pudo compartir como archivo, intentando descarga estándar...", shareErr);
+        }
+      }
+
+      const blob = new Blob([fileContent], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      a.click();
+      URL.revokeObjectURL(url);
+      
+      showToast("Copia de seguridad descargada correctamente", "success");
+    } catch (err) {
+      showToast("Error al exportar copia: " + err.message, "error");
+    } finally {
+      actualExportBtn.disabled = false;
+      actualExportBtn.innerHTML = `<span class="material-symbols-outlined text-[18px] text-primary">download</span> Exportar JSON`;
+    }
+  });
+
+  // ── RESTAURACIÓN DE COPIA DE SEGURIDAD (JSON) ──
+  const importBtn = document.getElementById("set-backup-import-btn");
+  const fileInput = document.getElementById("set-backup-file-input");
+
+  if (importBtn) importBtn.replaceWith(importBtn.cloneNode(true));
+  if (fileInput) fileInput.replaceWith(fileInput.cloneNode(true));
+
+  const actualImportBtn = document.getElementById("set-backup-import-btn");
+  const actualFileInput = document.getElementById("set-backup-file-input");
+
+  actualImportBtn?.addEventListener("click", () => {
+    actualFileInput?.click();
+  });
+
+  actualFileInput?.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const backupData = JSON.parse(evt.target.result);
+        if (!backupData || !backupData.tablas) {
+          throw new Error("El archivo de copia de seguridad no es válido o está corrupto.");
+        }
+
+        const confirm = await showConfirm(
+          "Confirmación de Restauración",
+          "Esta acción borrará TODOS los datos actuales del servidor y restaurará los del archivo seleccionado. ¿Estás seguro de que deseas proceder?"
+        );
+
+        if (!confirm) {
+          actualFileInput.value = "";
+          return;
+        }
+
+        actualImportBtn.disabled = true;
+        actualImportBtn.textContent = "Restaurando...";
+
+        const tables = Object.keys(backupData.tablas);
+        showToast("Iniciando restauración de datos...", "info");
+
+        // 1. Eliminar datos existentes en cada tabla
+        const deleteQueries = tables.map(name => `DELETE FROM ${name}`);
+        await queryTurso(deleteQueries, true);
+
+        // 2. Insertar registros restaurados en lotes
+        let totalInserted = 0;
+        let insertQueriesBatch = [];
+
+        for (const tableName of tables) {
+          const rows = backupData.tablas[tableName];
+          if (!Array.isArray(rows) || rows.length === 0) continue;
+
+          const keys = Object.keys(rows[0]);
+          const sql = `INSERT INTO ${tableName} (${keys.join(", ")}) VALUES (${keys.map(() => "?").join(", ")})`;
+
+          for (const row of rows) {
+            const values = keys.map(k => row[k]);
+            insertQueriesBatch.push({
+              sql,
+              args: mapArgs(values)
+            });
+
+            if (insertQueriesBatch.length >= 150) {
+              await queryTurso(insertQueriesBatch, true);
+              totalInserted += insertQueriesBatch.length;
+              insertQueriesBatch = [];
+            }
+          }
+        }
+
+        if (insertQueriesBatch.length > 0) {
+          await queryTurso(insertQueriesBatch, true);
+          totalInserted += insertQueriesBatch.length;
+        }
+
+        showToast(`Restauración exitosa: ${totalInserted} registros restaurados. Recargando...`, "success");
+        setTimeout(() => {
+          location.reload();
+        }, 2000);
+
+      } catch (err) {
+        showToast("Error al restaurar copia: " + err.message, "error");
+      } finally {
+        actualImportBtn.disabled = false;
+        actualImportBtn.innerHTML = `<span class="material-symbols-outlined text-[18px] text-primary">upload_file</span> Restaurar JSON`;
+        actualFileInput.value = "";
+      }
+    };
+    reader.readAsText(file);
+  });
 }

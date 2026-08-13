@@ -1,5 +1,6 @@
 import ReceiptPrinterEncoder from '@point-of-sale/receipt-printer-encoder';
 import html2canvas from 'html2canvas';
+import { showToast } from './toast.js';
 
 let _device = null;
 let _characteristic = null;
@@ -95,10 +96,10 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
   const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
 
   const emisor = {
-    nombre:      ajustesEmpresa?.nombre      || "WAYIRA PHONE",
-    nit:         ajustesEmpresa?.nit         || "1193400777-2",
-    direccion:   (ajustesEmpresa?.direccion  || "Calle 12 No. 10 - 108") + ", " + (ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
-    contacto:    ajustesEmpresa?.contacto    || "3016807310",
+    nombre:      ajustesEmpresa?.nombre      || "MI NEGOCIO",
+    nit:         ajustesEmpresa?.nit         || "900.123.456-1",
+    direccion:   (ajustesEmpresa?.direccion  || "Calle 123 No. 45 - 67") + ", " + (ajustesEmpresa?.ciudad || "Bogotá - Cundinamarca"),
+    contacto:    ajustesEmpresa?.contacto    || "3001234567",
     condiciones: ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
     logo:        ajustesEmpresa?.logo        || "",
     logo_size:   ajustesEmpresa?.logo_size   || 60,
@@ -508,7 +509,7 @@ export async function printBluetoothTicket(v, _canvasCliente = null, _canvasVend
 
   } catch (err) {
     console.error("[BT-Printer] Error:", err);
-    alert(`Error Bluetooth: ${err.message || err}`);
+    showToast(`Error Bluetooth: ${err.message || err}`, "error");
   } finally {
     _isPrinting = false;
   }
@@ -519,10 +520,10 @@ function buildTechnicalTicketHTML(s, ajustesEmpresa = null) {
   const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
 
   const emisor = {
-    nombre:      ajustesEmpresa?.nombre      || "WAYIRA PHONE",
-    nit:         ajustesEmpresa?.nit         || "1193400777-2",
-    direccion:   (ajustesEmpresa?.direccion  || "Calle 12 No. 10 - 108") + ", " + (ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
-    contacto:    ajustesEmpresa?.contacto    || "3016807310",
+    nombre:      ajustesEmpresa?.nombre      || "MI NEGOCIO",
+    nit:         ajustesEmpresa?.nit         || "900.123.456-1",
+    direccion:   (ajustesEmpresa?.direccion  || "Calle 123 No. 45 - 67") + ", " + (ajustesEmpresa?.ciudad || "Bogotá - Cundinamarca"),
+    contacto:    ajustesEmpresa?.contacto    || "3001234567",
     condiciones: ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
     logo:        ajustesEmpresa?.logo        || "",
     logo_size:   ajustesEmpresa?.logo_size   || 60,
@@ -822,7 +823,7 @@ export async function printBluetoothTechnicalTicket(s, ajustesEmpresa = null) {
 
   } catch (err) {
     console.error("[BT-Printer] Error en ticket técnico:", err);
-    alert(`Error Bluetooth: ${err.message || err}`);
+    showToast(`Error Bluetooth: ${err.message || err}`, "error");
   } finally {
     _isPrinting = false;
   }
@@ -891,7 +892,7 @@ export async function printBluetoothAbonoTicket(cred, monto, nota, ajustesEmpres
 
   } catch (err) {
     console.error("[BT-Printer] Error en ticket abono:", err);
-    alert(`Error Bluetooth: ${err.message || err}`);
+    showToast(`Error Bluetooth: ${err.message || err}`, "error");
     throw err;
   } finally {
     _isPrinting = false;
@@ -917,10 +918,10 @@ function buildAbonoTicketHTML(cred, monto, nota, ajustesEmpresa = null) {
   const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
   
   const emisor = {
-    nombre: ajustesEmpresa?.nombre || "WAYIRA PHONE",
-    nit: ajustesEmpresa?.nit || "1193400777-2",
-    direccion: (ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
-    contacto: ajustesEmpresa?.contacto || "3016807310",
+    nombre: ajustesEmpresa?.nombre || "MI NEGOCIO",
+    nit: ajustesEmpresa?.nit || "900.123.456-1",
+    direccion: (ajustesEmpresa?.direccion || "Calle 123 No. 45 - 67") + ", " + (ajustesEmpresa?.ciudad || "Bogotá - Cundinamarca"),
+    contacto: ajustesEmpresa?.contacto || "3001234567",
     logo: ajustesEmpresa?.logo || "",
     logo_size: ajustesEmpresa?.logo_size || 60,
     mostrar_nombre: ajustesEmpresa?.mostrar_nombre !== 0

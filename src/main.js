@@ -10,25 +10,45 @@ if (localStorage.getItem("adminpro_theme") === "dark") {
 
 // Register Service Worker for PWA with auto-update detection
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/adminpro/sw.js', { scope: '/adminpro/' })
-      .then(reg => {
-        reg.addEventListener('updatefound', () => {
-          const newWorker = reg.installing;
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              showToast("Nueva versión disponible. Actualizando aplicación... 🔄", "success");
-              setTimeout(() => {
-                window.location.reload();
-              }, 1500);
-            }
+  const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+  if (isLocalhost) {
+    navigator.serviceWorker.getRegistrations().then(registrations => {
+      for (const registration of registrations) {
+        registration.unregister().then(() => {
+          console.log('Service Worker desregistrado en localhost');
+        });
+      }
+    });
+    if (window.caches) {
+      caches.keys().then(keys => {
+        keys.forEach(key => {
+          caches.delete(key).then(() => {
+            console.log(`Cache limpiado en localhost: ${key}`);
           });
         });
-      })
-      .catch(err => {
-        console.log('ServiceWorker registration failed: ', err);
       });
-  });
+    }
+  } else {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/adminpro/sw.js', { scope: '/adminpro/' })
+        .then(reg => {
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                showToast("Nueva versión disponible. Actualizando aplicación...", "success");
+                setTimeout(() => {
+                  window.location.reload();
+                }, 1500);
+              }
+            });
+          });
+        })
+        .catch(err => {
+          console.log('ServiceWorker registration failed: ', err);
+        });
+    });
+  }
 }
 
 import { navigate, registerView, onRouteChange, onBeforeRoute } from "./router.js";
@@ -49,10 +69,9 @@ import { initTechnical } from "./views/technical.js";
 import { initExpenses } from "./views/expenses.js";
 import { initNominas } from "./views/nominas.js";
 import { initSettings } from "./views/settings.js";
-import { initValesFisicos } from "./views/vales.js";
 import { initKiosk } from "./views/kiosk.js";
 import { showToast, showConfirm } from "./toast.js";
-import { login, verifyPin, logout, setToken, getToken, getAjustesEmpresa, getDashboard, getCreditos, getTareas } from "./api.js";
+import { login, verifyPin, logout, setToken, getToken, getAjustesEmpresa, getDashboard, getCreditos, getTareas, syncOfflineQueue, getLocalesConfigurados } from "./api.js";
 
 let _pendingEmail = "";
 let _companySettings = null;
@@ -137,7 +156,6 @@ const NAV_GROUPS = [
       { id: "pos",           label: "Ventas (POS)",        icon: "point_of_sale", roles: ["Administrador", "Vendedor"] },
       { id: "sales-history", label: "Historial de Ventas", icon: "history",       roles: ["Administrador", "Vendedor"] },
       { id: "credits",       label: "Créditos",            icon: "credit_score",  roles: ["Administrador", "Vendedor"] },
-      { id: "vales_fisicos", label: "Vales Físicos",       icon: "photo_camera",  roles: ["Administrador", "Vendedor"] },
       { id: "expenses",      label: "Egresos",             icon: "payments",      roles: ["Administrador"] },
       { id: "nominas",       label: "Nóminas",             icon: "request_quote", roles: ["Administrador"] }
     ]
@@ -202,17 +220,17 @@ function buildNavLinks(containerId, rol, mobile = false) {
     let primaryItems = [];
     if (userRol === 'Técnico de reparación') {
       primaryItems = [
-        { id: "dashboard", label: "Home",     icon: "dashboard" },
-        { id: "technical", label: "Reparar",  icon: "build" },
-        { id: "inventory", label: "Stock",    icon: "inventory_2" },
-        { id: "tasks",     label: "Tareas",   icon: "check_circle" }
+        { id: "dashboard", label: "Home",      icon: "dashboard" },
+        { id: "assistant", label: "Asistente",  icon: "forum" },
+        { id: "technical", label: "Reparar",   icon: "build" },
+        { id: "inventory", label: "Stock",     icon: "inventory_2" }
       ];
     } else {
       primaryItems = [
-        { id: "dashboard", label: "Home",     icon: "dashboard" },
-        { id: "pos",       label: "Venta",    icon: "point_of_sale" },
-        { id: "inventory", label: "Stock",    icon: "inventory_2" },
-        { id: "tasks",     label: "Tareas",   icon: "check_circle" }
+        { id: "dashboard", label: "Home",      icon: "dashboard" },
+        { id: "assistant", label: "Asistente",  icon: "forum" },
+        { id: "pos",       label: "Venta",     icon: "point_of_sale" },
+        { id: "inventory", label: "Stock",     icon: "inventory_2" }
       ];
     }
 
@@ -368,7 +386,57 @@ function setActiveNav(viewId) {
   });
   const t = document.getElementById("header-title");
   if (t) t.textContent = label;
+
+  // Ocultación del Header Superior en Asistente
+  const elHeader = document.getElementById("app-header");
+  const elMainContent = document.getElementById("main-content");
+  if (viewId === "assistant") {
+    elHeader?.classList.add("hidden");
+    document.body.style.overflow = "hidden";
+    if (elMainContent) {
+      elMainContent.className = "assistant-main-content";
+    }
+  } else {
+    document.body.style.overflow = "";
+    const session = getSession();
+    const isKiosco = session && String(session.rol || "").trim().toLowerCase() === "kiosco";
+    if (isKiosco) {
+      elHeader?.classList.add("hidden");
+      if (elMainContent) {
+        elMainContent.className = "min-h-screen w-full";
+      }
+    } else {
+      elHeader?.classList.remove("hidden");
+      if (elMainContent) {
+        elMainContent.className = "pt-14 md:ml-[260px] pb-40 md:pb-8 min-h-screen";
+      }
+    }
+  }
 }
+
+// ============================================================
+// Offline / Sync Status Logic
+// ============================================================
+function updateOnlineStatus() {
+  const badge = document.getElementById("app-offline-badge");
+  if (badge) {
+    if (navigator.onLine) {
+      badge.classList.add("hidden");
+    } else {
+      badge.classList.remove("hidden");
+    }
+  }
+}
+
+window.addEventListener("online", () => {
+  updateOnlineStatus();
+  syncOfflineQueue();
+});
+window.addEventListener("offline", () => {
+  updateOnlineStatus();
+});
+
+setInterval(syncOfflineQueue, 15000);
 
 // ============================================================
 // App Lifecycle
@@ -387,8 +455,12 @@ function showApp(nombre, rol) {
   buildNavLinks("desktop-nav", rol, false);
   buildNavLinks("mobile-nav",  rol, true);
   initNotifications();
+  initLocalSwitcher();
+  updateOnlineStatus();
+  syncOfflineQueue();
   
   const userRol = rol || 'Vendedor';
+  const isKioscoRole = String(userRol).trim().toLowerCase() === "kiosco";
   
   // Lógica para el Rol de Kiosco
   const elSidebar = document.getElementById("desktop-sidebar");
@@ -396,7 +468,7 @@ function showApp(nombre, rol) {
   const elMobileNav = document.getElementById("app-mobile-nav");
   const elMainContent = document.getElementById("main-content");
 
-  if (userRol === "Kiosco") {
+  if (isKioscoRole) {
     elSidebar?.classList.add("hidden");
     elSidebar?.classList.remove("md:flex");
     elHeader?.classList.add("hidden");
@@ -406,7 +478,7 @@ function showApp(nombre, rol) {
       elMainContent.className = "min-h-screen w-full";
     }
   } else {
-    elSidebar?.classList.remove("hidden");
+    elSidebar?.classList.add("hidden");
     elSidebar?.classList.add("md:flex");
     elHeader?.classList.remove("hidden");
     elMobileNav?.classList.remove("hidden");
@@ -422,7 +494,7 @@ function showApp(nombre, rol) {
     } catch (e) {
       console.warn("[Router] No se pudo cerrar el escáner al cambiar de ruta:", e);
     }
-    if (userRol === "Kiosco") {
+    if (isKioscoRole) {
       if (viewId !== "kiosk") {
         return "kiosk";
       }
@@ -478,7 +550,6 @@ function showApp(nombre, rol) {
   registerView("expenses", initExpenses());
   registerView("nominas", initNominas());
   registerView("settings", initSettings());
-  registerView("vales_fisicos", () => initValesFisicos());
   registerView("kiosk", () => initKiosk());
 
   const initialHash = window.location.hash.replace('#', '');
@@ -653,6 +724,37 @@ async function initNotifications() {
   // Periodically check for alerts
   checkAlerts();
   setInterval(checkAlerts, 60000); // Check every minute
+}
+
+async function initLocalSwitcher() {
+  const switcher = document.getElementById("header-local-switcher");
+  if (!switcher) return;
+
+  try {
+    const locales = await getLocalesConfigurados();
+    
+    if (locales.length === 0) {
+      locales.push({ id: 1, nombre: "WAYIRA PHONE" });
+    }
+
+    switcher.innerHTML = locales.map(l => `
+      <option value="${l.id}">${l.nombre.toUpperCase()}</option>
+    `).join("");
+
+    const activeLocal = localStorage.getItem("fonebase_active_local_id") || "1";
+    switcher.value = activeLocal;
+
+    switcher.addEventListener("change", (e) => {
+      const selected = e.target.value;
+      localStorage.setItem("fonebase_active_local_id", selected);
+      showToast("Cambiando de establecimiento...", "info");
+      setTimeout(() => {
+        location.reload();
+      }, 1000);
+    });
+  } catch (err) {
+    console.error("Error al inicializar el selector de local:", err);
+  }
 }
 
 async function checkAlerts() {

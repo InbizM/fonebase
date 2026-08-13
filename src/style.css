@@ -234,11 +234,11 @@ body {
 }
 
 /* Toast animation */
-@keyframes slideUp {
-  from { transform: translateY(100%); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
+@keyframes toastEntrance {
+  from { transform: scale(0.9) translateY(-10px); opacity: 0; }
+  to   { transform: scale(1) translateY(0); opacity: 1; }
 }
-.toast-animate { animation: slideUp 0.3s ease-out; }
+.toast-animate { animation: toastEntrance 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
@@ -394,5 +394,25 @@ body {
 }
 .animate-chat-bubble {
   animation: slideInBubble 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Correccion de la barra de chat para moviles con safe area bottom */
+.assistant-main-content {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: calc(56px + env(safe-area-inset-bottom, 0px)) !important;
+  overflow: hidden !important;
+}
+@media (min-width: 768px) {
+  .assistant-main-content {
+    position: static !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    margin-left: 260px !important;
+    width: calc(100% - 260px) !important;
+    overflow: hidden !important;
+  }
 }
 

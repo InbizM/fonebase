@@ -624,12 +624,12 @@ async function procesarVenta() {
       tipoVenta: _tipoVenta,
       imeis: JSON.stringify(imeis),
       emisor: {
-        nombre: _ajustesEmpresa?.nombre || "WAYIRA PHONE",
-        propietario: _ajustesEmpresa?.propietario || "Yeison Rangel Rangel",
-        nit: _ajustesEmpresa?.nit || "1193400777-2",
-        direccion: (_ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (_ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
-        contacto: _ajustesEmpresa?.contacto || "3016807310",
-        correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
+        nombre: _ajustesEmpresa?.nombre || "MI NEGOCIO",
+        propietario: _ajustesEmpresa?.propietario || "Juan Pérez",
+        nit: _ajustesEmpresa?.nit || "900.123.456-1",
+        direccion: (_ajustesEmpresa?.direccion || "Calle 123 No. 45 - 67") + ", " + (_ajustesEmpresa?.ciudad || "Bogotá - Cundinamarca"),
+        contacto: _ajustesEmpresa?.contacto || "3001234567",
+        correo: _ajustesEmpresa?.correo || "contacto@miempresa.com",
         condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
         logo: _ajustesEmpresa?.logo || "",
         logo_size: _ajustesEmpresa?.logo_size || 40,
@@ -672,6 +672,10 @@ let _flashNegotiatedPrice = 0;
 
 function setupFlashWizardEvents() {
   const openModalHandler = () => {
+    if (getAccesoriosList().length === 0) {
+      showToast("No hay accesorios disponibles en el inventario para realizar una Venta Flash", "warning");
+      return;
+    }
     if (isMobile()) {
       closeSheet();
     }
@@ -683,6 +687,7 @@ function setupFlashWizardEvents() {
   document.getElementById("pos-header-venta-flash")?.addEventListener("click", openModalHandler);
   document.getElementById("pos-pay-btn-flash")?.addEventListener("click", openModalHandler);
   document.getElementById("pos-pay-btn-flash-mobile")?.addEventListener("click", openModalHandler);
+  document.getElementById("pos-flash-fab")?.addEventListener("click", openModalHandler);
 
   document.getElementById("pos-flash-close-btn")?.addEventListener("click", closeFlashWizardModal);
   document.getElementById("pos-flash-modal-overlay")?.addEventListener("click", closeFlashWizardModal);
@@ -976,12 +981,12 @@ async function confirmarVentaFlashWizard() {
       tipoVenta: "venta",
       imeis: "N/A",
       emisor: {
-        nombre: _ajustesEmpresa?.nombre || "WAYIRA PHONE",
-        propietario: _ajustesEmpresa?.propietario || "Yeison Rangel Rangel",
-        nit: _ajustesEmpresa?.nit || "1193400777-2",
-        direccion: (_ajustesEmpresa?.direccion || "Calle 12 No. 10 - 108") + ", " + (_ajustesEmpresa?.ciudad || "Maicao - La Guajira"),
-        contacto: _ajustesEmpresa?.contacto || "3016807310",
-        correo: _ajustesEmpresa?.correo || "yeison0021@hotmail.com",
+        nombre: _ajustesEmpresa?.nombre || "MI NEGOCIO",
+        propietario: _ajustesEmpresa?.propietario || "Juan Pérez",
+        nit: _ajustesEmpresa?.nit || "900.123.456-1",
+        direccion: (_ajustesEmpresa?.direccion || "Calle 123 No. 45 - 67") + ", " + (_ajustesEmpresa?.ciudad || "Bogotá - Cundinamarca"),
+        contacto: _ajustesEmpresa?.contacto || "3001234567",
+        correo: _ajustesEmpresa?.correo || "contacto@miempresa.com",
         condiciones: _ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
         logo: _ajustesEmpresa?.logo || "",
         logo_size: _ajustesEmpresa?.logo_size || 40,

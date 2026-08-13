@@ -127,7 +127,6 @@ export async function initKiosk() {
       const ok = await showConfirm("Confirmación", "¿Estás seguro de que deseas cerrar sesión?");
       if (ok) {
         logout();
-        window.location.reload();
       }
     }
   });
@@ -335,7 +334,7 @@ function renderKioskUI(container) {
       <!-- HEADER -->
       <div style="padding:clamp(20px,8cqw,52px) clamp(18px,7cqw,44px) clamp(14px,5cqw,36px);position:relative;">
         <div class="kiosk-no-print" style="position:absolute;top:clamp(16px,4cqw,32px);right:clamp(18px,7cqw,44px);z-index:10;display:inline-flex;gap:8px;">
-          ${_userRole === "Kiosco" ? `
+          ${_userRole && _userRole.trim().toLowerCase() === "kiosco" ? `
           <button id="kiosk-top-logout-btn" title="Cerrar Sesión" style="background:${COLORS.black};border:1px solid ${COLORS.red};color:${COLORS.cream};padding:6px 12px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:6px;border-radius:4px;transition:all .2s;box-shadow:0 2px 8px rgba(0,0,0,0.2);">
             <span class="material-symbols-outlined" style="font-size:16px;line-height:1;color:${COLORS.red};">logout</span>
             <span>Salir</span>

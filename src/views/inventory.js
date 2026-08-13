@@ -1,4 +1,4 @@
-import { getInventario, crearProducto, actualizarProducto, eliminarProducto, uploadFoto, analyzeLabelImage, analyzeImeiLabel, getAjustesEmpresa } from "../api.js";
+import { getInventario, crearProducto, actualizarProducto, eliminarProducto, uploadFoto, analyzeLabelImage, analyzeImeiLabel, getAjustesEmpresa, pinProducto } from "../api.js";
 
 async function compressImage(base64Str, maxWidth = 1024, maxHeight = 1024, quality = 0.75) {
   return new Promise((resolve, reject) => {
@@ -262,7 +262,7 @@ function cardHtml(p) {
         </div>
         ${p.ubicacion ? `<p class="text-[10px] text-on-surface-variant truncate"><span class="material-symbols-outlined text-[11px] align-middle">location_on</span> ${p.ubicacion}</p>` : ''}
         <!-- Actions -->
-        <div class="flex gap-1.5 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div class="flex gap-1.5 mt-2 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity duration-200">
           <button onclick="event.stopPropagation(); inventoryView.openEdit('${p.id}')"
             class="flex-1 px-2 py-1.5 bg-surface text-primary border border-surface-variant rounded-md
                    hover:bg-primary/10 transition-colors flex items-center justify-center gap-1 text-xs font-medium">
@@ -305,7 +305,14 @@ function renderGrid() {
                 </div>
                 <div class="flex-1 min-w-0">
                   <div class="flex justify-between items-start gap-2 mb-1">
-                    <h3 class="font-bold text-on-surface text-sm truncate" title="${p.nombre}">${p.nombre}</h3>
+                    <div class="flex items-center gap-1 min-w-0">
+                      <h3 class="font-bold text-on-surface text-sm truncate" title="${p.nombre}">${p.nombre}</h3>
+                      <span onclick="event.stopPropagation(); window.inventoryView.togglePin('${p.id}', ${p.fijado ? 0 : 1})" 
+                            class="material-symbols-outlined text-[16px] cursor-pointer flex-shrink-0 transition-opacity ${p.fijado === 1 ? 'text-amber-500 opacity-100' : 'text-slate-300 opacity-0 group-hover:opacity-100'}" 
+                            title="${p.fijado === 1 ? 'Desfijar' : 'Fijar'}">
+                        push_pin
+                      </span>
+                    </div>
                     <span class="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase border whitespace-nowrap ${badge.cls}">${badge.label}</span>
                   </div>
                   <p class="text-[10px] uppercase font-bold text-on-surface-variant mb-1">${p.marca || '-'}</p>
@@ -317,7 +324,7 @@ function renderGrid() {
                   <p class="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-0.5">Precio Venta</p>
                   <p class="font-black text-primary text-lg leading-none">$${precio}</p>
                 </div>`}
-                <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div class="flex gap-1.5 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
                   ${isAdmin ? `<button onclick="event.stopPropagation(); inventoryView.openEdit('${p.id}')" class="p-2 bg-surface border border-surface-variant rounded-xl text-primary hover:bg-primary/10 transition-colors" title="Editar">
                     <span class="material-symbols-outlined text-[18px]">edit</span>
                   </button>` : ''}
@@ -343,13 +350,22 @@ function renderGrid() {
           const precio = Number(String(p.precioVenta).replace(/\D/g, "")).toLocaleString("es-CO");
           const costo  = Number(String(p.costo || 0).replace(/\D/g, "")).toLocaleString("es-CO");
           return `
-            <tr onclick="inventoryView.openDetail('${p.id}')" class="hover:bg-surface-container-low transition-colors cursor-pointer ${isOut ? 'opacity-70' : ''}">
+            <tr onclick="inventoryView.openDetail('${p.id}')" class="hover:bg-surface-container-low transition-colors cursor-pointer group ${isOut ? 'opacity-70' : ''}">
               <td class="px-4 py-3">
                 ${p.imagen ? `<img src="${p.imagen}" class="w-8 h-8 rounded object-cover">` : `<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[16px] text-on-surface-variant/50">inventory_2</span></div>`}
               </td>
               <td class="px-4 py-3">
-                <p class="font-bold text-sm text-on-surface">${p.nombre}</p>
-                <p class="text-[10px] text-on-surface-variant">${p.marca || '-'}</p>
+                <div class="flex items-center gap-1.5 min-w-0">
+                  <span onclick="event.stopPropagation(); window.inventoryView.togglePin('${p.id}', ${p.fijado ? 0 : 1})" 
+                        class="material-symbols-outlined text-[16px] cursor-pointer flex-shrink-0 transition-opacity ${p.fijado === 1 ? 'text-amber-500 opacity-100' : 'text-slate-300 opacity-0 group-hover:opacity-100'}" 
+                        title="${p.fijado === 1 ? 'Desfijar' : 'Fijar'}">
+                    push_pin
+                  </span>
+                  <div>
+                    <p class="font-bold text-sm text-on-surface">${p.nombre}</p>
+                    <p class="text-[10px] text-on-surface-variant">${p.marca || '-'}</p>
+                  </div>
+                </div>
               </td>
               <td class="px-4 py-3 font-mono text-xs font-bold text-on-surface-variant">${p.sku || p.id}</td>
               <td class="px-4 py-3 text-xs text-on-surface-variant">${p.categoria}</td>
@@ -454,10 +470,11 @@ async function saveProduct() {
 
   try {
     let imagenUrl = document.getElementById("inv-existing-img").value;
-    const fileInput = document.getElementById("inv-img-file");
+    const fileInputCamera = document.getElementById("inv-img-file-camera");
+    const fileInputGallery = document.getElementById("inv-img-file-gallery");
+    const file = (fileInputCamera && fileInputCamera.files[0]) || (fileInputGallery && fileInputGallery.files[0]);
 
-    if (fileInput.files[0]) {
-      const file = fileInput.files[0];
+    if (file) {
       btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Subiendo foto...`;
       const reader = new FileReader();
       imagenUrl = await new Promise((resolve, reject) => {
@@ -505,6 +522,7 @@ async function saveProduct() {
       document.getElementById("inv-ubicacion").value,
       document.getElementById("inv-sku").value,
       imagenUrl,
+      document.getElementById("inv-fijado").checked ? 1 : 0
     ];
 
     let res;
@@ -670,6 +688,18 @@ window.inventoryView = {
       document.getElementById("inv-img-preview").innerHTML =
         `<img src="${p.imagen}" class="w-full h-full object-cover">`;
     }
+    
+    // Initialize checkbox and clear file inputs
+    document.getElementById("inv-fijado").checked = p.fijado === 1;
+    const fileCam = document.getElementById("inv-img-file-camera");
+    const fileGal = document.getElementById("inv-img-file-gallery");
+    if (fileCam) fileCam.value = "";
+    if (fileGal) fileGal.value = "";
+    const labelCam = document.getElementById("inv-label-file-camera");
+    const labelGal = document.getElementById("inv-label-file-gallery");
+    if (labelCam) labelCam.value = "";
+    if (labelGal) labelGal.value = "";
+
     openModal("Editar Producto");
     toggleSpecsContainer();
   },
@@ -703,8 +733,28 @@ window.inventoryView = {
       document.getElementById("inv-id").value = "REV-" + Date.now().toString().slice(-6);
     }
     
+    // Clear checkbox and file inputs
+    document.getElementById("inv-fijado").checked = false;
+    const fileCam = document.getElementById("inv-img-file-camera");
+    const fileGal = document.getElementById("inv-img-file-gallery");
+    if (fileCam) fileCam.value = "";
+    if (fileGal) fileGal.value = "";
+    const labelCam = document.getElementById("inv-label-file-camera");
+    const labelGal = document.getElementById("inv-label-file-gallery");
+    if (labelCam) labelCam.value = "";
+    if (labelGal) labelGal.value = "";
+    
     openModal(isReventa ? "Nueva Reventa" : "Nuevo Producto");
     toggleSpecsContainer();
+  },
+  async togglePin(id, val) {
+    try {
+      await pinProducto(id, val);
+      showToast(val ? "📍 Producto fijado al inicio" : "📍 Producto desfijado", "success");
+      await loadInventario();
+    } catch (e) {
+      showToast("Error al fijar producto: " + e.message, "error");
+    }
   }
 };
 
@@ -947,10 +997,11 @@ export function initInventory() {
   document.getElementById("inv-modal-backdrop")?.addEventListener("click", closeModal);
 
   // Image preview
-  document.getElementById("inv-img-file")?.addEventListener("change", previewImg);
+  document.getElementById("inv-img-file-camera")?.addEventListener("change", previewImg);
+  document.getElementById("inv-img-file-gallery")?.addEventListener("change", previewImg);
 
   // Lector de foto de etiqueta/caja con IA (Agregar fotos a la cola y comprimir en caliente)
-  document.getElementById("inv-label-file")?.addEventListener("change", async (e) => {
+  async function handleLabelFileChange(e) {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -981,7 +1032,10 @@ export function initInventory() {
 
     renderScanThumbnails();
     e.target.value = ""; // Limpiar input file
-  });
+  }
+
+  document.getElementById("inv-label-file-camera")?.addEventListener("change", handleLabelFileChange);
+  document.getElementById("inv-label-file-gallery")?.addEventListener("change", handleLabelFileChange);
 
   // Botón para procesar todas las fotos añadidas con IA
   document.getElementById("inv-ai-process-btn")?.addEventListener("click", async () => {
