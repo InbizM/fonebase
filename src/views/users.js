@@ -1,7 +1,8 @@
-import { getUsers, crearUsuario, actualizarUsuario, eliminarUsuario, reset2fa } from "../api.js";
+import { getUsers, crearUsuario, actualizarUsuario, eliminarUsuario, reset2fa, getLocalesConfigurados } from "../api.js";
 import { showToast, showConfirm } from "../toast.js";
 
 let _usuarios = [];
+let _locales = [];
 let _isLoaded = false;
 let _isProcessing = false;
 let _editingEmail = null;
@@ -20,8 +21,13 @@ export function initUsers() {
 async function loadUsers() {
   const table = document.getElementById("user-table-body");
   try {
-    if (table) table.innerHTML = `<tr><td colspan="5" class="p-8 text-center opacity-50">Cargando equipo...</td></tr>`;
-    _usuarios = await getUsers();
+    if (table) table.innerHTML = `<tr><td colspan="6" class="p-8 text-center opacity-50">Cargando equipo...</td></tr>`;
+    const [usersRes, localesRes] = await Promise.all([
+      getUsers(),
+      getLocalesConfigurados()
+    ]);
+    _usuarios = usersRes || [];
+    _locales = localesRes || [];
   } catch (err) {
     showToast("Error al cargar usuarios", "error");
     _usuarios = [];
@@ -33,7 +39,7 @@ function renderTable(lista) {
   if (!container) return;
 
   if (lista.length === 0) {
-    container.innerHTML = `<tr><td colspan="5" class="p-10 text-center opacity-40 italic">No hay usuarios registrados</td></tr>`;
+    container.innerHTML = `<tr><td colspan="6" class="p-10 text-center opacity-40 italic">No hay usuarios registrados</td></tr>`;
     return;
   }
 
@@ -42,6 +48,15 @@ function renderTable(lista) {
     const rolColor = u.rol === 'Administrador' ? 'bg-purple-50 text-purple-700 border border-purple-100'
                    : u.rol === 'Vendedor' ? 'bg-blue-50 text-blue-700 border border-blue-100'
                    : 'bg-orange-50 text-orange-700 border border-orange-100';
+
+    const sucursalId = String(u.sucursal_id || "1").trim();
+    let sucursalNombre = "Principal";
+    if (sucursalId === "0" || sucursalId === "all") {
+      sucursalNombre = "Todas las Sucursales";
+    } else {
+      const matchLocal = _locales.find(l => String(l.id).trim() === sucursalId);
+      if (matchLocal) sucursalNombre = matchLocal.nombre;
+    }
 
     return `
       <tr class="hover:bg-surface-container-low transition-colors text-sm">
@@ -59,6 +74,12 @@ function renderTable(lista) {
         <td class="px-4 py-4 text-on-surface-variant hidden md:table-cell">${u.email}</td>
         <td class="px-4 py-4 text-center">
           <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${rolColor}">${u.rol}</span>
+        </td>
+        <td class="px-4 py-4 text-center">
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+            <span class="material-symbols-outlined text-[14px] text-slate-500">storefront</span>
+            ${sucursalNombre}
+          </span>
         </td>
         <td class="px-4 py-4 text-center">
           <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold ${u.estado === 'Activo' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-slate-50 text-slate-500 border border-slate-100'}">
@@ -79,7 +100,6 @@ function renderTable(lista) {
 }
 
 function setupEvents() {
-  // Inicializar selectores personalizados
   window.setupCustomSelect("user-input-rol-container", "user-input-rol");
   window.setupCustomSelect("user-input-estado-container", "user-input-estado");
 
@@ -132,15 +152,29 @@ function openModal(u = null) {
   form.reset();
   document.getElementById("user-modal-title").textContent = u ? "Editar Usuario" : "Nuevo Usuario";
 
+  // Poblar select de sucursales
+  const sucursalSelect = document.getElementById("user-input-sucursal");
+  if (sucursalSelect) {
+    let optionsHtml = `<option value="0">🌐 Todas las Sucursales (Acceso Global)</option>`;
+    if (_locales.length > 0) {
+      optionsHtml += _locales.map(l => `<option value="${l.id}">🏪 ${l.nombre}</option>`).join("");
+    } else {
+      optionsHtml += `<option value="1">🏪 Principal</option>`;
+    }
+    sucursalSelect.innerHTML = optionsHtml;
+  }
+
   if (u) {
     document.getElementById("user-input-name").value = u.nombre;
     document.getElementById("user-input-email").value = u.email;
     document.getElementById("user-input-password").value = u.password;
     document.getElementById("user-input-rol").value = u.rol;
     document.getElementById("user-input-estado").value = u.estado;
+    if (sucursalSelect) sucursalSelect.value = String(u.sucursal_id || "1").trim();
+  } else {
+    if (sucursalSelect) sucursalSelect.value = "1";
   }
 
-  // Sincronizar selectores
   window.syncCustomSelectUI("user-input-rol-container", document.getElementById("user-input-rol").value || "Vendedor");
   window.syncCustomSelectUI("user-input-estado-container", document.getElementById("user-input-estado").value || "Activo");
   
@@ -166,18 +200,19 @@ async function saveUser(e) {
   const getVal = id => document.getElementById(id).value.trim();
 
   const email = getVal("user-input-email").toLowerCase();
+  const sucursalId = getVal("user-input-sucursal") || "1";
   const datos = [
     email,
     getVal("user-input-password"),
     getVal("user-input-name"),
     getVal("user-input-rol"),
-    getVal("user-input-estado")
+    getVal("user-input-estado"),
+    sucursalId
   ];
 
   try {
-    // Si estamos editando, usamos actualizarUsuario (que ahora permite cambiar el email)
     if (_editingEmail) {
-      await actualizarUsuario(_editingEmail, email, [datos[1], datos[2], datos[3], datos[4]]);
+      await actualizarUsuario(_editingEmail, email, [datos[1], datos[2], datos[3], datos[4], datos[5]]);
     } else {
       await crearUsuario(datos);
     }

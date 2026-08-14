@@ -297,6 +297,11 @@ export async function inicializarEsquemaBaseDeDatos() {
   } catch (e) {
     console.error("Error al insertar ajustes_empresa inicial:", e);
   }
+
+  // Migración: Asegurar columna sucursal_id en usuarios
+  try {
+    await queryTurso("ALTER TABLE usuarios ADD COLUMN sucursal_id TEXT DEFAULT '1'", true);
+  } catch (e) { /* Columna ya existe */ }
 }
 
 // Inicializar base de datos
@@ -751,7 +756,6 @@ export const verifyPin = async (email, pin) => {
     return { success: false, mensaje: "Error de autenticación: " + err.message };
   }
 };
-
 export const reset2fa = async (email) => {
   try {
     await queryTurso({
@@ -765,9 +769,14 @@ export const reset2fa = async (email) => {
 };
 
 // ── USUARIOS ──
-export const getUsers = async () => (await queryTurso("SELECT * FROM usuarios ORDER BY nombre ASC"))[0] || [];
-export const crearUsuario = (d) => queryTurso({ sql: "INSERT INTO usuarios (email, password, nombre, rol, estado) VALUES (?,?,?,?,?)", args: mapArgs(d) });
-export const actualizarUsuario = (oldEmail, newEmail, d) => queryTurso({ sql: "UPDATE usuarios SET email=?, password=?, nombre=?, rol=?, estado=? WHERE email=?", args: [{ type: "text", value: newEmail }, ...mapArgs(d), { type: "text", value: oldEmail }] });
+export const getUsers = async () => {
+  try {
+    await queryTurso("ALTER TABLE usuarios ADD COLUMN sucursal_id TEXT DEFAULT 'PRINCIPAL'");
+  } catch (e) {}
+  return (await queryTurso("SELECT * FROM usuarios ORDER BY nombre ASC"))[0] || [];
+};
+export const crearUsuario = (d) => queryTurso({ sql: "INSERT INTO usuarios (email, password, nombre, rol, estado, sucursal_id) VALUES (?,?,?,?,?,?)", args: mapArgs(d) });
+export const actualizarUsuario = (oldEmail, newEmail, d) => queryTurso({ sql: "UPDATE usuarios SET email=?, password=?, nombre=?, rol=?, estado=?, sucursal_id=? WHERE email=?", args: [{ type: "text", value: newEmail }, ...mapArgs(d), { type: "text", value: oldEmail }] });
 export const eliminarUsuario = (email) => queryTurso({ sql: "DELETE FROM usuarios WHERE email = ?", args: [{ type: "text", value: email }] });
 
 // ── CLIENTES ──
