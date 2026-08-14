@@ -437,8 +437,29 @@ export function setupAssistantEvents() {
   // ── MICRÓFONO: MediaRecorder → OpenRouter Whisper ──
   // Modelo: openai/whisper-large-v3-turbo (~$0.00018/min, soporte español excelente)
 
+  // ── MICRÓFONO: MediaRecorder → OpenRouter Whisper ──
+  // Modelo: openai/whisper-large-v3-turbo (~$0.00018/min, soporte español excelente)
+
   let mediaRecorder = null;
   let audioChunks = [];
+  let timerInterval = null;
+
+  // Inyectar estilos para la animación de la onda si no existen
+  if (!document.getElementById("voice-wave-styles")) {
+    const style = document.createElement("style");
+    style.id = "voice-wave-styles";
+    style.textContent = `
+      @keyframes voice-wave-bar {
+        0%, 100% { transform: scaleY(0.3); }
+        50% { transform: scaleY(1); }
+      }
+      .animate-voice-wave {
+        animation: voice-wave-bar 1.2s ease-in-out infinite;
+        transform-origin: bottom;
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   function setMicRecording(active) {
     isListening = active;
@@ -446,14 +467,92 @@ export function setupAssistantEvents() {
       micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
       micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
       pulseEl?.classList.remove("hidden");
-      if (statusEl) statusEl.textContent = "🔴 Grabando... toca de nuevo para parar";
+      showRecordingUI();
     } else {
       micBtn.classList.remove("bg-red-600", "text-white", "animate-pulse");
       micBtn.classList.add("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
       pulseEl?.classList.add("hidden");
-      if (statusEl) statusEl.textContent = "Listo para asistirte";
+      hideRecordingUI();
     }
     micBtn.style.transform = "";
+  }
+
+  function showRecordingUI() {
+    document.getElementById("voice-recording-card")?.remove();
+
+    const inputCard = textInput.closest(".max-w-4xl");
+    if (!inputCard) return;
+
+    const card = document.createElement("div");
+    card.id = "voice-recording-card";
+    card.className = "max-w-4xl mx-auto bg-slate-900 dark:bg-slate-950 text-white rounded-2xl p-4 flex items-center justify-between shadow-2xl animate-in slide-in-from-bottom duration-300 gap-4 mb-3 border border-red-500/20";
+    card.innerHTML = `
+      <div class="flex items-center gap-3">
+        <div class="relative flex items-center justify-center">
+          <span class="w-3.5 h-3.5 rounded-full bg-red-500 animate-ping absolute"></span>
+          <span class="w-3.5 h-3.5 rounded-full bg-red-600 relative"></span>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-[10px] font-black uppercase tracking-wider text-red-400">Grabando Audio</span>
+          <span id="recording-timer" class="text-base font-mono font-bold">00:00</span>
+        </div>
+      </div>
+      
+      <!-- Ecualizador de onda animado -->
+      <div class="flex items-end gap-1.5 h-7 px-4">
+        <div class="w-1 bg-red-500 rounded-full animate-voice-wave" style="animation-delay: 0.1s; height: 100%;"></div>
+        <div class="w-1 bg-red-500 rounded-full animate-voice-wave" style="animation-delay: 0.3s; height: 100%;"></div>
+        <div class="w-1 bg-red-500 rounded-full animate-voice-wave" style="animation-delay: 0.2s; height: 100%;"></div>
+        <div class="w-1 bg-red-500 rounded-full animate-voice-wave" style="animation-delay: 0.4s; height: 100%;"></div>
+        <div class="w-1 bg-red-500 rounded-full animate-voice-wave" style="animation-delay: 0.15s; height: 100%;"></div>
+      </div>
+      
+      <div class="flex items-center gap-2">
+        <button id="cancel-record-btn" type="button" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 active:scale-95 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all border border-slate-700 text-slate-300">
+          Cancelar
+        </button>
+        <button id="stop-record-btn" type="button" class="px-4 py-2 bg-red-600 hover:bg-red-500 active:scale-95 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all text-white font-bold flex items-center gap-1.5 shadow-lg shadow-red-600/30">
+          <span class="material-symbols-outlined text-[14px]">stop</span>
+          <span>Detener</span>
+        </button>
+      </div>
+    `;
+
+    inputCard.parentNode.insertBefore(card, inputCard);
+
+    document.getElementById("cancel-record-btn").addEventListener("click", cancelRecording);
+    document.getElementById("stop-record-btn").addEventListener("click", stopRecordingAndTranscribe);
+
+    let startTime = Date.now();
+    timerInterval = setInterval(() => {
+      let elapsed = Math.floor((Date.now() - startTime) / 1000);
+      let mins = String(Math.floor(elapsed / 60)).padStart(2, "0");
+      let secs = String(elapsed % 60).padStart(2, "0");
+      let timerEl = document.getElementById("recording-timer");
+      if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+    }, 1000);
+  }
+
+  function hideRecordingUI() {
+    if (timerInterval) {
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+    document.getElementById("voice-recording-card")?.remove();
+  }
+
+  async function cancelRecording() {
+    if (mediaRecorder) {
+      try {
+        mediaRecorder.onstop = null;
+        mediaRecorder.stop();
+        mediaRecorder.stream?.getTracks().forEach(t => t.stop());
+      } catch (_) {}
+      mediaRecorder = null;
+    }
+    audioChunks = [];
+    setMicRecording(false);
+    showToast("Grabación cancelada", "info");
   }
 
   async function startRecording() {
@@ -461,35 +560,50 @@ export function setupAssistantEvents() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunks = [];
 
-      // Elegir formato compatible: webm en Chrome, mp4/ogg en Safari
-      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
-        ? "audio/webm;codecs=opus"
-        : MediaRecorder.isTypeSupported("audio/webm")
-        ? "audio/webm"
-        : "audio/ogg";
+      let mimeType = "";
+      const preferredTypes = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/ogg",
+        "audio/mp4",
+        "audio/aac",
+        "audio/wav"
+      ];
+      for (const type of preferredTypes) {
+        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          break;
+        }
+      }
 
-      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const options = mimeType ? { mimeType } : {};
+      mediaRecorder = new MediaRecorder(stream, options);
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunks.push(e.data);
       };
-      mediaRecorder.start(200); // chunk cada 200ms
+      mediaRecorder.start(250);
       setMicRecording(true);
     } catch (err) {
       console.error("[Mic] Error al iniciar grabación:", err);
-      showToast("No se pudo acceder al micrófono: " + err.message, "error");
+      showToast("No se pudo iniciar el micrófono. Revisa los permisos.", "error");
     }
   }
 
   async function stopRecordingAndTranscribe() {
     if (!mediaRecorder) return;
 
-    setMicRecording(false);
-    if (statusEl) statusEl.textContent = "⏳ Transcribiendo con Whisper...";
+    const stopBtn = document.getElementById("stop-record-btn");
+    const cancelBtn = document.getElementById("cancel-record-btn");
+    if (stopBtn) stopBtn.disabled = true;
+    if (cancelBtn) cancelBtn.disabled = true;
+
+    const timerEl = document.getElementById("recording-timer");
+    if (timerEl) timerEl.textContent = "Procesando...";
 
     await new Promise(resolve => {
       mediaRecorder.onstop = resolve;
       mediaRecorder.stop();
-      // Detener tracks del micrófono
       mediaRecorder.stream?.getTracks().forEach(t => t.stop());
     });
 
@@ -498,14 +612,32 @@ export function setupAssistantEvents() {
     audioChunks = [];
     mediaRecorder = null;
 
-    if (audioBlob.size < 1000) {
-      showToast("Audio muy corto, intenta hablar más tiempo.", "warning");
-      if (statusEl) statusEl.textContent = "Listo para asistirte";
+    hideRecordingUI();
+    setMicRecording(false);
+
+    if (audioBlob.size < 500) {
+      showToast("Grabación muy corta, intenta de nuevo.", "warning");
       return;
     }
 
+    const transcribingBubble = document.createElement("div");
+    transcribingBubble.id = "voice-transcribing-bubble";
+    transcribingBubble.className = "flex gap-3 max-w-[85%] self-start animate-in fade-in duration-300";
+    transcribingBubble.innerHTML = `
+      <div class="w-8 h-8 rounded-full bg-slate-600 text-white flex items-center justify-center shrink-0 shadow-md">
+        <span class="material-symbols-outlined text-[18px] animate-spin">sync</span>
+      </div>
+      <div class="px-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-100 rounded-2xl rounded-tl-xs shadow-sm flex items-center gap-2">
+        <span class="text-xs font-semibold">Transcribiendo tu voz con Whisper...</span>
+      </div>
+    `;
+    const chatContainer = document.getElementById("voice-chat-history");
+    if (chatContainer) {
+      chatContainer.appendChild(transcribingBubble);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
     try {
-      // Convertir blob a base64
       const base64Audio = await new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onloadend = () => resolve(reader.result.split(",")[1]);
@@ -516,7 +648,11 @@ export function setupAssistantEvents() {
       const { getOpenRouterApiKey } = await import("../api.js");
       const apiKey = getOpenRouterApiKey();
 
-      const ext = mimeType.includes("ogg") ? "ogg" : mimeType.includes("mp4") ? "mp4" : "webm";
+      let ext = "webm";
+      if (mimeType.includes("mp4") || mimeType.includes("m4a")) ext = "mp4";
+      else if (mimeType.includes("ogg")) ext = "ogg";
+      else if (mimeType.includes("wav")) ext = "wav";
+      else if (mimeType.includes("aac")) ext = "aac";
 
       const resp = await fetch("https://openrouter.ai/api/v1/audio/transcriptions", {
         method: "POST",
@@ -533,11 +669,12 @@ export function setupAssistantEvents() {
         })
       });
 
+      transcribingBubble.remove();
+
       if (!resp.ok) {
         const errText = await resp.text();
         console.error("[Whisper] Error:", resp.status, errText);
-        showToast(`Error al transcribir (${resp.status}): ${errText.slice(0, 100)}`, "error");
-        if (statusEl) statusEl.textContent = "Listo para asistirte";
+        showToast(`Error al transcribir (${resp.status})`, "error");
         return;
       }
 
@@ -545,23 +682,21 @@ export function setupAssistantEvents() {
       const transcribedText = result.text?.trim() || "";
 
       if (!transcribedText) {
-        showToast("No se detectó voz en el audio.", "warning");
-        if (statusEl) statusEl.textContent = "Listo para asistirte";
+        showToast("No se detectó ninguna palabra en tu audio.", "warning");
         return;
       }
 
       textInput.value = transcribedText;
       textInput.focus();
-      if (statusEl) statusEl.textContent = "✅ Listo — revisa y toca Enviar";
-      console.log("[Whisper] Transcripción:", transcribedText);
+      showToast("Audio transcribido con éxito.", "success");
+      console.log("[Whisper] Transcripción exitosa:", transcribedText);
     } catch (err) {
-      console.error("[Whisper] Error de red:", err);
-      showToast("Error al transcribir: " + err.message, "error");
-      if (statusEl) statusEl.textContent = "Listo para asistirte";
+      transcribingBubble.remove();
+      console.error("[Whisper] Error:", err);
+      showToast("Error de conexión al transcribir: " + err.message, "error");
     }
   }
 
-  // UN SOLO evento — pointerup evita doble disparo click+touchend en móvil
   micBtn.addEventListener("pointerup", (e) => {
     e.preventDefault();
     if (isListening) {
