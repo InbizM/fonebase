@@ -284,11 +284,18 @@
       </div>
 
       <!-- Selector de Local/Establecimiento -->
-      <div class="flex items-center gap-1.5 mr-2">
-        <span class="material-symbols-outlined text-[18px] text-slate-400">store</span>
-        <select id="header-local-switcher" class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 outline-none focus:ring-1 focus:ring-primary/30 max-w-[150px] cursor-pointer active:scale-95 transition-all">
+      <div id="header-local-switcher-container" class="custom-select-container relative min-w-[140px] max-w-[180px] mr-2">
+        <input type="hidden" id="header-local-switcher" value="1" />
+        <button type="button" class="custom-select-trigger w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2.5 py-1.5 text-[11px] font-bold text-slate-700 dark:text-slate-200 outline-none flex items-center justify-between gap-1.5 cursor-pointer active:scale-95 transition-all shadow-sm">
+          <div class="flex items-center gap-1.5 truncate">
+            <span class="material-symbols-outlined text-[16px] text-primary">storefront</span>
+            <span class="selected-label truncate">Cargando...</span>
+          </div>
+          <span class="material-symbols-outlined text-[16px] text-slate-400">keyboard_arrow_down</span>
+        </button>
+        <div class="custom-select-options hidden absolute right-0 top-full mt-1 bg-surface-container-high border border-surface-variant rounded-xl shadow-2xl z-50 overflow-hidden py-1 min-w-[160px]">
           <!-- Opciones dinámicas -->
-        </select>
+        </div>
       </div>
       <!-- Actions -->
       <div class="flex items-center gap-2 relative">
@@ -3776,9 +3783,19 @@
                 </div>
                 <div>
                   <label class="field-label">Sucursal / Sede Asignada</label>
-                  <select id="user-input-sucursal" class="w-full bg-surface-container border border-surface-variant rounded-xl px-4 py-2.5 text-sm font-semibold text-on-surface focus:outline-none focus:border-primary transition-all">
-                    <!-- Inyectado dinámicamente por JS -->
-                  </select>
+                  <div id="user-input-sucursal-container" class="custom-select-container relative">
+                    <input type="hidden" id="user-input-sucursal" value="1" />
+                    <button type="button" class="custom-select-trigger w-full bg-surface-container border border-surface-variant rounded-xl px-4 py-2.5 text-sm font-semibold text-on-surface focus:outline-none focus:border-primary flex items-center justify-between shadow-sm active:scale-[0.99] transition-all">
+                      <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-slate-500">storefront</span>
+                        <span class="selected-label">Cargando...</span>
+                      </div>
+                      <span class="material-symbols-outlined text-[18px] text-slate-400">keyboard_arrow_down</span>
+                    </button>
+                    <div class="custom-select-options hidden absolute left-0 right-0 bottom-full mb-1 bg-surface-container-high border border-surface-variant rounded-xl shadow-2xl z-50 overflow-hidden py-1 max-h-48 overflow-y-auto">
+                      <!-- Inyectado dinámicamente por JS -->
+                    </div>
+                  </div>
                 </div>
               </div>
               <div class="pt-4 flex justify-end">
@@ -4136,10 +4153,28 @@
                       <label class="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Ancho Impresora Térmica</label>
                       <p class="text-[9px] text-slate-400 mt-0.5">Selecciona el ancho de papel de tu impresora.</p>
                     </div>
-                    <select id="set-store-paper-format" class="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-primary">
-                      <option value="48mm" selected>48mm / 58mm (Portátil Bluetooth)</option>
-                      <option value="80mm">80mm (Grande 80mm)</option>
-                    </select>
+                    <div id="set-store-paper-format-container" class="custom-select-container relative min-w-[170px]">
+                      <input type="hidden" id="set-store-paper-format" value="48mm" />
+                      <button type="button" class="custom-select-trigger bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-bold focus:outline-none focus:border-primary flex items-center justify-between gap-2 shadow-sm active:scale-[0.99] transition-all">
+                        <div class="flex items-center gap-1.5">
+                          <span class="material-symbols-outlined text-[16px] text-slate-500">print</span>
+                          <span class="selected-label">48mm / 58mm</span>
+                        </div>
+                        <span class="material-symbols-outlined text-[16px] text-slate-400">keyboard_arrow_down</span>
+                      </button>
+                      <div class="custom-select-options hidden absolute right-0 bottom-full mb-1 bg-surface-container-high border border-surface-variant rounded-xl shadow-2xl z-50 overflow-hidden py-1 min-w-[190px]">
+                        <div data-value="48mm" class="custom-option px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
+                          <span class="material-symbols-outlined text-[16px] text-slate-400">print</span>
+                          <span class="flex-1">48mm / 58mm (Portátil)</span>
+                          <span class="material-symbols-outlined text-[16px] text-primary check-icon">check_circle</span>
+                        </div>
+                        <div data-value="80mm" class="custom-option px-3 py-2 text-xs font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
+                          <span class="material-symbols-outlined text-[16px] text-slate-400">print</span>
+                          <span class="flex-1">80mm (Grande 80mm)</span>
+                          <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
 

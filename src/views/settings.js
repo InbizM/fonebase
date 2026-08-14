@@ -85,8 +85,11 @@ async function loadCompanySettings() {
       const elMostrarNombre = document.getElementById("set-store-mostrar-nombre");
       if (elMostrarNombre) elMostrarNombre.checked = mostrarNombre;
 
+      const savedFormat = localStorage.getItem("fonebase_paper_format") || "48mm";
       const elPaperFormat = document.getElementById("set-store-paper-format");
-      if (elPaperFormat) elPaperFormat.value = localStorage.getItem("fonebase_paper_format") || "48mm";
+      if (elPaperFormat) elPaperFormat.value = savedFormat;
+      window.setupCustomSelect("set-store-paper-format-container", "set-store-paper-format");
+      window.syncCustomSelectUI("set-store-paper-format-container", savedFormat);
       
       const elImg = document.getElementById("set-store-logo-img");
       const elPlc = document.getElementById("set-store-logo-placeholder");

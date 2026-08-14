@@ -728,30 +728,42 @@ async function initNotifications() {
 }
 
 async function initLocalSwitcher() {
-  const switcher = document.getElementById("header-local-switcher");
-  if (!switcher) return;
+  const container = document.getElementById("header-local-switcher-container");
+  const hiddenInput = document.getElementById("header-local-switcher");
+  if (!container || !hiddenInput) return;
 
   try {
     const locales = await getLocalesConfigurados();
-    
     if (locales.length === 0) {
-      locales.push({ id: 1, nombre: "WAYIRA PHONE" });
+      locales.push({ id: 1, nombre: "MI NEGOCIO" });
     }
 
-    switcher.innerHTML = locales.map(l => `
-      <option value="${l.id}">${l.nombre.toUpperCase()}</option>
-    `).join("");
-
     const activeLocal = localStorage.getItem("fonebase_active_local_id") || "1";
-    switcher.value = activeLocal;
+    hiddenInput.value = activeLocal;
 
-    switcher.addEventListener("change", (e) => {
+    const optionsMenu = container.querySelector(".custom-select-options");
+    if (optionsMenu) {
+      optionsMenu.innerHTML = locales.map(l => `
+        <div data-value="${l.id}" class="custom-option px-3 py-2 text-xs font-bold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
+          <span class="material-symbols-outlined text-[16px] text-slate-400">storefront</span>
+          <span class="flex-1 truncate">${l.nombre.toUpperCase()}</span>
+          <span class="material-symbols-outlined text-[16px] text-primary check-icon ${String(l.id) === String(activeLocal) ? '' : 'hidden'}">check_circle</span>
+        </div>
+      `).join("");
+    }
+
+    setupCustomSelect("header-local-switcher-container", "header-local-switcher");
+    syncCustomSelectUI("header-local-switcher-container", activeLocal);
+
+    hiddenInput.addEventListener("change", (e) => {
       const selected = e.target.value;
-      localStorage.setItem("fonebase_active_local_id", selected);
-      showToast("Cambiando de establecimiento...", "info");
-      setTimeout(() => {
-        location.reload();
-      }, 1000);
+      if (selected !== localStorage.getItem("fonebase_active_local_id")) {
+        localStorage.setItem("fonebase_active_local_id", selected);
+        showToast("Cambiando de establecimiento...", "info");
+        setTimeout(() => {
+          location.reload();
+        }, 1000);
+      }
     });
   } catch (err) {
     console.error("Error al inicializar el selector de local:", err);

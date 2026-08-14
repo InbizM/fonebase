@@ -102,6 +102,7 @@ function renderTable(lista) {
 function setupEvents() {
   window.setupCustomSelect("user-input-rol-container", "user-input-rol");
   window.setupCustomSelect("user-input-estado-container", "user-input-estado");
+  window.setupCustomSelect("user-input-sucursal-container", "user-input-sucursal");
 
   document.getElementById("user-search")?.addEventListener("input", (e) => {
     const q = e.target.value.toLowerCase().trim();
@@ -152,16 +153,40 @@ function openModal(u = null) {
   form.reset();
   document.getElementById("user-modal-title").textContent = u ? "Editar Usuario" : "Nuevo Usuario";
 
-  // Poblar select de sucursales
-  const sucursalSelect = document.getElementById("user-input-sucursal");
-  if (sucursalSelect) {
-    let optionsHtml = `<option value="0">Todas las Sucursales (Acceso Global)</option>`;
+  // Poblar opciones del custom select de sucursales
+  const sucursalContainer = document.getElementById("user-input-sucursal-container");
+  const sucursalInput = document.getElementById("user-input-sucursal");
+  if (sucursalContainer && sucursalInput) {
+    const optionsMenu = sucursalContainer.querySelector(".custom-select-options");
+    let optionsHtml = `
+      <div data-value="0" class="custom-option px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+        <span class="material-symbols-outlined text-[18px] text-slate-400">public</span>
+        <span class="flex-1">Todas las Sucursales (Acceso Global)</span>
+        <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+      </div>
+    `;
     if (_locales.length > 0) {
-      optionsHtml += _locales.map(l => `<option value="${l.id}">${l.nombre}</option>`).join("");
+      optionsHtml += _locales.map(l => `
+        <div data-value="${l.id}" class="custom-option px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+          <span class="material-symbols-outlined text-[18px] text-slate-400">storefront</span>
+          <span class="flex-1">${l.nombre}</span>
+          <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+        </div>
+      `).join("");
     } else {
-      optionsHtml += `<option value="1">Principal</option>`;
+      optionsHtml += `
+        <div data-value="1" class="custom-option px-4 py-2.5 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-3 cursor-pointer transition-colors">
+          <span class="material-symbols-outlined text-[18px] text-slate-400">storefront</span>
+          <span class="flex-1">Principal</span>
+          <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+        </div>
+      `;
     }
-    sucursalSelect.innerHTML = optionsHtml;
+    if (optionsMenu) optionsMenu.innerHTML = optionsHtml;
+
+    const targetVal = u ? String(u.sucursal_id || "1").trim() : "1";
+    sucursalInput.value = targetVal;
+    window.syncCustomSelectUI("user-input-sucursal-container", targetVal);
   }
 
   if (u) {
@@ -170,9 +195,6 @@ function openModal(u = null) {
     document.getElementById("user-input-password").value = u.password;
     document.getElementById("user-input-rol").value = u.rol;
     document.getElementById("user-input-estado").value = u.estado;
-    if (sucursalSelect) sucursalSelect.value = String(u.sucursal_id || "1").trim();
-  } else {
-    if (sucursalSelect) sucursalSelect.value = "1";
   }
 
   window.syncCustomSelectUI("user-input-rol-container", document.getElementById("user-input-rol").value || "Vendedor");
