@@ -799,44 +799,6 @@ export const getInventario = async () => {
     // Column might already exist
   }
   let results = (await queryTurso("SELECT * FROM inventario ORDER BY fijado DESC, id DESC"))[0] || [];
-
-  const expectedProducts = [
-    { sku: "FORRO-SILICONA", id: "PROD-FORROSIL", name: "Forro Protector Silicona", costo: 5000, precio: 15000, stock: 100 },
-    { sku: "VIDRIO-9D", id: "PROD-VIDRIO9D", name: "Vidrio Templado 9D", costo: 2000, precio: 10000, stock: 200 },
-    { sku: "VIDRIO-CER", id: "PROD-VIDRIOCER", name: "Vidrio Templado Cerámico", costo: 3000, precio: 12000, stock: 150 }
-  ];
-
-  let needsRequery = false;
-  for (const prod of expectedProducts) {
-    const exists = results.some(r => r.sku === prod.sku);
-    if (!exists) {
-      const item = [
-        prod.id,
-        prod.name,
-        "Universal",
-        "Accesorios",
-        "Accesorio",
-        prod.costo,
-        prod.precio,
-        0,
-        prod.stock,
-        "Vitrina A",
-        prod.sku,
-        "",
-        1 // fijado = 1
-      ];
-      await queryTurso({
-        sql: "INSERT INTO inventario VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        args: mapArgs(item)
-      });
-      needsRequery = true;
-    }
-  }
-
-  if (needsRequery) {
-    results = (await queryTurso("SELECT * FROM inventario ORDER BY fijado DESC, id DESC"))[0] || [];
-  }
-
   return results.map(r => ({ ...r, stockActual: r.stock_actual, stockMinimo: r.stock_minimo, precioVenta: r.precio_venta, costo: r.costo, fijado: r.fijado || 0 }));
 };
 export const crearProducto = (d) => {
