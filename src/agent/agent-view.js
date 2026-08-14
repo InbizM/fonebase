@@ -438,29 +438,51 @@ export function setupAssistantEvents() {
   if (SpeechRecognition) {
     recognition = new SpeechRecognition();
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.lang = "es-ES";
+
+    let lastTranscript = "";
 
     recognition.onstart = () => {
       isListening = true;
+      lastTranscript = "";
       pulseEl?.classList.remove("hidden");
       micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
       micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
-      if (statusEl) statusEl.textContent = "Escuchando... (suelta para enviar)";
+      if (statusEl) statusEl.textContent = "Escuchando... Habla tu comando";
     };
 
     recognition.onresult = async (event) => {
-      const text = event.results[0][0].transcript;
-      textInput.value = text;
-      const replyContext = _replyingToMessage;
-      clearReplyState();
-      appendChatMessage("user", text, null, null, true, replyContext);
-      await procesarTextoConIA(text, null, replyContext);
+      let currentText = "";
+      let isFinal = false;
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        currentText += event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          isFinal = true;
+        }
+      }
+
+      if (currentText) {
+        textInput.value = currentText;
+        lastTranscript = currentText;
+      }
+
+      if (isFinal && lastTranscript.trim()) {
+        const finalQuery = lastTranscript.trim();
+        textInput.value = "";
+        const replyContext = _replyingToMessage;
+        clearReplyState();
+        appendChatMessage("user", finalQuery, null, null, true, replyContext);
+        await procesarTextoConIA(finalQuery, null, replyContext);
+      }
     };
 
     recognition.onerror = (event) => {
       console.error("Speech recognition error:", event.error);
-      showToast("Error de reconocimiento de voz: " + event.error, "error");
+      if (event.error !== "no-speech" && event.error !== "aborted") {
+        showToast("Error de micrófono: " + event.error, "error");
+      }
       resetMicUI();
     };
 
@@ -487,45 +509,25 @@ export function setupAssistantEvents() {
     if (statusEl) statusEl.textContent = "Listo para asistirte";
   }
 
-  const startHoldTalk = (e) => {
-    if (!recognition || isListening) return;
-    try {
-      recognition.start();
-    } catch (err) {
-      console.error("Failed to start recognition:", err);
+  const toggleVoiceRecording = () => {
+    if (!recognition) return;
+    if (isListening) {
+      try {
+        recognition.stop();
+      } catch (e) {}
+    } else {
+      try {
+        textInput.value = "";
+        recognition.start();
+      } catch (err) {
+        console.error("Failed to start recognition:", err);
+      }
     }
   };
-
-  const stopHoldTalk = (e) => {
-    if (!recognition || !isListening) return;
-    try {
-      recognition.stop();
-    } catch (err) {
-      console.error("Failed to stop recognition:", err);
-    }
-  };
-
-  micBtn.addEventListener("mousedown", startHoldTalk);
-  micBtn.addEventListener("mouseup", stopHoldTalk);
-  micBtn.addEventListener("mouseleave", stopHoldTalk);
-
-  micBtn.addEventListener("touchstart", (e) => {
-    e.preventDefault();
-    startHoldTalk(e);
-  }, { passive: false });
-
-  micBtn.addEventListener("touchend", (e) => {
-    e.preventDefault();
-    stopHoldTalk(e);
-  }, { passive: false });
-
-  micBtn.addEventListener("touchcancel", (e) => {
-    e.preventDefault();
-    stopHoldTalk(e);
-  }, { passive: false });
 
   micBtn.addEventListener("click", (e) => {
     e.preventDefault();
+    toggleVoiceRecording();
   });
 
   const fileCamera = document.getElementById("assistant-file-camera");
