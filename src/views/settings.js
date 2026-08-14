@@ -1,5 +1,6 @@
 import { logout, getAjustesEmpresa, saveAjustesEmpresa, queryTurso, mapArgs, crearNuevoLocal, getLocalesConfigurados } from "../api.js";
 import { showToast, showConfirm, showPrompt } from "../toast.js";
+import { printBluetoothTicket } from "../bluetooth-printer.js";
 
 let _logoBase64 = "";
 
@@ -344,6 +345,149 @@ function setupEvents() {
   };
   previewClose?.addEventListener("click", closePreviewModal);
   previewCloseBg?.addEventListener("click", closePreviewModal);
+
+  const getSampleVentaData = () => {
+    const nombre = document.getElementById("set-store-nombre")?.value.trim() || "MI NEGOCIO";
+    const nit = document.getElementById("set-store-nit")?.value.trim() || "900.123.456-1";
+    const direccion = document.getElementById("set-store-direccion")?.value.trim() || "Calle 123 No. 45 - 67";
+    const ciudad = document.getElementById("set-store-ciudad")?.value.trim() || "Bogotá - Cundinamarca";
+    const contacto = document.getElementById("set-store-telefono")?.value.trim() || "3001234567";
+    const condiciones = document.getElementById("set-store-condiciones")?.value.trim() || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.";
+    const mostrarNombre = document.getElementById("set-store-mostrar-nombre")?.checked !== false ? 1 : 0;
+    const logoSize = parseInt(document.getElementById("set-store-logo-size")?.value || "40", 10);
+
+    return {
+      idFactura: "FAC-DEMO-001",
+      fecha: new Date().toISOString(),
+      cliente: "Juan Pérez (Cliente Prueba)",
+      cedula: "1012345678",
+      telefono: "3123456789",
+      direccion: "Carrera 15 # 28 - 10",
+      ciudad: ciudad,
+      productoNombre: "1x Audífonos Inalámbricos Pro, 1x Cargador 20W",
+      items: [
+        { nombre: "Audífonos Inalámbricos Pro", qty: 1, precioVenta: 80000 },
+        { nombre: "Cargador Carga Rápida 20W", qty: 1, precioVenta: 45000 }
+      ],
+      subtotal: 125000,
+      descuento: 5000,
+      total: 120000,
+      metodo: "Efectivo",
+      vendedor: "Administrador",
+      tipoFactura: "digital",
+      imeis: "N/A",
+      emisor: {
+        nombre,
+        nit,
+        direccion: `${direccion}, ${ciudad}`,
+        contacto,
+        condiciones,
+        logo: _logoBase64,
+        logo_size: logoSize,
+        mostrar_nombre: mostrarNombre
+      }
+    };
+  };
+
+  const printBtBtn = document.getElementById("set-store-preview-print-bt");
+  if (printBtBtn) {
+    printBtBtn.replaceWith(printBtBtn.cloneNode(true));
+    document.getElementById("set-store-preview-print-bt")?.addEventListener("click", async () => {
+      try {
+        showToast("Conectando a impresora Bluetooth...", "info");
+        const sampleVenta = getSampleVentaData();
+        await printBluetoothTicket(sampleVenta, null, null, sampleVenta.emisor);
+        showToast("Impresión Bluetooth realizada", "success");
+      } catch (err) {
+        console.error("Error en impresión Bluetooth:", err);
+        showToast("Error Bluetooth: " + err.message, "error");
+      }
+    });
+  }
+
+  const printLocalBtn = document.getElementById("set-store-preview-print-local");
+  if (printLocalBtn) {
+    printLocalBtn.replaceWith(printLocalBtn.cloneNode(true));
+    document.getElementById("set-store-preview-print-local")?.addEventListener("click", () => {
+      try {
+        const sampleVenta = getSampleVentaData();
+        const paperFormat = localStorage.getItem("fonebase_paper_format") || "80mm";
+        const paperWidth = paperFormat === "58mm" ? "48mm" : "80mm";
+        const em = sampleVenta.emisor;
+        const now = new Date();
+        const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+        const htmlContent = `
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <meta charset="utf-8">
+              <style>
+                @page { size: ${paperWidth} auto; margin: 0; }
+                html, body { width: ${paperWidth}; margin: 0; padding: 0; background: #fff; -webkit-print-color-adjust: exact; color-adjust: exact; }
+                body { font-family: Arial, sans-serif; padding: 2mm; font-size: 10px; color: #000; line-height: 1.3; }
+                .bold { font-weight: 900; }
+                .center { text-align: center; }
+                .flex-between { display: flex; justify-content: space-between; }
+                .summary { background: #000; color: #fff; padding: 4px; border-radius: 4px; margin-top: 4px; }
+              </style>
+            </head>
+            <body>
+              ${em.logo ? `<div class="center" style="margin-bottom: 4px;"><img src="${em.logo}" style="max-height: ${em.logo_size || 40}px; max-width: 100%; object-fit: contain;"></div>` : ''}
+              <div class="center" style="border: 1px solid #ccc; padding: 4px; margin-bottom: 4px; border-radius: 4px;">
+                ${em.mostrar_nombre ? `<div class="bold" style="font-size: 12px; text-transform: uppercase;">${em.nombre}</div>` : ''}
+                <div>NIT: ${em.nit}</div>
+                <div>${em.direccion}</div>
+                <div>Tel: ${em.contacto}</div>
+              </div>
+              <div style="border: 1px solid #ccc; padding: 4px; margin-bottom: 4px; border-radius: 4px;">
+                <div class="bold" style="color: #dc2626; font-size: 11px;">COMPROBANTE PRUEBA</div>
+                <div class="flex-between"><span class="bold">${sampleVenta.idFactura}</span><span class="bold" style="color: green;">PAGADO</span></div>
+                <div class="flex-between"><span>${fechaStr}</span><span>Efectivo</span></div>
+              </div>
+              <div style="font-size: 9px; margin-bottom: 4px;">
+                <div class="bold">CLIENTE: ${sampleVenta.cliente}</div>
+                <div>ID: ${sampleVenta.cedula} | Tel: ${sampleVenta.telefono}</div>
+              </div>
+              <div class="bold" style="font-size: 9px; border-bottom: 1px solid #000; padding-bottom: 2px;">DETALLE DE PRODUCTOS</div>
+              <table style="width: 100%; font-size: 9px; margin-top: 2px;">
+                ${sampleVenta.items.map(i => `<tr><td>${i.qty}x ${i.nombre}</td><td style="text-align: right;" class="bold">$${new Intl.NumberFormat('es-CO').format(i.precioVenta)}</td></tr>`).join('')}
+              </table>
+              <div class="summary">
+                <div class="flex-between"><span>Subtotal: $125.000</span><span>Descuento: -$5.000</span></div>
+                <div class="flex-between bold" style="font-size: 12px; border-top: 1px solid #fff; pt-1; margin-top: 2px;"><span>TOTAL:</span><span>$120.000</span></div>
+              </div>
+              <div style="font-size: 7px; text-align: justify; margin-top: 6px; color: #444;">${em.condiciones}</div>
+              <div class="center bold" style="margin-top: 6px; font-size: 10px;">¡GRACIAS POR SU COMPRA!</div>
+            </body>
+          </html>
+        `;
+
+        let iframe = document.getElementById("print-iframe");
+        if (iframe) iframe.remove();
+        iframe = document.createElement("iframe");
+        iframe.id = "print-iframe";
+        iframe.style.position = "absolute";
+        iframe.style.width = "0px";
+        iframe.style.height = "0px";
+        iframe.style.border = "none";
+        document.body.appendChild(iframe);
+
+        const doc = iframe.contentWindow.document;
+        doc.open();
+        doc.write(htmlContent);
+        doc.close();
+
+        setTimeout(() => {
+          iframe.contentWindow.focus();
+          iframe.contentWindow.print();
+        }, 250);
+      } catch (err) {
+        console.error("Error al imprimir:", err);
+        showToast("Error al imprimir: " + err.message, "error");
+      }
+    });
+  }
 
   // ── AJUSTES DE CONECTIVIDAD Y APIS ──
   const apiForm = document.getElementById("api-settings-form");
