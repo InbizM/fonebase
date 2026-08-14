@@ -499,7 +499,7 @@ export async function printBluetoothTicket(v, _canvasCliente = null, _canvasVend
     const widthPx = getPrintWidthPx();
     const encoder = new ReceiptPrinterEncoder({
       language: 'esc-pos',
-      width: widthPx === 576 ? 56 : 48,
+      width: widthPx === 576 ? 48 : 32,
     });
 
     encoder
@@ -814,7 +814,7 @@ export async function printBluetoothTechnicalTicket(s, ajustesEmpresa = null) {
 
     const encoder = new ReceiptPrinterEncoder({
       language: 'esc-pos',
-      width: widthPx === 576 ? 56 : 48,
+      width: widthPx === 576 ? 48 : 32,
     });
 
     encoder
@@ -884,7 +884,7 @@ export async function printBluetoothAbonoTicket(cred, monto, nota, ajustesEmpres
 
     const encoder = new ReceiptPrinterEncoder({
       language: 'esc-pos',
-      width: widthPx === 576 ? 56 : 48,
+      width: widthPx === 576 ? 48 : 32,
     });
 
     encoder
