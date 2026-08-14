@@ -55,7 +55,7 @@ import { navigate, registerView, onRouteChange, onBeforeRoute } from "./router.j
 import { closeScanner } from "./scanner.js";
 import { initInventory } from "./views/inventory.js";
 import { initDashboard } from "./views/dashboard.js";
-import { initAssistant } from "./views/assistant.js";
+import { initAssistant } from "./agent/index.js";
 import { initPOS } from "./views/pos.js";
 import { initIMEI } from "./views/imei.js";
 import { initClients } from "./views/clients.js";

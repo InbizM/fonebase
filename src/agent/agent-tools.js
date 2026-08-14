@@ -1,0 +1,425 @@
+import { 
+  registrarEgreso, 
+  crearTarea, 
+  getClientes, 
+  crearCliente,
+  crearProducto,
+  actualizarProducto,
+  crearEquipo,
+  crearServicioTecnico,
+  crearCredito,
+  crearValeFisico,
+  crearReventa,
+  getInventario
+} from "../api.js";
+import { navigate } from "../router.js";
+import { showToast } from "../toast.js";
+
+// ── EJECUTOR DE ACCIONES Y HERRAMIENTAS PARA EL AGENTE DE IA ──
+export async function ejecutarAccionIA(action, base64Image = null, appendChatMessage) {
+  if (!action || !action.type) return;
+
+  if (action.type === 'registrar_egreso') {
+    appendChatMessage("system", `Ejecutando acción: Registrar egreso por $${action.monto}...`);
+    try {
+      const cleanMonto = typeof action.monto === 'string' ? Number(action.monto.replace(/\D/g, "")) : Number(action.monto);
+      const res = await registrarEgreso({
+        categoria: action.categoria || "Otros",
+        concepto: action.concepto || "Egreso vía IA",
+        responsable: action.responsable || "Asistente IA",
+        monto: isNaN(cleanMonto) ? 0 : cleanMonto
+      });
+      if (res && res.success) {
+        showToast("Egreso registrado con éxito", "success");
+        appendChatMessage("system", `[OK] Egreso registrado: ${action.concepto} ($${action.monto})`);
+      } else {
+        appendChatMessage("system", `[Error] Error al registrar egreso: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al registrar egreso: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_tarea') {
+    appendChatMessage("system", `Ejecutando acción: Crear tarea "${action.tarea}"...`);
+    try {
+      const res = await crearTarea({
+        tarea: action.tarea,
+        fecha_inicio: action.fecha_inicio || new Date().toISOString().split('T')[0],
+        fecha_vencimiento: action.fecha_vencimiento || new Date().toISOString().split('T')[0],
+        prioridad: action.prioridad || "Media",
+        estado: "Pendiente",
+        responsable: action.responsable || "",
+        notas: action.notas || "Creada por Asistente de Voz",
+        color: action.color || "#eab308"
+      });
+      if (res && res.success) {
+        showToast("Tarea creada con éxito", "success");
+        appendChatMessage("system", `[OK] Tarea creada: "${action.tarea}"`);
+      } else {
+        appendChatMessage("system", `[Error] Error al crear tarea: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al crear tarea: ${e.message}`);
+    }
+  }
+  else if (action.type === 'buscar_cliente') {
+    appendChatMessage("system", `Ejecutando acción: Buscar cliente "${action.query}"...`);
+    try {
+      const clientes = await getClientes();
+      const query = (action.query || "").toLowerCase().trim();
+      const matches = clientes.filter(c => 
+        String(c.cedula || "").toLowerCase().includes(query) ||
+        String(c.nombre || "").toLowerCase().includes(query) ||
+        String(c.telefono || "").toLowerCase().includes(query)
+      );
+
+      if (matches.length === 0) {
+        appendChatMessage("ai", "", `
+          <p>No encontré clientes que coincidan con <strong>"${action.query}"</strong>.</p>
+          <button class="mt-2 px-3 py-1.5 bg-primary text-on-primary text-[11px] font-bold rounded-lg hover:bg-primary/90 transition-all flex items-center gap-1 active:scale-95" onclick="window.assistantNavigateTo('clients')">
+            <span class="material-symbols-outlined text-[14px]">person_add</span> Ver Clientes
+          </button>
+        `);
+      } else {
+        const matchesHtml = matches.slice(0, 3).map(c => `
+          <div class="p-2 bg-slate-50 border border-slate-100 rounded-lg flex flex-col gap-0.5 mt-1">
+            <span class="font-bold text-slate-800">${c.nombre}</span>
+            <span class="text-[10px] text-slate-500 font-mono">Doc: ${c.cedula} | Tel: ${c.telefono}</span>
+            ${c.email ? `<span class="text-[10px] text-slate-500 font-mono">Email: ${c.email}</span>` : ''}
+          </div>
+        `).join("");
+        
+        const buttonId = `btn-go-cli-${Date.now()}`;
+        appendChatMessage("ai", "", `
+          <p>He encontrado ${matches.length} coincidencia${matches.length > 1 ? 's' : ''} para <strong>"${action.query}"</strong>:</p>
+          <div class="space-y-1 my-2">
+            ${matchesHtml}
+            ${matches.length > 3 ? `<p class="text-[10px] text-slate-400 font-medium italic">Y ${matches.length - 3} más...</p>` : ''}
+          </div>
+          <button id="${buttonId}" class="px-3 py-1.5 bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold rounded-lg hover:bg-primary/20 transition-all flex items-center gap-1 active:scale-95 mt-2">
+            <span class="material-symbols-outlined text-[14px]">open_in_new</span> Ver todos en Clientes
+          </button>
+        `);
+
+        setTimeout(() => {
+          const btn = document.getElementById(buttonId);
+          if (btn) {
+            btn.addEventListener("click", () => {
+              localStorage.setItem("clients_search_query", action.query);
+              navigate("clients");
+            });
+          }
+        }, 55);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Error al consultar clientes: ${e.message}`);
+    }
+  }
+  else if (action.type === 'ir_a') {
+    appendChatMessage("system", `Redirigiendo a: ${action.destino}...`);
+    setTimeout(() => {
+      navigate(action.destino);
+    }, 1000);
+  }
+  else if (action.type === 'crear_cliente') {
+    appendChatMessage("system", `Creando cliente: ${action.nombre}...`);
+    try {
+      const res = await crearCliente({
+        cedula: action.cedula,
+        nombre: action.nombre,
+        telefono: action.telefono || "",
+        direccion: action.direccion || "",
+        email: action.email || "",
+        tipo: action.tipo || "Natural"
+      });
+      if (res && res.success) {
+        showToast("Cliente creado con éxito", "success");
+        appendChatMessage("system", `[OK] Cliente creado: ${action.nombre} (Cédula: ${action.cedula})`);
+      } else {
+        appendChatMessage("system", `[Error] Error al crear cliente: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al crear cliente: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_producto') {
+    appendChatMessage("system", `Agregando producto: ${action.nombre}...`);
+    try {
+      const id = action.id || `PROD-${Date.now()}`;
+      
+      let finalName = action.nombre;
+      const catLower = (action.categoria || "").toLowerCase();
+      if ((catLower === "celular" || catLower === "celulares") && (action.ram || action.memoria || action.color)) {
+        const specs = [];
+        if (action.ram) {
+          specs.push(action.ram.toUpperCase().includes("RAM") ? action.ram : `${action.ram} RAM`);
+        }
+        if (action.memoria) {
+          specs.push(action.memoria);
+        }
+        if (action.color) {
+          specs.push(action.color);
+        }
+        if (specs.length > 0) {
+          finalName = `${action.nombre} (${specs.join(" / ")})`;
+        }
+      }
+
+      const res = await crearProducto([
+        id,
+        finalName,
+        action.marca || "Universal",
+        action.categoria || "Accesorios",
+        action.tipo || "Accesorio",
+        Number(action.costo || 0),
+        Number(action.precioVenta || 0),
+        Number(action.stockMinimo || 2),
+        Number(action.stockActual || 0),
+        action.ubicacion || "",
+        action.sku || "",
+        base64Image || action.imagen || "",
+        0
+      ]);
+      if (res && res.success) {
+        showToast("Producto agregado con éxito", "success");
+        appendChatMessage("system", `[OK] Producto agregado: ${finalName} ($${action.precioVenta})`);
+      } else {
+        appendChatMessage("system", `[Error] Error al crear producto: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al crear producto: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_equipo') {
+    appendChatMessage("system", `Registrando equipo IMEI: ${action.nombre}...`);
+    try {
+      let productId = action.id_producto || "";
+      
+      let finalProdName = action.nombre;
+      const specs = [];
+      if (action.ram) {
+        specs.push(action.ram.toUpperCase().includes("RAM") ? action.ram : `${action.ram} RAM`);
+      }
+      if (action.memoria) {
+        specs.push(action.memoria);
+      }
+      if (action.color) {
+        specs.push(action.color);
+      }
+      if (specs.length > 0) {
+        finalProdName = `${action.nombre} (${specs.join(" / ")})`;
+      }
+
+      if (!productId) {
+        appendChatMessage("system", `Buscando o creando plantilla de producto para guardar la foto...`);
+        const inv = await getInventario();
+        const cleanName = finalProdName.toLowerCase().trim();
+        const existingProd = inv.find(p => (p.nombre || "").toLowerCase().trim() === cleanName);
+        
+        if (existingProd) {
+          productId = existingProd.id;
+          appendChatMessage("system", `Plantilla existente encontrada: "${existingProd.nombre}"`);
+        } else {
+          productId = `PROD-${Date.now()}`;
+          await crearProducto([
+            productId,
+            finalProdName,
+            action.marca || action.brand || "Universal",
+            "Celulares",
+            "Físico",
+            Number(action.costo || 0),
+            Number(action.venta || action.precioVenta || 0),
+            1,
+            1,
+            "Vitrina",
+            action.sku || "",
+            base64Image || "",
+            0
+          ]);
+          appendChatMessage("system", `[OK] Nueva plantilla de producto creada: "${finalProdName}".`);
+        }
+      }
+
+      const res = await crearEquipo({
+        imei1: action.imei1,
+        imei2: action.imei2 || "",
+        id_producto: productId,
+        marca: action.marca || action.brand || "",
+        nombre: finalProdName,
+        proveedor: action.proveedor || "",
+        costo: Number(action.costo || 0),
+        venta: Number(action.venta || 0),
+        estado: action.estado || "Disponible"
+      });
+      if (res && res.success) {
+        showToast("Equipo IMEI registrado con éxito", "success");
+        appendChatMessage("system", `[OK] Equipo registrado: ${finalProdName} (IMEI: ${action.imei1})`);
+      } else {
+        appendChatMessage("system", `[Error] Error al registrar equipo: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al registrar equipo: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_servicio_tecnico') {
+    appendChatMessage("system", `Creando orden de servicio técnico para: ${action.cliente}...`);
+    try {
+      const id_orden = action.id_orden || `ST-${Date.now()}`;
+      const res = await crearServicioTecnico([
+        id_orden,
+        action.cliente,
+        action.telefono || "",
+        action.equipo,
+        action.imei_serie || "",
+        action.falla,
+        action.clave_patron || "",
+        action.repuestos || "",
+        Number(action.costo_taller || 0),
+        Number(action.abono || 0),
+        Number(action.precio_final || 0),
+        action.estado || "Recibido",
+        action.evidencias || ""
+      ]);
+      if (res && res.success) {
+        showToast("Servicio técnico registrado con éxito", "success");
+        appendChatMessage("system", `[OK] Orden ${id_orden} creada para ${action.cliente} (${action.equipo})`);
+      } else {
+        appendChatMessage("system", `[Error] Error al crear servicio técnico: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al crear servicio técnico: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_credito') {
+    appendChatMessage("system", `Registrando crédito para: ${action.cliente}...`);
+    try {
+      const res = await crearCredito({
+        cliente: action.cliente,
+        telefono: action.telefono || "",
+        idFactura: action.idFactura || "",
+        total: Number(action.total || 0),
+        detalle: action.detalle || "Crédito vía Asistente IA"
+      });
+      if (res && res.success) {
+        showToast("Crédito registrado con éxito", "success");
+        appendChatMessage("system", `[OK] Crédito registrado para ${action.cliente} por $${action.total}`);
+      } else {
+        appendChatMessage("system", `[Error] Error al registrar crédito: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al registrar crédito: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_vale_fisico') {
+    appendChatMessage("system", `Creando vale físico para: ${action.cliente}...`);
+    try {
+      const res = await crearValeFisico({
+        cliente: action.cliente,
+        producto: action.producto || "Accesorio",
+        cantidad: Number(action.cantidad || 1),
+        monto: Number(action.monto || 0),
+        estado: action.estado || "Pendiente",
+        foto_base64: base64Image || action.foto_base64 || ""
+      });
+      if (res && res.success) {
+        showToast("Vale físico registrado con éxito", "success");
+        appendChatMessage("system", `[OK] Vale físico creado para ${action.cliente}: ${action.producto} ($${action.monto})`);
+      } else {
+        appendChatMessage("system", `[Error] Error al registrar vale físico: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al registrar vale físico: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_reventa') {
+    appendChatMessage("system", `Creando reventa de: ${action.producto}...`);
+    try {
+      const res = await crearReventa({
+        producto: action.producto,
+        categoria: action.categoria || "Reventa",
+        costo: Number(action.costo || 0),
+        precio: Number(action.precio || 0),
+        proveedor: action.proveedor || ""
+      });
+      if (res && res.success) {
+        showToast("Reventa registrada con éxito", "success");
+        appendChatMessage("system", `[OK] Reventa creada: ${action.producto} (Venta: $${action.precio})`);
+      } else {
+        appendChatMessage("system", `[Error] Error al crear reventa: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al crear reventa: ${e.message}`);
+    }
+  }
+  else if (action.type === 'actualizar_producto') {
+    appendChatMessage("system", `Buscando producto a actualizar: "${action.nombre_actual}"...`);
+    try {
+      const inv = await getInventario();
+      const cleanSearch = (action.nombre_actual || "").toLowerCase().trim();
+      const p = inv.find(prod => (prod.nombre || "").toLowerCase().trim() === cleanSearch);
+
+      if (!p) {
+        appendChatMessage("system", `[Error] No se encontró el producto "${action.nombre_actual}" en el inventario.`);
+        showToast(`Producto "${action.nombre_actual}" no encontrado`, "error");
+        return;
+      }
+
+      let finalName = action.nuevo_nombre || p.nombre;
+      const catLower = (p.categoria || "").toLowerCase();
+      if ((catLower === "celular" || catLower === "celulares") && (action.ram || action.memoria || action.color)) {
+        let baseName = action.nuevo_nombre || p.nombre.split(" (")[0];
+        const specs = [];
+        const finalRam = action.ram || "";
+        const finalMemoria = action.memoria || "";
+        const finalColor = action.color || "";
+        if (finalRam) {
+          specs.push(finalRam.toUpperCase().includes("RAM") ? finalRam : `${finalRam} RAM`);
+        }
+        if (finalMemoria) {
+          specs.push(finalMemoria);
+        }
+        if (finalColor) {
+          specs.push(finalColor);
+        }
+        if (specs.length > 0) {
+          finalName = `${baseName} (${specs.join(" / ")})`;
+        } else {
+          finalName = baseName;
+        }
+      }
+
+      const costo = action.costo !== undefined ? Number(action.costo) : p.costo;
+      const precioVenta = action.precioVenta !== undefined ? Number(action.precioVenta) : p.precio_venta;
+      const stockMinimo = action.stockMinimo !== undefined ? Number(action.stockMinimo) : p.stock_minimo;
+      const stockActual = action.stockActual !== undefined ? Number(action.stockActual) : p.stock_actual;
+      const sku = action.sku !== undefined ? action.sku : p.sku;
+      const imagen = base64Image || p.imagen || "";
+
+      const datos = [
+        p.id,
+        finalName,
+        p.marca || "Universal",
+        p.categoria || "Accesorios",
+        p.tipo || "Accesorio",
+        costo,
+        precioVenta,
+        stockMinimo,
+        stockActual,
+        p.ubicacion || "",
+        sku,
+        imagen,
+        p.fijado || 0
+      ];
+
+      const res = await actualizarProducto(p.id, datos);
+      if (res && res.success) {
+        showToast("Producto actualizado con éxito", "success");
+        appendChatMessage("system", `[OK] Producto "${p.nombre}" actualizado a "${finalName}".`);
+      } else {
+        appendChatMessage("system", `[Error] Error al actualizar producto: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al actualizar producto: ${e.message}`);
+    }
+  }
+}
