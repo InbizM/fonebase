@@ -6,8 +6,13 @@ let _device = null;
 let _characteristic = null;
 let _isPrinting = false;
 
-// GOOJPRT MTP-II: 384 dots por línea, 203 DPI, 48mm imprimible
-const PRINT_WIDTH_PX = 384;
+export function getPaperFormat() {
+  return localStorage.getItem("fonebase_paper_format") || "80mm";
+}
+
+export function getPrintWidthPx() {
+  return getPaperFormat() === "58mm" ? 384 : 576;
+}
 
 const PRINTER_SERVICES = [
   0x18f0,
@@ -125,7 +130,7 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
       * { box-sizing: border-box; margin: 0; padding: 0; }
       .ticket-container {
         font-family: Arial, Helvetica, sans-serif;
-        width: ${PRINT_WIDTH_PX}px;
+        width: ${getPrintWidthPx()}px;
         background: #fff;
         padding: 8px;
         font-size: 24px;
@@ -426,13 +431,14 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
 }
 
 async function htmlToCanvas(v, ajustesEmpresa) {
+  const widthPx = getPrintWidthPx();
   const wrapper = document.createElement('div');
   wrapper.className = 'ticket-container';
   wrapper.style.cssText = `
     position: fixed;
     left: -9999px;
     top: 0;
-    width: ${PRINT_WIDTH_PX}px;
+    width: ${widthPx}px;
     background: white;
     z-index: -1;
   `;
@@ -448,8 +454,8 @@ async function htmlToCanvas(v, ajustesEmpresa) {
   ));
 
   const canvas = await html2canvas(wrapper, {
-    width: PRINT_WIDTH_PX,
-    windowWidth: PRINT_WIDTH_PX,
+    width: widthPx,
+    windowWidth: widthPx,
     backgroundColor: '#ffffff',
     scale: 1,
     useCORS: true,
@@ -490,15 +496,16 @@ export async function printBluetoothTicket(v, _canvasCliente = null, _canvasVend
 
     console.log(`[BT-Printer] Canvas: ${ticketCanvas.width}x${ticketCanvas.height}px`);
 
+    const widthPx = getPrintWidthPx();
     const encoder = new ReceiptPrinterEncoder({
       language: 'esc-pos',
-      width: 48,  // 48 columnas de texto para impresora 58mm
+      width: widthPx === 576 ? 56 : 48,
     });
 
     encoder
       .initialize()
       .align('center')
-      .image(ticketCanvas, PRINT_WIDTH_PX, ticketCanvas.height, 'threshold')
+      .image(ticketCanvas, widthPx, ticketCanvas.height, 'threshold')
       .newline()
       .newline()
       .newline()
@@ -539,7 +546,7 @@ function buildTechnicalTicketHTML(s, ajustesEmpresa = null) {
       * { box-sizing: border-box; margin: 0; padding: 0; }
       .ticket-container {
         font-family: Arial, Helvetica, sans-serif;
-        width: ${PRINT_WIDTH_PX}px;
+        width: ${getPrintWidthPx()}px;
         background: #fff;
         padding: 8px;
         font-size: 24px;
@@ -769,13 +776,14 @@ export async function printBluetoothTechnicalTicket(s, ajustesEmpresa = null) {
     _isPrinting = true;
     await connectPrinter();
 
+    const widthPx = getPrintWidthPx();
     const wrapper = document.createElement('div');
     wrapper.className = 'ticket-container';
     wrapper.style.cssText = `
       position: fixed;
       left: -9999px;
       top: 0;
-      width: ${PRINT_WIDTH_PX}px;
+      width: ${widthPx}px;
       background: white;
       z-index: -1;
     `;
@@ -790,8 +798,8 @@ export async function printBluetoothTechnicalTicket(s, ajustesEmpresa = null) {
     ));
 
     const rawCanvas = await html2canvas(wrapper, {
-      width: PRINT_WIDTH_PX,
-      windowWidth: PRINT_WIDTH_PX,
+      width: widthPx,
+      windowWidth: widthPx,
       backgroundColor: '#ffffff',
       scale: 1,
       useCORS: true,
@@ -806,13 +814,13 @@ export async function printBluetoothTechnicalTicket(s, ajustesEmpresa = null) {
 
     const encoder = new ReceiptPrinterEncoder({
       language: 'esc-pos',
-      width: 48,
+      width: widthPx === 576 ? 56 : 48,
     });
 
     encoder
       .initialize()
       .align('center')
-      .image(ticketCanvas, PRINT_WIDTH_PX, ticketCanvas.height, 'threshold')
+      .image(ticketCanvas, widthPx, ticketCanvas.height, 'threshold')
       .newline()
       .newline()
       .newline()
@@ -839,13 +847,14 @@ export async function printBluetoothAbonoTicket(cred, monto, nota, ajustesEmpres
     _isPrinting = true;
     await connectPrinter();
 
+    const widthPx = getPrintWidthPx();
     const wrapper = document.createElement('div');
     wrapper.className = 'ticket-container';
     wrapper.style.cssText = `
       position: fixed;
       left: -9999px;
       top: 0;
-      width: ${PRINT_WIDTH_PX}px;
+      width: ${widthPx}px;
       background: white;
       z-index: -1;
     `;
@@ -859,8 +868,8 @@ export async function printBluetoothAbonoTicket(cred, monto, nota, ajustesEmpres
     ));
 
     const rawCanvas = await html2canvas(wrapper, {
-      width: PRINT_WIDTH_PX,
-      windowWidth: PRINT_WIDTH_PX,
+      width: widthPx,
+      windowWidth: widthPx,
       backgroundColor: '#ffffff',
       scale: 1,
       useCORS: true,
@@ -875,13 +884,13 @@ export async function printBluetoothAbonoTicket(cred, monto, nota, ajustesEmpres
 
     const encoder = new ReceiptPrinterEncoder({
       language: 'esc-pos',
-      width: 48,
+      width: widthPx === 576 ? 56 : 48,
     });
 
     encoder
       .initialize()
       .align('center')
-      .image(ticketCanvas, PRINT_WIDTH_PX, ticketCanvas.height, 'threshold')
+      .image(ticketCanvas, widthPx, ticketCanvas.height, 'threshold')
       .newline()
       .newline()
       .newline()
@@ -950,7 +959,7 @@ function buildAbonoTicketHTML(cred, monto, nota, ajustesEmpresa = null) {
       * { box-sizing: border-box; margin: 0; padding: 0; }
       .ticket-container {
         font-family: Arial, Helvetica, sans-serif;
-        width: ${PRINT_WIDTH_PX}px;
+        width: ${getPrintWidthPx()}px;
         background: #fff;
         padding: 8px;
         font-size: 24px;

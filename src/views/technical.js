@@ -209,15 +209,18 @@ function setupEvents() {
       else if (st === "Entregado") badgeClass = "badge-entregado";
       else if (st === "Sin Arreglo") badgeClass = "badge-sinarreglo";
 
+      const paperFormat = localStorage.getItem("fonebase_paper_format") || "80mm";
+      const paperWidth = paperFormat === "58mm" ? "48mm" : "80mm";
+
       const ticketHTML = `
         <!DOCTYPE html>
         <html>
           <head>
             <meta charset="utf-8">
             <style>
-              @page { size: 48mm auto; margin: 0; }
+              @page { size: ${paperWidth} auto; margin: 0; }
               html, body { 
-                width: 48mm; 
+                width: ${paperWidth}; 
                 margin: 0; 
                 padding: 0; 
                 background: #fff;

@@ -83,6 +83,9 @@ async function loadCompanySettings() {
       const mostrarNombre = config.mostrar_nombre !== 0;
       const elMostrarNombre = document.getElementById("set-store-mostrar-nombre");
       if (elMostrarNombre) elMostrarNombre.checked = mostrarNombre;
+
+      const elPaperFormat = document.getElementById("set-store-paper-format");
+      if (elPaperFormat) elPaperFormat.value = localStorage.getItem("fonebase_paper_format") || "80mm";
       
       const elImg = document.getElementById("set-store-logo-img");
       const elPlc = document.getElementById("set-store-logo-placeholder");
@@ -244,6 +247,9 @@ function setupEvents() {
     };
     
     try {
+      const paperFormat = document.getElementById("set-store-paper-format")?.value || "80mm";
+      localStorage.setItem("fonebase_paper_format", paperFormat);
+
       const res = await saveAjustesEmpresa(c);
       if (res && res.success) {
         showToast("Datos de almacén guardados correctamente", "success");

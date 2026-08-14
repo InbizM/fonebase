@@ -495,15 +495,18 @@ async function imprimirTicketAbono(cred, monto, nota) {
     mostrar_nombre: ajustes?.mostrar_nombre !== 0
   };
 
+  const paperFormat = localStorage.getItem("fonebase_paper_format") || "80mm";
+  const paperWidth = paperFormat === "58mm" ? "48mm" : "80mm";
+
   printWindow.document.write(`
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8">
         <style>
-          @page { size: 48mm auto; margin: 0; }
+          @page { size: ${paperWidth} auto; margin: 0; }
           html, body { 
-            width: 48mm; 
+            width: ${paperWidth}; 
             margin: 0; 
             padding: 0; 
             background: #fff;
