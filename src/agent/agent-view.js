@@ -435,26 +435,28 @@ export function setupAssistantEvents() {
   if (!micBtn || !textInput || !sendBtn) return;
 
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (SpeechRecognition) {
-    recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = true;
-    recognition.lang = "es-ES";
+  let lastTranscript = "";
+  let hasSubmitted = false;
 
-    let lastTranscript = "";
-    let hasSubmitted = false;
+  const createSpeechRecognition = () => {
+    if (!SpeechRecognition) return null;
 
-    recognition.onstart = () => {
+    const instance = new SpeechRecognition();
+    instance.continuous = false;
+    instance.interimResults = true;
+    instance.lang = "es-ES";
+
+    instance.onstart = () => {
       isListening = true;
       lastTranscript = "";
       hasSubmitted = false;
       pulseEl?.classList.remove("hidden");
       micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
       micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
-      if (statusEl) statusEl.textContent = "Escuchando... Habla ahora";
+      if (statusEl) statusEl.textContent = "Escuchando... Habla tu comando";
     };
 
-    recognition.onresult = (event) => {
+    instance.onresult = (event) => {
       let currentText = "";
       for (let i = 0; i < event.results.length; i++) {
         currentText += event.results[i][0].transcript;
@@ -466,15 +468,15 @@ export function setupAssistantEvents() {
       }
     };
 
-    recognition.onerror = (event) => {
+    instance.onerror = (event) => {
       console.error("Speech recognition error:", event.error);
       let errorMsg = "Error de micrófono: " + event.error;
       if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        errorMsg = "Permiso de micrófono denegado o requiere conexión segura (HTTPS)";
+        errorMsg = "Permiso de micrófono denegado o requiere conexión segura (HTTPS / localhost)";
       } else if (event.error === "no-speech") {
-        errorMsg = "No se detectó voz. Presiona y habla más cerca del micrófono.";
+        errorMsg = "No se detectó voz. Presiona e intenta hablar más fuerte.";
       } else if (event.error === "network") {
-        errorMsg = "Error de conexión al procesar voz.";
+        errorMsg = "Error de red al conectar con el servicio de voz de Google/Navegador.";
       }
       if (event.error !== "aborted") {
         showToast(errorMsg, "warning");
@@ -482,7 +484,7 @@ export function setupAssistantEvents() {
       resetMicUI();
     };
 
-    recognition.onend = async () => {
+    instance.onend = async () => {
       resetMicUI();
       if (!hasSubmitted && lastTranscript.trim()) {
         hasSubmitted = true;
@@ -494,7 +496,11 @@ export function setupAssistantEvents() {
         await procesarTextoConIA(finalQuery, null, replyContext);
       }
     };
-  } else {
+
+    return instance;
+  };
+
+  if (!SpeechRecognition) {
     if (statusEl) statusEl.textContent = "Voz no compatible";
     micBtn.disabled = true;
     micBtn.title = "Tu navegador no soporta Web Speech API";
@@ -502,7 +508,7 @@ export function setupAssistantEvents() {
 
   window.addEventListener("hashchange", () => {
     if (window.location.hash !== "#assistant" && isListening && recognition) {
-      recognition.stop();
+      try { recognition.stop(); } catch (e) {}
     }
   });
 
@@ -515,12 +521,16 @@ export function setupAssistantEvents() {
   }
 
   const toggleVoiceRecording = async () => {
-    if (!recognition) {
+    if (!SpeechRecognition) {
       showToast("Tu navegador no soporta reconocimiento de voz", "error");
       return;
     }
 
-    if (isListening) {
+    if (location.protocol === "http:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+      showToast("Chrome bloquea la voz en IP local HTTP (ej: 192.168...). Usa localhost o HTTPS.", "warning");
+    }
+
+    if (isListening && recognition) {
       try {
         recognition.stop();
       } catch (e) {}
@@ -531,10 +541,17 @@ export function setupAssistantEvents() {
             await navigator.mediaDevices.getUserMedia({ audio: true });
           } catch (micErr) {
             console.warn("getUserMedia mic permission warning:", micErr);
+            showToast("Permiso de micrófono no otorgado", "error");
+            return;
           }
         }
         textInput.value = "";
-        recognition.start();
+        lastTranscript = "";
+        hasSubmitted = false;
+        recognition = createSpeechRecognition();
+        if (recognition) {
+          recognition.start();
+        }
       } catch (err) {
         console.error("Failed to start recognition:", err);
         showToast("No se pudo iniciar el micrófono: " + err.message, "error");
