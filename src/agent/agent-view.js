@@ -442,33 +442,50 @@ export function setupAssistantEvents() {
     recognition.lang = "es-ES";
 
     let lastTranscript = "";
+    let hasSubmitted = false;
 
     recognition.onstart = () => {
       isListening = true;
       lastTranscript = "";
+      hasSubmitted = false;
       pulseEl?.classList.remove("hidden");
       micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
       micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
-      if (statusEl) statusEl.textContent = "Escuchando... Habla tu comando";
+      if (statusEl) statusEl.textContent = "Escuchando... Habla ahora";
     };
 
-    recognition.onresult = async (event) => {
+    recognition.onresult = (event) => {
       let currentText = "";
-      let isFinal = false;
-
-      for (let i = event.resultIndex; i < event.results.length; i++) {
+      for (let i = 0; i < event.results.length; i++) {
         currentText += event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          isFinal = true;
-        }
       }
 
       if (currentText) {
         textInput.value = currentText;
         lastTranscript = currentText;
       }
+    };
 
-      if (isFinal && lastTranscript.trim()) {
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error:", event.error);
+      let errorMsg = "Error de micrófono: " + event.error;
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        errorMsg = "Permiso de micrófono denegado o requiere conexión segura (HTTPS)";
+      } else if (event.error === "no-speech") {
+        errorMsg = "No se detectó voz. Presiona y habla más cerca del micrófono.";
+      } else if (event.error === "network") {
+        errorMsg = "Error de conexión al procesar voz.";
+      }
+      if (event.error !== "aborted") {
+        showToast(errorMsg, "warning");
+      }
+      resetMicUI();
+    };
+
+    recognition.onend = async () => {
+      resetMicUI();
+      if (!hasSubmitted && lastTranscript.trim()) {
+        hasSubmitted = true;
         const finalQuery = lastTranscript.trim();
         textInput.value = "";
         const replyContext = _replyingToMessage;
@@ -476,18 +493,6 @@ export function setupAssistantEvents() {
         appendChatMessage("user", finalQuery, null, null, true, replyContext);
         await procesarTextoConIA(finalQuery, null, replyContext);
       }
-    };
-
-    recognition.onerror = (event) => {
-      console.error("Speech recognition error:", event.error);
-      if (event.error !== "no-speech" && event.error !== "aborted") {
-        showToast("Error de micrófono: " + event.error, "error");
-      }
-      resetMicUI();
-    };
-
-    recognition.onend = () => {
-      resetMicUI();
     };
   } else {
     if (statusEl) statusEl.textContent = "Voz no compatible";
@@ -509,18 +514,30 @@ export function setupAssistantEvents() {
     if (statusEl) statusEl.textContent = "Listo para asistirte";
   }
 
-  const toggleVoiceRecording = () => {
-    if (!recognition) return;
+  const toggleVoiceRecording = async () => {
+    if (!recognition) {
+      showToast("Tu navegador no soporta reconocimiento de voz", "error");
+      return;
+    }
+
     if (isListening) {
       try {
         recognition.stop();
       } catch (e) {}
     } else {
       try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          try {
+            await navigator.mediaDevices.getUserMedia({ audio: true });
+          } catch (micErr) {
+            console.warn("getUserMedia mic permission warning:", micErr);
+          }
+        }
         textInput.value = "";
         recognition.start();
       } catch (err) {
         console.error("Failed to start recognition:", err);
+        showToast("No se pudo iniciar el micrófono: " + err.message, "error");
       }
     }
   };
