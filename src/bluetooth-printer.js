@@ -7,11 +7,12 @@ let _characteristic = null;
 let _isPrinting = false;
 
 export function getPaperFormat() {
-  return localStorage.getItem("fonebase_paper_format") || "80mm";
+  return localStorage.getItem("fonebase_paper_format") || "48mm";
 }
 
 export function getPrintWidthPx() {
-  return getPaperFormat() === "58mm" ? 384 : 576;
+  const fmt = getPaperFormat();
+  return fmt === "80mm" ? 576 : 384;
 }
 
 const PRINTER_SERVICES = [

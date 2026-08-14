@@ -86,7 +86,7 @@ async function loadCompanySettings() {
       if (elMostrarNombre) elMostrarNombre.checked = mostrarNombre;
 
       const elPaperFormat = document.getElementById("set-store-paper-format");
-      if (elPaperFormat) elPaperFormat.value = localStorage.getItem("fonebase_paper_format") || "80mm";
+      if (elPaperFormat) elPaperFormat.value = localStorage.getItem("fonebase_paper_format") || "48mm";
       
       const elImg = document.getElementById("set-store-logo-img");
       const elPlc = document.getElementById("set-store-logo-placeholder");
