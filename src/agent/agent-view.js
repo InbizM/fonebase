@@ -526,12 +526,10 @@ export function setupAssistantEvents() {
         },
         body: JSON.stringify({
           model: "openai/whisper-large-v3-turbo",
-          file: {
-            content: base64Audio,
-            filename: `audio.${ext}`,
-            content_type: mimeType
-          },
-          language: "es"
+          input_audio: {
+            data: base64Audio,
+            format: ext
+          }
         })
       });
 
