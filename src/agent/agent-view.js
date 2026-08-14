@@ -444,9 +444,9 @@ export function setupAssistantEvents() {
     recognition.onstart = () => {
       isListening = true;
       pulseEl?.classList.remove("hidden");
-      micBtn.classList.add("bg-red-500/20", "border-red-500/40", "text-red-600");
-      micBtn.classList.remove("bg-primary/10", "border-primary/20", "text-primary");
-      if (statusEl) statusEl.textContent = "Escuchando...";
+      micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
+      micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
+      if (statusEl) statusEl.textContent = "Escuchando... (suelta para enviar)";
     };
 
     recognition.onresult = async (event) => {
@@ -482,22 +482,50 @@ export function setupAssistantEvents() {
   function resetMicUI() {
     isListening = false;
     pulseEl?.classList.add("hidden");
-    micBtn.classList.remove("bg-red-500/20", "border-red-500/40", "text-red-600");
-    micBtn.classList.add("bg-primary/10", "border-primary/20", "text-primary");
+    micBtn.classList.remove("bg-red-600", "text-white", "animate-pulse", "bg-red-500/20", "border-red-500/40", "text-red-600");
+    micBtn.classList.add("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
     if (statusEl) statusEl.textContent = "Listo para asistirte";
   }
 
-  micBtn.addEventListener("click", () => {
-    if (!recognition) return;
-    if (isListening) {
-      recognition.stop();
-    } else {
-      try {
-        recognition.start();
-      } catch (err) {
-        console.error("Failed to start recognition:", err);
-      }
+  const startHoldTalk = (e) => {
+    if (!recognition || isListening) return;
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error("Failed to start recognition:", err);
     }
+  };
+
+  const stopHoldTalk = (e) => {
+    if (!recognition || !isListening) return;
+    try {
+      recognition.stop();
+    } catch (err) {
+      console.error("Failed to stop recognition:", err);
+    }
+  };
+
+  micBtn.addEventListener("mousedown", startHoldTalk);
+  micBtn.addEventListener("mouseup", stopHoldTalk);
+  micBtn.addEventListener("mouseleave", stopHoldTalk);
+
+  micBtn.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    startHoldTalk(e);
+  }, { passive: false });
+
+  micBtn.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    stopHoldTalk(e);
+  }, { passive: false });
+
+  micBtn.addEventListener("touchcancel", (e) => {
+    e.preventDefault();
+    stopHoldTalk(e);
+  }, { passive: false });
+
+  micBtn.addEventListener("click", (e) => {
+    e.preventDefault();
   });
 
   const fileCamera = document.getElementById("assistant-file-camera");
