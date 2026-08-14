@@ -434,135 +434,136 @@ export function setupAssistantEvents() {
 
   if (!micBtn || !textInput || !sendBtn) return;
 
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let lastTranscript = "";
-  let hasSubmitted = false;
+  // ── MICRÓFONO: TAP PARA GRABAR / TAP PARA PARAR ──
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-  const createSpeechRecognition = () => {
-    if (!SpeechRecognition) return null;
-
-    const instance = new SpeechRecognition();
-    instance.continuous = false;
-    instance.interimResults = true;
-    instance.lang = "es-ES";
-
-    instance.onstart = () => {
-      isListening = true;
-      lastTranscript = "";
-      hasSubmitted = false;
-      pulseEl?.classList.remove("hidden");
-      micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
-      micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
-      if (statusEl) statusEl.textContent = "Escuchando... Habla tu comando";
-    };
-
-    instance.onresult = (event) => {
-      let currentText = "";
-      for (let i = 0; i < event.results.length; i++) {
-        currentText += event.results[i][0].transcript;
-      }
-
-      if (currentText) {
-        textInput.value = currentText;
-        lastTranscript = currentText;
-      }
-    };
-
-    instance.onerror = (event) => {
-      console.error("Speech recognition error:", event.error);
-      let errorMsg = "Error de micrófono: " + event.error;
-      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
-        errorMsg = "Permiso de micrófono denegado o requiere conexión segura (HTTPS / localhost)";
-      } else if (event.error === "no-speech") {
-        errorMsg = "No se detectó voz. Presiona e intenta hablar más fuerte.";
-      } else if (event.error === "network") {
-        errorMsg = "Error de red al conectar con el servicio de voz de Google/Navegador.";
-      }
-      if (event.error !== "aborted") {
-        showToast(errorMsg, "warning");
-      }
-      resetMicUI();
-    };
-
-    instance.onend = async () => {
-      resetMicUI();
-      if (!hasSubmitted && lastTranscript.trim()) {
-        hasSubmitted = true;
-        const finalQuery = lastTranscript.trim();
-        textInput.value = "";
-        const replyContext = _replyingToMessage;
-        clearReplyState();
-        appendChatMessage("user", finalQuery, null, null, true, replyContext);
-        await procesarTextoConIA(finalQuery, null, replyContext);
-      }
-    };
-
-    return instance;
-  };
-
-  if (!SpeechRecognition) {
-    if (statusEl) statusEl.textContent = "Voz no compatible";
+  if (!SR) {
     micBtn.disabled = true;
-    micBtn.title = "Tu navegador no soporta Web Speech API";
-  }
+    micBtn.title = "Tu navegador no soporta reconocimiento de voz";
+    if (statusEl) statusEl.textContent = "Voz no disponible en este navegador";
+  } else {
+    let rec = null;
+    let transcript = "";
+    let listening = false;
 
-  window.addEventListener("hashchange", () => {
-    if (window.location.hash !== "#assistant" && isListening && recognition) {
-      try { recognition.stop(); } catch (e) {}
-    }
-  });
-
-  function resetMicUI() {
-    isListening = false;
-    pulseEl?.classList.add("hidden");
-    micBtn.classList.remove("bg-red-600", "text-white", "animate-pulse", "bg-red-500/20", "border-red-500/40", "text-red-600");
-    micBtn.classList.add("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
-    if (statusEl) statusEl.textContent = "Listo para asistirte";
-  }
-
-  const toggleVoiceRecording = async () => {
-    if (!SpeechRecognition) {
-      showToast("Tu navegador no soporta reconocimiento de voz", "error");
-      return;
-    }
-
-    if (location.protocol === "http:" && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
-      showToast("Chrome bloquea la voz en IP local HTTP (ej: 192.168...). Usa localhost o HTTPS.", "warning");
-    }
-
-    if (isListening && recognition) {
+    function startRecording() {
       try {
-        recognition.stop();
-      } catch (e) {}
-    } else {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          try {
-            await navigator.mediaDevices.getUserMedia({ audio: true });
-          } catch (micErr) {
-            console.warn("getUserMedia mic permission warning:", micErr);
-            showToast("Permiso de micrófono no otorgado", "error");
-            return;
+        rec = new SR();
+        rec.lang = "es-ES";
+        rec.continuous = true;       // no se detiene solo
+        rec.interimResults = true;   // muestra texto mientras habla
+
+        rec.onstart = () => {
+          listening = true;
+          transcript = "";
+          textInput.value = "";
+          // UI: botón rojo pulsante
+          micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
+          micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
+          pulseEl?.classList.remove("hidden");
+          if (statusEl) statusEl.textContent = "🔴 Grabando... toca de nuevo para enviar";
+        };
+
+        rec.onresult = (e) => {
+          let text = "";
+          for (let i = 0; i < e.results.length; i++) {
+            text += e.results[i][0].transcript;
           }
-        }
-        textInput.value = "";
-        lastTranscript = "";
-        hasSubmitted = false;
-        recognition = createSpeechRecognition();
-        if (recognition) {
-          recognition.start();
-        }
+          transcript = text;
+          textInput.value = text;  // muestra en tiempo real
+        };
+
+        rec.onerror = (e) => {
+          console.error("[Mic] error:", e.error);
+          let msg = "Error de micrófono: " + e.error;
+          if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+            msg = "Permiso de micrófono denegado. Revisa los permisos del navegador.";
+          } else if (e.error === "no-speech") {
+            msg = "No se detectó voz.";
+          } else if (e.error === "network") {
+            msg = "Error de red con el servicio de voz.";
+          }
+          if (e.error !== "aborted") showToast(msg, "warning");
+          stopRecordingUI();
+        };
+
+        rec.onend = () => {
+          // si se detuvo por el usuario → enviar
+          if (listening) {
+            listening = false;
+            stopRecordingUI();
+            sendTranscript();
+          }
+        };
+
+        rec.start();
+        isListening = true;
       } catch (err) {
-        console.error("Failed to start recognition:", err);
+        console.error("[Mic] No se pudo iniciar:", err);
         showToast("No se pudo iniciar el micrófono: " + err.message, "error");
+        stopRecordingUI();
       }
     }
-  };
 
-  micBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    toggleVoiceRecording();
-  });
+    function stopRecording() {
+      listening = false;
+      isListening = false;
+      if (rec) {
+        try { rec.stop(); } catch (_) {}
+        rec = null;
+      }
+      stopRecordingUI();
+      sendTranscript();
+    }
+
+    function stopRecordingUI() {
+      isListening = false;
+      listening = false;
+      micBtn.classList.remove("bg-red-600", "text-white", "animate-pulse");
+      micBtn.classList.add("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
+      pulseEl?.classList.add("hidden");
+      if (statusEl) statusEl.textContent = "Listo para asistirte";
+    }
+
+    async function sendTranscript() {
+      const finalText = transcript.trim();
+      if (!finalText) return;
+      transcript = "";
+      textInput.value = "";
+      const replyContext = _replyingToMessage;
+      clearReplyState();
+      appendChatMessage("user", finalText, null, null, true, replyContext);
+      await procesarTextoConIA(finalText, null, replyContext);
+    }
+
+    // CLICK: toca para iniciar / toca de nuevo para parar y enviar
+    micBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isListening) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    });
+
+    // También soporte táctil explícito para móvil
+    micBtn.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isListening) {
+        stopRecording();
+      } else {
+        startRecording();
+      }
+    });
+
+    window.addEventListener("hashchange", () => {
+      if (window.location.hash !== "#assistant" && isListening) {
+        stopRecording();
+      }
+    });
+  }
 
   const fileCamera = document.getElementById("assistant-file-camera");
   const fileGallery = document.getElementById("assistant-file-gallery");
