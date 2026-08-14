@@ -4155,14 +4155,20 @@
         <div id="set-store-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
           <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="set-store-preview-close-bg"></div>
           <div class="relative bg-white rounded-[24px] max-w-[340px] w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in z-50">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 gap-2">
               <div>
                 <h3 class="text-sm font-black text-slate-800">Vista Previa Factura</h3>
-                <p class="text-[10px] text-slate-400">Representación de ticket en 48mm</p>
+                <p class="text-[10px] text-slate-400">Representación de ticket en 80mm / 58mm</p>
               </div>
-              <button id="set-store-preview-close" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all">
-                <span class="material-symbols-outlined text-[20px]">close</span>
-              </button>
+              <div class="flex items-center gap-2">
+                <button id="set-store-header-print-btn" type="button" class="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1 shadow-sm shrink-0" title="Imprimir ticket de ejemplo">
+                  <span class="material-symbols-outlined text-[16px]">print</span>
+                  Imprimir Ejemplo
+                </button>
+                <button id="set-store-preview-close" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0">
+                  <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
             </div>
             <div class="flex-1 overflow-y-auto p-4 bg-slate-100 flex justify-center">
               <!-- El ticket en 48mm -->
