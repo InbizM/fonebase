@@ -286,8 +286,9 @@ function renderGrid() {
   if (!grid) return;
 
   const user = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
-  const isAdmin = user.rol === "Administrador";
-  const isTecnico = user.rol === "Técnico de reparación";
+  const userRol = String(user.rol || "").trim().toLowerCase();
+  const isAdmin = !userRol || userRol === "administrador" || userRol.includes("admin");
+  const isTecnico = userRol === "técnico de reparación" || userRol === "tecnico";
 
   if (_viewMode === 'grid') {
     tableWrap.classList.add('hidden');
@@ -304,9 +305,9 @@ function renderGrid() {
                   ${p.imagen ? `<img src="${p.imagen}" class="w-full h-full object-cover">` : `<span class="material-symbols-outlined text-3xl text-on-surface-variant/40">image</span>`}
                 </div>
                 <div class="flex-1 min-w-0">
-                  <div class="flex justify-between items-start gap-2 mb-1">
+                  <div class="flex items-start justify-between gap-1.5 mb-1">
                     <div class="flex items-center gap-1 min-w-0">
-                      <h3 class="font-bold text-on-surface text-sm truncate" title="${p.nombre}">${p.nombre}</h3>
+                      <h4 class="font-bold text-on-surface text-sm truncate flex-1" title="${p.nombre}">${p.nombre}</h4>
                       <span onclick="event.stopPropagation(); window.inventoryView.togglePin('${p.id}', ${p.fijado ? 0 : 1})" 
                             class="material-symbols-outlined text-[16px] cursor-pointer flex-shrink-0 transition-opacity ${p.fijado === 1 ? 'text-amber-500 opacity-100' : 'text-slate-300 opacity-0 group-hover:opacity-100'}" 
                             title="${p.fijado === 1 ? 'Desfijar' : 'Fijar'}">
@@ -324,7 +325,7 @@ function renderGrid() {
                   <p class="text-[9px] font-black uppercase tracking-widest text-on-surface-variant/60 mb-0.5">Precio Venta</p>
                   <p class="font-black text-primary text-lg leading-none">$${precio}</p>
                 </div>`}
-                <div class="flex gap-1.5 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity">
+                <div class="flex gap-1.5">
                   ${isAdmin ? `<button onclick="event.stopPropagation(); inventoryView.openEdit('${p.id}')" class="p-2 bg-surface border border-surface-variant rounded-xl text-primary hover:bg-primary/10 transition-colors" title="Editar">
                     <span class="material-symbols-outlined text-[18px]">edit</span>
                   </button>` : ''}
@@ -813,7 +814,8 @@ async function loadInventario() {
     <span class="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span></div>`;
   try {
     const user = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
-    const isTecnico = user.rol === "Técnico de reparación";
+    const userRol = String(user.rol || "").trim().toLowerCase();
+    const isTecnico = userRol === "técnico de reparación" || userRol === "tecnico";
     
     let allProducts = await getInventario();
     if (isTecnico) {
