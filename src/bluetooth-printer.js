@@ -101,12 +101,14 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
   const now = new Date(v.fecha || Date.now());
   const fechaStr = `${now.getDate()}/${now.getMonth()+1}/${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;
 
+  const emisorDireccion = [ajustesEmpresa?.direccion, ajustesEmpresa?.ciudad].filter(x => x && x.trim()).join(", ");
+
   const emisor = {
-    nombre:      ajustesEmpresa?.nombre      || "MI NEGOCIO",
-    nit:         ajustesEmpresa?.nit         || "900.123.456-1",
-    direccion:   (ajustesEmpresa?.direccion  || "Calle 123 No. 45 - 67") + ", " + (ajustesEmpresa?.ciudad || "Bogotá - Cundinamarca"),
-    contacto:    ajustesEmpresa?.contacto    || "3001234567",
-    condiciones: ajustesEmpresa?.condiciones || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).",
+    nombre:      ajustesEmpresa?.nombre      || "",
+    nit:         ajustesEmpresa?.nit         || "",
+    direccion:   emisorDireccion,
+    contacto:    ajustesEmpresa?.contacto    || "",
+    condiciones: ajustesEmpresa?.condiciones || "",
     logo:        ajustesEmpresa?.logo        || "",
     logo_size:   ajustesEmpresa?.logo_size   || 60,
     mostrar_nombre: ajustesEmpresa?.mostrar_nombre !== 0
@@ -311,7 +313,9 @@ function buildTicketHTML(v, ajustesEmpresa = null) {
         font-size: 22px;
         font-weight: 900;
         color: #000;
-        text-align: justify;
+        text-align: left;
+        white-space: pre-wrap;
+        word-break: break-word;
         margin-top: 14px;
         line-height: 1.35;
       }

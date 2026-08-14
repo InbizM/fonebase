@@ -276,7 +276,7 @@ function setupEvents() {
       const nameEl = document.getElementById("preview-ticket-name");
       if (nameEl) {
         if (mostrarNombre) {
-          nameEl.textContent = document.getElementById("set-store-nombre")?.value.trim() || "MI ALMACÉN";
+          nameEl.textContent = document.getElementById("set-store-nombre")?.value.trim() || "";
           nameEl.classList.remove("hidden");
         } else {
           nameEl.classList.add("hidden");
@@ -284,19 +284,28 @@ function setupEvents() {
       }
 
       const nitEl = document.getElementById("preview-ticket-nit");
-      if (nitEl) nitEl.textContent = document.getElementById("set-store-nit")?.value.trim() || "900.123.456-1";
+      if (nitEl) nitEl.textContent = document.getElementById("set-store-nit")?.value.trim() || "";
 
       const addrEl = document.getElementById("preview-ticket-address");
-      if (addrEl) addrEl.textContent = document.getElementById("set-store-direccion")?.value.trim() || "Calle ...";
+      if (addrEl) addrEl.textContent = document.getElementById("set-store-direccion")?.value.trim() || "";
 
+      const cityVal = document.getElementById("set-store-ciudad")?.value.trim();
       const cityEl = document.getElementById("preview-ticket-city");
-      if (cityEl) cityEl.textContent = document.getElementById("set-store-ciudad")?.value.trim() || "Ciudad";
+      if (cityEl) {
+        if (cityVal) {
+          cityEl.textContent = cityVal;
+          cityEl.classList.remove("hidden");
+        } else {
+          cityEl.textContent = "";
+          cityEl.classList.add("hidden");
+        }
+      }
 
       const telEl = document.getElementById("preview-ticket-tel");
-      if (telEl) telEl.textContent = document.getElementById("set-store-telefono")?.value.trim() || "000";
+      if (telEl) telEl.textContent = document.getElementById("set-store-telefono")?.value.trim() || "";
 
       const condEl = document.getElementById("preview-ticket-conditions");
-      if (condEl) condEl.textContent = document.getElementById("set-store-condiciones")?.value.trim() || "GARANTIA: Equipos probados y encendidos...";
+      if (condEl) condEl.textContent = document.getElementById("set-store-condiciones")?.value.trim() || "";
 
       const logoBox = document.getElementById("preview-ticket-logo-box");
       const logoImgBox = document.getElementById("preview-ticket-logo-img-box");
@@ -347,14 +356,16 @@ function setupEvents() {
   previewCloseBg?.addEventListener("click", closePreviewModal);
 
   const getSampleVentaData = () => {
-    const nombre = document.getElementById("set-store-nombre")?.value.trim() || "MI NEGOCIO";
-    const nit = document.getElementById("set-store-nit")?.value.trim() || "900.123.456-1";
-    const direccion = document.getElementById("set-store-direccion")?.value.trim() || "Calle 123 No. 45 - 67";
-    const ciudad = document.getElementById("set-store-ciudad")?.value.trim() || "Bogotá - Cundinamarca";
-    const contacto = document.getElementById("set-store-telefono")?.value.trim() || "3001234567";
-    const condiciones = document.getElementById("set-store-condiciones")?.value.trim() || "GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados.";
+    const nombre = document.getElementById("set-store-nombre")?.value.trim() || "";
+    const nit = document.getElementById("set-store-nit")?.value.trim() || "";
+    const direccionInput = document.getElementById("set-store-direccion")?.value.trim() || "";
+    const ciudadInput = document.getElementById("set-store-ciudad")?.value.trim() || "";
+    const contacto = document.getElementById("set-store-telefono")?.value.trim() || "";
+    const condiciones = document.getElementById("set-store-condiciones")?.value.trim() || "";
     const mostrarNombre = document.getElementById("set-store-mostrar-nombre")?.checked !== false ? 1 : 0;
     const logoSize = parseInt(document.getElementById("set-store-logo-size")?.value || "40", 10);
+
+    const fullDireccion = [direccionInput, ciudadInput].filter(x => x && x.trim()).join(", ");
 
     return {
       idFactura: "FAC-DEMO-001",
@@ -363,7 +374,7 @@ function setupEvents() {
       cedula: "1012345678",
       telefono: "3123456789",
       direccion: "Carrera 15 # 28 - 10",
-      ciudad: ciudad,
+      ciudad: ciudadInput,
       productoNombre: "1x Audífonos Inalámbricos Pro, 1x Cargador 20W",
       items: [
         { nombre: "Audífonos Inalámbricos Pro", qty: 1, precioVenta: 80000 },
@@ -379,7 +390,7 @@ function setupEvents() {
       emisor: {
         nombre,
         nit,
-        direccion: `${direccion}, ${ciudad}`,
+        direccion: fullDireccion,
         contacto,
         condiciones,
         logo: _logoBase64,
