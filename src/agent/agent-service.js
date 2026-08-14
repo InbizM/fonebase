@@ -284,6 +284,9 @@ REGLAS DE RESPUESTA:
   }
 
   try {
+    const keyPreview = openRouterApiKey ? openRouterApiKey.slice(0, 12) + "..." : "(vacía)";
+    console.log(`[IA] Enviando a OpenRouter — Modelo: qwen/qwen3.7-flash — Key: ${keyPreview}`);
+    console.log(`[IA] Instrucción: "${instruccion?.slice(0, 80)}"`);
     const response = await fetch(openRouterUrl, {
       method: "POST",
       headers: {
@@ -305,11 +308,16 @@ REGLAS DE RESPUESTA:
     });
 
     if (!response.ok) {
-      throw new Error(`OpenRouter error: ${response.status}`);
+      let errorBody = "";
+      try { errorBody = await response.text(); } catch (_) {}
+      console.error(`[IA] OpenRouter HTTP ${response.status}:`, errorBody);
+      throw new Error(`OpenRouter error ${response.status}: ${errorBody.slice(0, 300)}`);
     }
 
     const data = await response.json();
+    console.log("[IA] OpenRouter raw response:", JSON.stringify(data).slice(0, 500));
     let text = data.choices[0]?.message?.content || "";
+    console.log("[IA] Model raw text:", text.slice(0, 400));
     
     text = text.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
     const firstBrace = text.indexOf("{");
