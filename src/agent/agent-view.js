@@ -536,10 +536,9 @@ export function setupAssistantEvents() {
       await procesarTextoConIA(finalText, null, replyContext);
     }
 
-    // CLICK: toca para iniciar / toca de nuevo para parar y enviar
-    micBtn.addEventListener("click", (e) => {
+    // UN SOLO evento para mouse y touch — evita el doble disparo click+touchend
+    micBtn.addEventListener("pointerup", (e) => {
       e.preventDefault();
-      e.stopPropagation();
       if (isListening) {
         stopRecording();
       } else {
@@ -547,16 +546,17 @@ export function setupAssistantEvents() {
       }
     });
 
-    // También soporte táctil explícito para móvil
-    micBtn.addEventListener("touchend", (e) => {
+    // Feedback visual inmediato al tocar
+    micBtn.addEventListener("pointerdown", (e) => {
       e.preventDefault();
-      e.stopPropagation();
-      if (isListening) {
-        stopRecording();
-      } else {
-        startRecording();
-      }
+      micBtn.style.transform = "scale(0.92)";
     });
+    micBtn.addEventListener("pointerleave", () => {
+      micBtn.style.transform = "";
+    });
+    micBtn.addEventListener("pointerup", () => {
+      micBtn.style.transform = "";
+    }, { once: false });
 
     window.addEventListener("hashchange", () => {
       if (window.location.hash !== "#assistant" && isListening) {
