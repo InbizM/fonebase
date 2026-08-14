@@ -622,20 +622,27 @@ export function setupAssistantEvents() {
     replyCloseBtn.addEventListener("click", clearReplyState);
   }
 
-  const openChatsModalBtn = document.getElementById("open-chats-history-btn");
+  const showChatsListBtn = document.getElementById("show-chats-list-btn");
+  const clearChatHistoryBtn = document.getElementById("clear-chat-history-btn");
   const chatsModal = document.getElementById("chats-history-modal");
-  const chatsModalClose = document.getElementById("chats-history-modal-close");
+  const chatsModalCloseBtn = document.getElementById("chats-history-modal-close-btn");
 
-  if (openChatsModalBtn && chatsModal) {
-    openChatsModalBtn.addEventListener("click", () => {
+  if (showChatsListBtn && chatsModal) {
+    showChatsListBtn.addEventListener("click", () => {
       renderChatsList();
       chatsModal.classList.remove("hidden");
       chatsModal.classList.add("flex");
     });
   }
 
-  if (chatsModalClose && chatsModal) {
-    chatsModalClose.addEventListener("click", () => {
+  if (clearChatHistoryBtn) {
+    clearChatHistoryBtn.addEventListener("click", () => {
+      startNewChatSession();
+    });
+  }
+
+  if (chatsModalCloseBtn && chatsModal) {
+    chatsModalCloseBtn.addEventListener("click", () => {
       chatsModal.classList.add("hidden");
       chatsModal.classList.remove("flex");
     });
