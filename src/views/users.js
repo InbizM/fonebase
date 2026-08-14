@@ -155,11 +155,11 @@ function openModal(u = null) {
   // Poblar select de sucursales
   const sucursalSelect = document.getElementById("user-input-sucursal");
   if (sucursalSelect) {
-    let optionsHtml = `<option value="0">🌐 Todas las Sucursales (Acceso Global)</option>`;
+    let optionsHtml = `<option value="0">Todas las Sucursales (Acceso Global)</option>`;
     if (_locales.length > 0) {
-      optionsHtml += _locales.map(l => `<option value="${l.id}">🏪 ${l.nombre}</option>`).join("");
+      optionsHtml += _locales.map(l => `<option value="${l.id}">${l.nombre}</option>`).join("");
     } else {
-      optionsHtml += `<option value="1">🏪 Principal</option>`;
+      optionsHtml += `<option value="1">Principal</option>`;
     }
     sucursalSelect.innerHTML = optionsHtml;
   }
