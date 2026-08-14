@@ -488,12 +488,8 @@ export function setupAssistantEvents() {
         };
 
         rec.onend = () => {
-          // si se detuvo por el usuario → enviar
-          if (listening) {
-            listening = false;
-            stopRecordingUI();
-            sendTranscript();
-          }
+          // al terminar solo restaura UI — el usuario envía manualmente
+          stopRecordingUI();
         };
 
         rec.start();
@@ -512,8 +508,12 @@ export function setupAssistantEvents() {
         try { rec.stop(); } catch (_) {}
         rec = null;
       }
+      // NO auto-envía — deja el texto en la caja para que el usuario lo revise
       stopRecordingUI();
-      sendTranscript();
+      if (textInput.value.trim()) {
+        if (statusEl) statusEl.textContent = "✅ Listo — revisa y toca Enviar";
+        textInput.focus();
+      }
     }
 
     function stopRecordingUI() {
@@ -523,17 +523,6 @@ export function setupAssistantEvents() {
       micBtn.classList.add("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
       pulseEl?.classList.add("hidden");
       if (statusEl) statusEl.textContent = "Listo para asistirte";
-    }
-
-    async function sendTranscript() {
-      const finalText = transcript.trim();
-      if (!finalText) return;
-      transcript = "";
-      textInput.value = "";
-      const replyContext = _replyingToMessage;
-      clearReplyState();
-      appendChatMessage("user", finalText, null, null, true, replyContext);
-      await procesarTextoConIA(finalText, null, replyContext);
     }
 
     // UN SOLO evento para mouse y touch — evita el doble disparo click+touchend
