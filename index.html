@@ -4154,25 +4154,22 @@
         <!-- ── PREVISUALIZACIÓN DE FACTURA (MODAL) ── -->
         <div id="set-store-preview-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4">
           <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" id="set-store-preview-close-bg"></div>
-          <div class="relative bg-white rounded-[24px] max-w-[340px] w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in z-50">
-            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50 gap-2">
+          <div class="relative bg-white rounded-[24px] max-w-[360px] w-full max-h-[85vh] flex flex-col overflow-hidden shadow-2xl animate-fade-in z-50">
+            <!-- Header Modal -->
+            <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
               <div>
                 <h3 class="text-sm font-black text-slate-800">Vista Previa Factura</h3>
-                <p class="text-[10px] text-slate-400">Representación de ticket en 80mm / 58mm</p>
+                <p class="text-[10px] text-slate-400">Representación de ticket térmico</p>
               </div>
-              <div class="flex items-center gap-2">
-                <button id="set-store-header-print-btn" type="button" class="px-3 py-1.5 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-lg transition-all flex items-center gap-1 shadow-sm shrink-0" title="Imprimir ticket de ejemplo">
-                  <span class="material-symbols-outlined text-[16px]">print</span>
-                  Imprimir Ejemplo
-                </button>
-                <button id="set-store-preview-close" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0">
-                  <span class="material-symbols-outlined text-[20px]">close</span>
-                </button>
-              </div>
+              <button id="set-store-preview-close" type="button" class="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-all shrink-0">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+              </button>
             </div>
-            <div class="flex-1 overflow-y-auto p-4 bg-slate-100 flex justify-center">
-              <!-- El ticket en 48mm -->
-              <div id="set-store-ticket-container" class="bg-white shadow-md p-4 w-[200px] text-[8px] text-slate-800 font-sans leading-tight border border-slate-200 rounded-md" style="font-family: 'Helvetica Neue', Arial, sans-serif;">
+
+            <!-- Body Modal -->
+            <div class="flex-1 overflow-y-auto p-4 bg-slate-100 flex flex-col items-center">
+              <!-- El ticket -->
+              <div id="set-store-ticket-container" class="bg-white shadow-md p-4 w-[220px] text-[8px] text-slate-800 font-sans leading-tight border border-slate-200 rounded-md">
                 <div class="text-center space-y-1 mb-3">
                   <div id="preview-ticket-logo-box" class="w-12 h-12 mx-auto flex items-center justify-center border border-dashed border-slate-200 rounded-md bg-slate-50 overflow-hidden mb-1">
                     <span class="text-slate-300 text-[8px] font-bold">Sin Logo</span>
@@ -4261,18 +4258,20 @@
                   <div id="preview-ticket-conditions" class="text-[6px] text-slate-400 text-justify leading-tight">
                     GARANTIA: Equipos probados y encendidos. Sin garantía en displays/táctiles o equipos apagados. Doc. asimilado a letra de cambio (Art. 774 C.Comercio).
                   </div>
+                  <div class="font-bold text-slate-800 tracking-wider">¡GRACIAS POR SU COMPRA!</div>
+                </div>
               </div>
             </div>
 
-            <!-- Botones de Impresión de Prueba -->
-            <div class="p-3 border-t border-slate-100 bg-slate-50 flex flex-col sm:flex-row gap-2 shrink-0">
-              <button id="set-store-preview-print-local" type="button" class="flex-1 py-2.5 bg-slate-900 hover:bg-black text-white font-bold text-xs rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm" title="Imprimir por Cable USB / Impresora local DIG-180II">
-                <span class="material-symbols-outlined text-[16px]">print</span>
-                Imprimir Cable USB / Red (DIG-180II)
+            <!-- Footer Botones de Impresión -->
+            <div class="p-4 border-t border-slate-100 bg-white flex flex-col gap-2 shrink-0">
+              <button id="set-store-preview-print-local" type="button" class="w-full py-3 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-xl active:scale-95 transition-all flex items-center justify-center gap-2 shadow-md">
+                <span class="material-symbols-outlined text-[18px]">print</span>
+                Imprimir Ejemplo (Cable USB / Red)
               </button>
-              <button id="set-store-preview-print-bt" type="button" class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5 shadow-sm shrink-0" title="Imprimir por Bluetooth">
+              <button id="set-store-preview-print-bt" type="button" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl active:scale-95 transition-all flex items-center justify-center gap-1.5 border border-slate-200">
                 <span class="material-symbols-outlined text-[16px]">bluetooth_printing</span>
-                Bluetooth
+                Imprimir por Bluetooth
               </button>
             </div>
           </div>
