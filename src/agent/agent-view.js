@@ -434,125 +434,156 @@ export function setupAssistantEvents() {
 
   if (!micBtn || !textInput || !sendBtn) return;
 
-  // ── MICRÓFONO: TAP PARA GRABAR / TAP PARA PARAR ──
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  // ── MICRÓFONO: MediaRecorder → OpenRouter Whisper ──
+  // Modelo: openai/whisper-large-v3-turbo (~$0.00018/min, soporte español excelente)
 
-  if (!SR) {
-    micBtn.disabled = true;
-    micBtn.title = "Tu navegador no soporta reconocimiento de voz";
-    if (statusEl) statusEl.textContent = "Voz no disponible en este navegador";
-  } else {
-    let rec = null;
-    let transcript = "";
-    let listening = false;
+  let mediaRecorder = null;
+  let audioChunks = [];
 
-    function startRecording() {
-      try {
-        rec = new SR();
-        rec.lang = "es-ES";
-        rec.continuous = true;       // no se detiene solo
-        rec.interimResults = true;   // muestra texto mientras habla
-
-        rec.onstart = () => {
-          listening = true;
-          transcript = "";
-          textInput.value = "";
-          // UI: botón rojo pulsante
-          micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
-          micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
-          pulseEl?.classList.remove("hidden");
-          if (statusEl) statusEl.textContent = "🔴 Grabando... toca de nuevo para enviar";
-        };
-
-        rec.onresult = (e) => {
-          let text = "";
-          for (let i = 0; i < e.results.length; i++) {
-            text += e.results[i][0].transcript;
-          }
-          transcript = text;
-          textInput.value = text;  // muestra en tiempo real
-        };
-
-        rec.onerror = (e) => {
-          console.error("[Mic] error:", e.error);
-          let msg = "Error de micrófono: " + e.error;
-          if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-            msg = "Permiso de micrófono denegado. Revisa los permisos del navegador.";
-          } else if (e.error === "no-speech") {
-            msg = "No se detectó voz.";
-          } else if (e.error === "network") {
-            msg = "Error de red con el servicio de voz.";
-          }
-          if (e.error !== "aborted") showToast(msg, "warning");
-          stopRecordingUI();
-        };
-
-        rec.onend = () => {
-          // al terminar solo restaura UI — el usuario envía manualmente
-          stopRecordingUI();
-        };
-
-        rec.start();
-        isListening = true;
-      } catch (err) {
-        console.error("[Mic] No se pudo iniciar:", err);
-        showToast("No se pudo iniciar el micrófono: " + err.message, "error");
-        stopRecordingUI();
-      }
-    }
-
-    function stopRecording() {
-      listening = false;
-      isListening = false;
-      if (rec) {
-        try { rec.stop(); } catch (_) {}
-        rec = null;
-      }
-      // NO auto-envía — deja el texto en la caja para que el usuario lo revise
-      stopRecordingUI();
-      if (textInput.value.trim()) {
-        if (statusEl) statusEl.textContent = "✅ Listo — revisa y toca Enviar";
-        textInput.focus();
-      }
-    }
-
-    function stopRecordingUI() {
-      isListening = false;
-      listening = false;
+  function setMicRecording(active) {
+    isListening = active;
+    if (active) {
+      micBtn.classList.remove("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
+      micBtn.classList.add("bg-red-600", "text-white", "animate-pulse");
+      pulseEl?.classList.remove("hidden");
+      if (statusEl) statusEl.textContent = "🔴 Grabando... toca de nuevo para parar";
+    } else {
       micBtn.classList.remove("bg-red-600", "text-white", "animate-pulse");
       micBtn.classList.add("bg-slate-100", "dark:bg-slate-800", "text-slate-700", "dark:text-slate-200");
       pulseEl?.classList.add("hidden");
       if (statusEl) statusEl.textContent = "Listo para asistirte";
     }
-
-    // UN SOLO evento para mouse y touch — evita el doble disparo click+touchend
-    micBtn.addEventListener("pointerup", (e) => {
-      e.preventDefault();
-      if (isListening) {
-        stopRecording();
-      } else {
-        startRecording();
-      }
-    });
-
-    // Feedback visual inmediato al tocar
-    micBtn.addEventListener("pointerdown", (e) => {
-      e.preventDefault();
-      micBtn.style.transform = "scale(0.92)";
-    });
-    micBtn.addEventListener("pointerleave", () => {
-      micBtn.style.transform = "";
-    });
-    micBtn.addEventListener("pointerup", () => {
-      micBtn.style.transform = "";
-    }, { once: false });
-
-    window.addEventListener("hashchange", () => {
-      if (window.location.hash !== "#assistant" && isListening) {
-        stopRecording();
-      }
-    });
+    micBtn.style.transform = "";
   }
+
+  async function startRecording() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioChunks = [];
+
+      // Elegir formato compatible: webm en Chrome, mp4/ogg en Safari
+      const mimeType = MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
+        ? "audio/webm;codecs=opus"
+        : MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "audio/ogg";
+
+      mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.start(200); // chunk cada 200ms
+      setMicRecording(true);
+    } catch (err) {
+      console.error("[Mic] Error al iniciar grabación:", err);
+      showToast("No se pudo acceder al micrófono: " + err.message, "error");
+    }
+  }
+
+  async function stopRecordingAndTranscribe() {
+    if (!mediaRecorder) return;
+
+    setMicRecording(false);
+    if (statusEl) statusEl.textContent = "⏳ Transcribiendo con Whisper...";
+
+    await new Promise(resolve => {
+      mediaRecorder.onstop = resolve;
+      mediaRecorder.stop();
+      // Detener tracks del micrófono
+      mediaRecorder.stream?.getTracks().forEach(t => t.stop());
+    });
+
+    const mimeType = mediaRecorder.mimeType || "audio/webm";
+    const audioBlob = new Blob(audioChunks, { type: mimeType });
+    audioChunks = [];
+    mediaRecorder = null;
+
+    if (audioBlob.size < 1000) {
+      showToast("Audio muy corto, intenta hablar más tiempo.", "warning");
+      if (statusEl) statusEl.textContent = "Listo para asistirte";
+      return;
+    }
+
+    try {
+      // Convertir blob a base64
+      const base64Audio = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result.split(",")[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(audioBlob);
+      });
+
+      const { getOpenRouterApiKey } = await import("../api.js");
+      const apiKey = getOpenRouterApiKey();
+
+      const ext = mimeType.includes("ogg") ? "ogg" : mimeType.includes("mp4") ? "mp4" : "webm";
+
+      const resp = await fetch("https://openrouter.ai/api/v1/audio/transcriptions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "openai/whisper-large-v3-turbo",
+          file: {
+            content: base64Audio,
+            filename: `audio.${ext}`,
+            content_type: mimeType
+          },
+          language: "es"
+        })
+      });
+
+      if (!resp.ok) {
+        const errText = await resp.text();
+        console.error("[Whisper] Error:", resp.status, errText);
+        showToast(`Error al transcribir (${resp.status}): ${errText.slice(0, 100)}`, "error");
+        if (statusEl) statusEl.textContent = "Listo para asistirte";
+        return;
+      }
+
+      const result = await resp.json();
+      const transcribedText = result.text?.trim() || "";
+
+      if (!transcribedText) {
+        showToast("No se detectó voz en el audio.", "warning");
+        if (statusEl) statusEl.textContent = "Listo para asistirte";
+        return;
+      }
+
+      textInput.value = transcribedText;
+      textInput.focus();
+      if (statusEl) statusEl.textContent = "✅ Listo — revisa y toca Enviar";
+      console.log("[Whisper] Transcripción:", transcribedText);
+    } catch (err) {
+      console.error("[Whisper] Error de red:", err);
+      showToast("Error al transcribir: " + err.message, "error");
+      if (statusEl) statusEl.textContent = "Listo para asistirte";
+    }
+  }
+
+  // UN SOLO evento — pointerup evita doble disparo click+touchend en móvil
+  micBtn.addEventListener("pointerup", (e) => {
+    e.preventDefault();
+    if (isListening) {
+      stopRecordingAndTranscribe();
+    } else {
+      startRecording();
+    }
+  });
+
+  micBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    micBtn.style.transform = "scale(0.92)";
+  });
+  micBtn.addEventListener("pointerleave", () => { micBtn.style.transform = ""; });
+
+  window.addEventListener("hashchange", () => {
+    if (window.location.hash !== "#assistant" && isListening) {
+      stopRecordingAndTranscribe();
+    }
+  });
 
   const fileCamera = document.getElementById("assistant-file-camera");
   const fileGallery = document.getElementById("assistant-file-gallery");
