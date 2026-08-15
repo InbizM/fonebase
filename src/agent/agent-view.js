@@ -266,6 +266,84 @@ export function renderChatHistoryFromStorage() {
   chatContainer.scrollTop = chatContainer.scrollHeight;
 }
 
+export function parseMarkdownToHtml(text) {
+  if (!text) return "";
+
+  // Escapar caracteres HTML básicos para seguridad
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  // Bloques de código (```code```)
+  html = html.replace(/```([\s\S]*?)```/g, (match, code) => {
+    return `<pre class="bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 rounded-lg overflow-x-auto font-mono text-xs my-2 text-slate-800 dark:text-slate-200">${code.trim()}</pre>`;
+  });
+
+  // Código en línea (`code`)
+  html = html.replace(/`([^`]+)`/g, '<code class="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-xs text-pink-600 dark:text-pink-400">$1</code>');
+
+  // Negrita (**text** o __text__)
+  html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+
+  // Cursiva (*text* o _text_)
+  html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+  html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+
+  // Encabezados (# Header -> <hX>)
+  html = html.replace(/^### (.*$)/gim, '<h4 class="font-bold text-sm mt-3 mb-1 text-slate-800 dark:text-slate-100">$1</h4>');
+  html = html.replace(/^## (.*$)/gim, '<h3 class="font-bold text-base mt-4 mb-1.5 text-slate-800 dark:text-slate-100">$1</h3>');
+  html = html.replace(/^# (.*$)/gim, '<h2 class="font-bold text-lg mt-4 mb-2 text-slate-800 dark:text-slate-100">$1</h2>');
+
+  // Listas ordenadas y desordenadas
+  let lines = html.split('\n');
+  let inList = false;
+  let listHtml = [];
+
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i];
+    let matchUnordered = line.match(/^(\s*)[-*]\s+(.*)$/);
+    let matchOrdered = line.match(/^(\s*)\d+\.\s+(.*)$/);
+
+    if (matchUnordered) {
+      if (!inList) {
+        listHtml.push('<ul class="list-disc pl-5 space-y-1 my-2">');
+        inList = "unordered";
+      }
+      listHtml.push(`<li>${matchUnordered[2]}</li>`);
+    } else if (matchOrdered) {
+      if (!inList) {
+        listHtml.push('<ol class="list-decimal pl-5 space-y-1 my-2">');
+        inList = "ordered";
+      }
+      listHtml.push(`<li>${matchOrdered[2]}</li>`);
+    } else {
+      if (inList) {
+        listHtml.push(inList === "unordered" ? '</ul>' : '</ol>');
+        inList = false;
+      }
+      listHtml.push(line);
+    }
+  }
+  if (inList) {
+    listHtml.push(inList === "unordered" ? '</ul>' : '</ol>');
+  }
+
+  html = listHtml.join('\n');
+
+  // Reemplazar saltos de línea con <br> (respetando bloques de código y listas)
+  let blocks = html.split(/(<\/pre>|<\/ul>|<\/ol>)/g);
+  for (let i = 0; i < blocks.length; i++) {
+    if (!blocks[i].includes('<pre') && !blocks[i].includes('<ul') && !blocks[i].includes('<ol') && !blocks[i].includes('<li>')) {
+      blocks[i] = blocks[i].replace(/\n/g, '<br>');
+    }
+  }
+  html = blocks.join('');
+
+  return html;
+}
+
 export function appendChatMessage(sender, text, htmlContent = null, base64Image = null, saveToStorage = true, replyContext = null, existingTimestamp = null) {
   const chatContainer = document.getElementById("voice-chat-history");
   if (!chatContainer) return;
@@ -311,7 +389,7 @@ export function appendChatMessage(sender, text, htmlContent = null, base64Image 
     replyContextHtml = '<div class="border-l-2 border-indigo-400/70 bg-indigo-100/30 dark:bg-indigo-900/20 px-2.5 py-1.5 rounded-lg text-xs text-indigo-900/80 dark:text-indigo-300/80 mb-1 max-w-full font-normal italic select-none">Respondiendo a: "' + truncatedReply + '"</div>';
   }
 
-  const bodyContent = htmlContent || (text ? '<p class="whitespace-pre-wrap leading-relaxed">' + text + '</p>' : '');
+  const bodyContent = htmlContent || (text ? '<div class="leading-relaxed font-sans text-sm break-words space-y-1.5">' + parseMarkdownToHtml(text) + '</div>' : '');
 
   const bubbleBg = isUser
     ? "bg-primary text-on-primary rounded-2xl rounded-tr-xs shadow-md"
