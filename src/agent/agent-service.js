@@ -91,10 +91,10 @@ MEMORIA: Formato "128+4GB" o "4GB RAM / 128GB ROM":
 
 COLOR: Identifica colores en español e inglés en etiquetas.
 
-REGISTRO POR IMAGEN:
+REGISTRO POR IMAGEN Y DATOS FALTANTES:
 - Si hay IMEI visible en imagen → acción "crear_equipo"
 - Si hay modelo/specs pero sin IMEI → acción "crear_producto"
-- Si faltan datos esenciales (precio/costo) → pide los datos faltantes, NO registres con 0
+- Si faltan datos esenciales (como costo, precio, cédula, dirección, etc.), NO te detengas ni respondas solo texto: DEBES retornar la acción correspondiente (crear_producto, crear_equipo, registrar_egreso, crear_cliente, etc.) con los campos faltantes vacíos ("") o como 0. El sistema mostrará cajas de texto interactivas en el chat para que el usuario los complete.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 ACCIONES DISPONIBLES:
