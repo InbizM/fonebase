@@ -413,7 +413,7 @@ export function appendChatMessage(sender, text, htmlContent = null, base64Image 
       '<span class="material-symbols-outlined text-[18px]">' + avatarIcon + '</span>' +
     '</div>' +
     '<div class="flex flex-col ' + userAlignClass + ' min-w-0 flex-1">' +
-      '<div class="px-4 py-3 ' + bubbleBg + ' max-w-full overflow-hidden">' +
+      '<div data-chat-bubble class="px-4 py-3 ' + bubbleBg + ' max-w-full overflow-hidden">' +
         replyContextHtml +
         imagesHtml +
         bodyContent +

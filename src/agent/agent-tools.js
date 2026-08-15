@@ -938,7 +938,19 @@ window.submitMissingActionData = async (formId, actionType, originalActionJsonSt
 
     if (res && res.success) {
       showToast("Registro completado con éxito", "success");
-      container.outerHTML = successMessageHtml;
+
+      // Reemplazar toda la burbuja del chat (el padre del container) con el mensaje de éxito
+      // para que desaparezca tanto el formulario como el título de advertencia.
+      const bubble = container.closest('[data-chat-bubble]') || container.parentElement;
+      if (bubble) {
+        bubble.innerHTML = successMessageHtml || `
+          <div class="mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+            ✅ Registro completado exitosamente.
+          </div>
+        `;
+      } else {
+        container.outerHTML = successMessageHtml;
+      }
       
       if (window.viewReloaders) {
         Object.keys(window.viewReloaders).forEach(key => {
