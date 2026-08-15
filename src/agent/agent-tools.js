@@ -66,7 +66,8 @@ function renderInteractiveFormIfMissing(action, requiredFields, appendChatMessag
       </div>
     `;
 
-    appendChatMessage("ai", null, fieldsHtml);
+    // saveToStorage = false para que el formulario no persista en localStorage al recargar
+    appendChatMessage("ai", null, fieldsHtml, null, false);
     return true; // Indica que se pintó el formulario
   }
   return false;
@@ -88,7 +89,7 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
   // Interceptar appendChatMessage para que los logs del sistema ("system") se muestren como Toasts (notificaciones flotantes)
   // en lugar de contaminar el chat del usuario.
   const originalAppend = appendChatMessage;
-  appendChatMessage = (role, text, html) => {
+  appendChatMessage = (role, text, html, ...rest) => {
     if (role === "system" && text) {
       if (text.startsWith("[OK]")) {
         showToast(text.replace("[OK]", "").trim(), "success");
@@ -99,7 +100,7 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
       }
       return;
     }
-    originalAppend(role, text, html);
+    originalAppend(role, text, html, ...rest);
   };
 
   if (action.type === 'registrar_egreso') {
