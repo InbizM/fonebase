@@ -143,8 +143,9 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
   else if (action.type === 'crear_cliente') {
     appendChatMessage("system", `Creando cliente: ${action.nombre}...`);
     try {
+      const cleanCedula = action.cedula ? String(action.cedula).trim() : `TEMP-${Date.now()}`;
       const res = await crearCliente({
-        cedula: action.cedula,
+        cedula: cleanCedula,
         nombre: action.nombre,
         telefono: action.telefono || "",
         direccion: action.direccion || "",
