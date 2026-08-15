@@ -11,6 +11,13 @@ export function initNominas() {
   return async () => {
     _activeTab = 'nominas';
     switchTab('nominas');
+    
+    window.viewReloaders = window.viewReloaders || {};
+    window.viewReloaders.nominas = async () => {
+      await loadData();
+      await loadPrestamosData();
+    };
+
     await loadData();
     await loadPrestamosData();
     setupEvents();

@@ -139,6 +139,9 @@ REGISTRO POR IMAGEN:
 13. Crear meta financiera:
 {"response":"✅ Creé la meta financiera 'Ventas de hoy' con objetivo de $100.000 y cálculo tipo Ventas.","action":{"type":"crear_meta","titulo":"Ventas de hoy","monto_objetivo":100000,"tipo_calculo":"Ventas","fecha_inicio":"2026-08-15","fecha_limite":"2026-08-15","notas":"Creada por Asistente de Voz"}}
 
+14. Crear préstamo o adelanto a empleado (nómina):
+{"response":"✅ Registré un préstamo de $100.000 para el empleado Johan.","action":{"type":"crear_prestamo","empleado":"Johan","monto":100000,"tipo_prestamo":"Dinero","notas":"Préstamo solicitado por el empleado"}}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 RESPUESTAS DE CONSULTA (action = null):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -151,7 +154,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 - Responde ÚNICAMENTE con JSON válido parseable con JSON.parse().
 - NO uses bloques markdown (\`\`\`json).
 - El campo "response" es OBLIGATORIO y debe ser ESPECÍFICO con los datos registrados.
-- Si no entiendes la petición, responde: {"response":"No entendí tu instrucción. Puedo registrar equipos, productos, clientes, gastos, servicios técnicos, tareas y créditos. ¿Qué necesitas?","action":null}
+- Si no entiendes la petición, responde: {"response":"No entendí tu instrucción. Puedo registrar equipos, productos, clientes, gastos, servicios técnicos, tareas, metas, créditos y préstamos a empleados. ¿Qué necesitas?","action":null}
 `;
 
   let userContent = instruccion || "¿Cuál es el estado del negocio hoy?";

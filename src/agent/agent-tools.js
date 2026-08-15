@@ -11,7 +11,8 @@ import {
   crearValeFisico,
   crearReventa,
   getInventario,
-  crearMeta
+  crearMeta,
+  crearPrestamo
 } from "../api.js";
 import { navigate } from "../router.js";
 import { showToast } from "../toast.js";
@@ -461,6 +462,31 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
       }
     } catch (e) {
       appendChatMessage("system", `[Error] Excepción al crear meta: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_prestamo') {
+    appendChatMessage("system", `Ejecutando acción: Registrar préstamo a ${action.empleado} por $${action.monto}...`);
+    try {
+      const cleanMonto = typeof action.monto === 'string' ? Number(action.monto.replace(/\D/g, "")) : Number(action.monto);
+      const res = await crearPrestamo({
+        fecha: action.fecha || new Date().toISOString(),
+        empleado: action.empleado,
+        tipo: action.tipo_prestamo || 'Dinero',
+        monto: isNaN(cleanMonto) ? 0 : cleanMonto,
+        producto_id: action.producto_id || '',
+        producto_nombre: action.producto_nombre || '',
+        cantidad: action.cantidad ? Number(action.cantidad) : 0,
+        estado: 'Pendiente',
+        notas: action.notas || 'Préstamo vía Asistente de Voz'
+      });
+      if (res && res.success) {
+        showToast("Préstamo registrado con éxito", "success");
+        appendChatMessage("system", `[OK] Préstamo registrado a ${action.empleado} por $${action.monto}`);
+      } else {
+        appendChatMessage("system", `[Error] Error al registrar préstamo: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al registrar préstamo: ${e.message}`);
     }
   }
 
