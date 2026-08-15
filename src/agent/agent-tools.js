@@ -76,6 +76,15 @@ function renderInteractiveFormIfMissing(action, requiredFields, appendChatMessag
 export async function ejecutarAccionIA(action, base64Image = null, appendChatMessage) {
   if (!action || !action.type) return;
 
+  // Preservar la imagen en el objeto action para que no se pierda al serializarse en formularios interactivos
+  if (base64Image) {
+    const singleImg = (Array.isArray(base64Image) ? base64Image[0] : base64Image) || "";
+    if (singleImg) {
+      action.imagen = singleImg;
+      action.foto_base64 = singleImg;
+    }
+  }
+
   // Interceptar appendChatMessage para que los logs del sistema ("system") se muestren como Toasts (notificaciones flotantes)
   // en lugar de contaminar el chat del usuario.
   const originalAppend = appendChatMessage;
@@ -329,8 +338,30 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
         if (existingProd) {
           productId = existingProd.id;
           appendChatMessage("system", `Plantilla existente encontrada: "${existingProd.nombre}"`);
+          
+          // Si la plantilla existente no tiene imagen y se cargó una nueva, guardarla
+          const imgToSave = (Array.isArray(base64Image) ? base64Image[0] : base64Image) || action.imagen || "";
+          if (imgToSave && (!existingProd.imagen || existingProd.imagen === "")) {
+            appendChatMessage("system", `Guardando la imagen en la plantilla existente...`);
+            await actualizarProducto(existingProd.id, [
+              existingProd.nombre,
+              existingProd.marca || "Universal",
+              existingProd.categoria || "Celulares",
+              existingProd.tipo || "Físico",
+              existingProd.costo || 0,
+              existingProd.precio_venta || 0,
+              existingProd.stock_minimo || 1,
+              existingProd.stock_actual || 1,
+              existingProd.ubicacion || "Vitrina",
+              existingProd.sku || "",
+              imgToSave,
+              existingProd.fijado || 0
+            ]);
+            existingProd.imagen = imgToSave;
+          }
         } else {
           productId = `PROD-${Date.now()}`;
+          const imgToSave = (Array.isArray(base64Image) ? base64Image[0] : base64Image) || action.imagen || "";
           await crearProducto([
             productId,
             finalProdName,
@@ -343,7 +374,7 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
             1,
             "Vitrina",
             action.sku || "",
-            base64Image || "",
+            imgToSave,
             0
           ]);
           appendChatMessage("system", `[OK] Nueva plantilla de producto creada: "${finalProdName}".`);
@@ -767,10 +798,34 @@ window.submitMissingActionData = async (formId, actionType, originalActionJsonSt
           1,
           1,
           "Vitrina",
-          "",
-          "",
+          updatedData.sku || "",
+          updatedData.imagen || "",
           0
         ]);
+      } else {
+        // Si la plantilla ya existe pero no tiene imagen, la actualizamos
+        try {
+          const inv = await getInventario();
+          const existingProd = inv.find(p => p.id === productId);
+          if (existingProd && (!existingProd.imagen || existingProd.imagen === "") && updatedData.imagen) {
+            await actualizarProducto(existingProd.id, [
+              existingProd.nombre,
+              existingProd.marca || "Universal",
+              existingProd.categoria || "Celulares",
+              existingProd.tipo || "Físico",
+              existingProd.costo || 0,
+              existingProd.precio_venta || 0,
+              existingProd.stock_minimo || 1,
+              existingProd.stock_actual || 1,
+              existingProd.ubicacion || "Vitrina",
+              existingProd.sku || "",
+              updatedData.imagen,
+              existingProd.fijado || 0
+            ]);
+          }
+        } catch (e) {
+          console.error("Error al actualizar foto en plantilla existente (form):", e);
+        }
       }
       res = await crearEquipo({
         imei1: updatedData.imei1,
