@@ -154,7 +154,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 - Responde ÚNICAMENTE con JSON válido parseable con JSON.parse().
 - NO uses bloques markdown (\`\`\`json).
 - El campo "response" es OBLIGATORIO y debe ser ESPECÍFICO con los datos registrados.
-- Si no entiendes la petición, responde: {"response":"No entendí tu instrucción. Puedo registrar equipos, productos, clientes, gastos, servicios técnicos, tareas, metas, créditos y préstamos a empleados. ¿Qué necesitas?","action":null}
+- Si no entiendes la petición, responde: {"response":"No entendí tu instrucción. Puedo registrar equipos, productos, clientes, gastos, servicios técnicos, tareas, metas, créditos, reventas y préstamos a empleados. ¿Qué necesitas?","action":null}
 `;
 
   let userContent = instruccion || "¿Cuál es el estado del negocio hoy?";
