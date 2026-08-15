@@ -255,7 +255,7 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
       { name: 'precioVenta', label: 'Precio de Venta', type: 'number', placeholder: 'Ej: 35000' },
       { name: 'stockActual', label: 'Stock Inicial', type: 'number', placeholder: 'Ej: 5' }
     ];
-    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "crear el producto", "crear_producto")) return;
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, `crear el producto "${action.nombre || 'nuevo'}"`, "crear_producto")) return;
 
     appendChatMessage("system", `Agregando producto: ${action.nombre}...`);
     try {
@@ -310,7 +310,7 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
       { name: 'costo', label: 'Costo de compra', type: 'number', placeholder: 'Ej: 450000' },
       { name: 'venta', label: 'Precio de venta', type: 'number', placeholder: 'Ej: 650000' }
     ];
-    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "registrar el celular con IMEI", "crear_equipo")) return;
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, `registrar el celular "${action.nombre || 'nuevo'}" con IMEI`, "crear_equipo")) return;
 
     appendChatMessage("system", `Registrando equipo IMEI: ${action.nombre}...`);
     try {
