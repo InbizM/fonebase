@@ -17,6 +17,61 @@ import {
 import { navigate } from "../router.js";
 import { showToast } from "../toast.js";
 
+// Función helper para pintar un formulario interactivo dentro de la burbuja del chat
+// cuando faltan campos obligatorios.
+function renderInteractiveFormIfMissing(action, requiredFields, appendChatMessage, titleText, actionType) {
+  const missing = [];
+  requiredFields.forEach(f => {
+    const val = action[f.name];
+    if (val === undefined || val === null || String(val).trim() === "" || (f.type === 'number' && Number(val) === 0)) {
+      missing.push(f);
+    }
+  });
+
+  if (missing.length > 0) {
+    const formId = `form-missing-${Date.now()}`;
+    const encodedAction = encodeURIComponent(JSON.stringify(action));
+    
+    let fieldsHtml = `
+      <div class="space-y-3">
+        <p class="font-bold text-sm text-yellow-600 dark:text-yellow-400">
+          ⚠️ Faltan datos obligatorios para ${titleText}:
+        </p>
+        <div id="${formId}" class="space-y-2 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+    `;
+
+    requiredFields.forEach(f => {
+      const isMissing = missing.includes(f);
+      const val = action[f.name] !== undefined && action[f.name] !== null ? action[f.name] : "";
+      
+      if (isMissing) {
+        fieldsHtml += `
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">${f.label} *</label>
+            <input type="${f.type === 'number' ? 'number' : 'text'}" data-field="${f.name}" placeholder="${f.placeholder}" class="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:border-primary text-slate-900 dark:text-white" required />
+          </div>
+        `;
+      } else {
+        fieldsHtml += `<input type="hidden" data-field="${f.name}" value="${val}" />`;
+      }
+    });
+
+    fieldsHtml += `
+          <div class="flex gap-2 justify-end mt-3">
+            <button type="button" onclick="window.submitMissingActionData('${formId}', '${actionType}', '${encodedAction}')" class="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-md">
+              Completar Registro
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    appendChatMessage("ai", null, fieldsHtml);
+    return true; // Indica que se pintó el formulario
+  }
+  return false;
+}
+
 // ── EJECUTOR DE ACCIONES Y HERRAMIENTAS PARA EL AGENTE DE IA ──
 export async function ejecutarAccionIA(action, base64Image = null, appendChatMessage) {
   if (!action || !action.type) return;
@@ -39,6 +94,14 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
   };
 
   if (action.type === 'registrar_egreso') {
+    const fields = [
+      { name: 'monto', label: 'Monto del Egreso', type: 'number', placeholder: 'Ej: 15000' },
+      { name: 'concepto', label: 'Concepto o Detalle', type: 'text', placeholder: 'Ej: Almuerzo de trabajo' },
+      { name: 'categoria', label: 'Categoría', type: 'text', placeholder: 'Ej: Suministros' },
+      { name: 'responsable', label: 'Responsable', type: 'text', placeholder: 'Ej: Juan' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "registrar el egreso", "registrar_egreso")) return;
+
     appendChatMessage("system", `Ejecutando acción: Registrar egreso por $${action.monto}...`);
     try {
       const cleanMonto = typeof action.monto === 'string' ? Number(action.monto.replace(/\D/g, "")) : Number(action.monto);
@@ -59,6 +122,12 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }
   }
   else if (action.type === 'crear_tarea') {
+    const fields = [
+      { name: 'tarea', label: 'Título de la Tarea', type: 'text', placeholder: 'Ej: Contabilizar todos los forros' },
+      { name: 'fecha_vencimiento', label: 'Fecha de Vencimiento', type: 'text', placeholder: 'Ej: YYYY-MM-DD' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "crear la tarea", "crear_tarea")) return;
+
     appendChatMessage("system", `Ejecutando acción: Crear tarea "${action.tarea}"...`);
     try {
       const res = await crearTarea({
@@ -141,55 +210,13 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }, 1000);
   }
   else if (action.type === 'crear_cliente') {
-    const hasCedula = action.cedula && String(action.cedula).trim() !== "" && !String(action.cedula).startsWith("TEMP-");
-    const hasDireccion = action.direccion && String(action.direccion).trim() !== "";
-
-    if (!hasCedula || !hasDireccion) {
-      const formId = `form-cli-missing-${Date.now()}`;
-      
-      let fieldsHtml = `
-        <div class="space-y-3">
-          <p class="font-bold text-sm text-yellow-600 dark:text-yellow-400">
-            ⚠️ Para registrar al cliente <strong>${action.nombre || 'Nuevo Cliente'}</strong>, la cédula y la dirección son obligatorias:
-          </p>
-          <div id="${formId}" class="space-y-2 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
-      `;
-      
-      if (!hasCedula) {
-        fieldsHtml += `
-          <div>
-            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Cédula o NIT *</label>
-            <input type="text" data-field="cedula" placeholder="Ej: 1012345678" class="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:border-primary text-slate-900 dark:text-white" required />
-          </div>
-        `;
-      } else {
-        fieldsHtml += `<input type="hidden" data-field="cedula" value="${action.cedula}" />`;
-      }
-
-      if (!hasDireccion) {
-        fieldsHtml += `
-          <div>
-            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Dirección *</label>
-            <input type="text" data-field="direccion" placeholder="Ej: Calle 10 #5-20" class="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:border-primary text-slate-900 dark:text-white" required />
-          </div>
-        `;
-      } else {
-        fieldsHtml += `<input type="hidden" data-field="direccion" value="${action.direccion}" />`;
-      }
-
-      fieldsHtml += `
-            <div class="flex gap-2 justify-end mt-3">
-              <button type="button" onclick="window.submitMissingClientData('${formId}', '${action.nombre || 'Cliente'}', '${action.telefono || ''}', '${action.email || ''}', '${action.tipo || 'Natural'}')" class="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-md">
-                Guardar Cliente
-              </button>
-            </div>
-          </div>
-        </div>
-      `;
-
-      appendChatMessage("ai", null, fieldsHtml);
-      return;
-    }
+    const fields = [
+      { name: 'nombre', label: 'Nombre del Cliente', type: 'text', placeholder: 'Ej: Juan Pérez' },
+      { name: 'cedula', label: 'Cédula o NIT', type: 'text', placeholder: 'Ej: 1023456789' },
+      { name: 'direccion', label: 'Dirección', type: 'text', placeholder: 'Ej: Calle 10 #5-20' },
+      { name: 'telefono', label: 'Teléfono', type: 'text', placeholder: 'Ej: 3001234567' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "registrar el cliente", "crear_cliente")) return;
 
     appendChatMessage("system", `Creando cliente: ${action.nombre}...`);
     try {
@@ -212,10 +239,17 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }
   }
   else if (action.type === 'crear_producto') {
+    const fields = [
+      { name: 'nombre', label: 'Nombre del Producto', type: 'text', placeholder: 'Ej: Cargador Tipo C 20W' },
+      { name: 'costo', label: 'Costo del Producto', type: 'number', placeholder: 'Ej: 15000' },
+      { name: 'precioVenta', label: 'Precio de Venta', type: 'number', placeholder: 'Ej: 35000' },
+      { name: 'stockActual', label: 'Stock Inicial', type: 'number', placeholder: 'Ej: 5' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "crear el producto", "crear_producto")) return;
+
     appendChatMessage("system", `Agregando producto: ${action.nombre}...`);
     try {
       const id = action.id || `PROD-${Date.now()}`;
-      
       let finalName = action.nombre;
       const catLower = (action.categoria || "").toLowerCase();
       if ((catLower === "celular" || catLower === "celulares") && (action.ram || action.memoria || action.color)) {
@@ -260,10 +294,17 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }
   }
   else if (action.type === 'crear_equipo') {
+    const fields = [
+      { name: 'nombre', label: 'Nombre/Modelo del Celular', type: 'text', placeholder: 'Ej: Samsung A15 128GB' },
+      { name: 'imei1', label: 'IMEI 1 (15 dígitos)', type: 'text', placeholder: 'Ej: 356251...' },
+      { name: 'costo', label: 'Costo de compra', type: 'number', placeholder: 'Ej: 450000' },
+      { name: 'venta', label: 'Precio de venta', type: 'number', placeholder: 'Ej: 650000' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "registrar el celular con IMEI", "crear_equipo")) return;
+
     appendChatMessage("system", `Registrando equipo IMEI: ${action.nombre}...`);
     try {
       let productId = action.id_producto || "";
-      
       let finalProdName = action.nombre;
       const specs = [];
       if (action.ram) {
@@ -331,6 +372,14 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }
   }
   else if (action.type === 'crear_servicio_tecnico') {
+    const fields = [
+      { name: 'cliente', label: 'Nombre del Cliente', type: 'text', placeholder: 'Ej: Pedro Pérez' },
+      { name: 'equipo', label: 'Modelo del Equipo', type: 'text', placeholder: 'Ej: iPhone 13' },
+      { name: 'falla', label: 'Falla o Problema', type: 'text', placeholder: 'Ej: Pantalla rota' },
+      { name: 'precio_final', label: 'Precio de la reparación', type: 'number', placeholder: 'Ej: 120000' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "crear la orden de servicio técnico", "crear_servicio_tecnico")) return;
+
     appendChatMessage("system", `Creando orden de servicio técnico para: ${action.cliente}...`);
     try {
       const id_orden = action.id_orden || `ST-${Date.now()}`;
@@ -360,6 +409,13 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }
   }
   else if (action.type === 'crear_credito') {
+    const fields = [
+      { name: 'cliente', label: 'Nombre del Cliente', type: 'text', placeholder: 'Ej: María López' },
+      { name: 'total', label: 'Monto del Crédito', type: 'number', placeholder: 'Ej: 120000' },
+      { name: 'detalle', label: 'Detalle o Concepto', type: 'text', placeholder: 'Ej: Cuotas protector' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "registrar el crédito", "crear_credito")) return;
+
     appendChatMessage("system", `Registrando crédito para: ${action.cliente}...`);
     try {
       const res = await crearCredito({
@@ -401,6 +457,13 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }
   }
   else if (action.type === 'crear_reventa') {
+    const fields = [
+      { name: 'producto', label: 'Nombre del Producto', type: 'text', placeholder: 'Ej: Parlante Bluetooth' },
+      { name: 'costo', label: 'Costo del Proveedor', type: 'number', placeholder: 'Ej: 35000' },
+      { name: 'precio', label: 'Precio de Venta', type: 'number', placeholder: 'Ej: 60000' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "registrar la reventa", "crear_reventa")) return;
+
     appendChatMessage("system", `Creando reventa de: ${action.producto}...`);
     try {
       const res = await crearReventa({
@@ -492,6 +555,12 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }
   }
   else if (action.type === 'crear_meta') {
+    const fields = [
+      { name: 'titulo', label: 'Título de la Meta', type: 'text', placeholder: 'Ej: Ventas del día' },
+      { name: 'monto_objetivo', label: 'Monto Objetivo', type: 'number', placeholder: 'Ej: 100000' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "crear la meta financiera", "crear_meta")) return;
+
     appendChatMessage("system", `Ejecutando acción: Crear meta "${action.titulo}" por $${action.monto_objetivo}...`);
     try {
       const cleanMonto = typeof action.monto_objetivo === 'string' ? Number(action.monto_objetivo.replace(/\D/g, "")) : Number(action.monto_objetivo);
@@ -515,6 +584,12 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }
   }
   else if (action.type === 'crear_prestamo') {
+    const fields = [
+      { name: 'empleado', label: 'Nombre del Empleado', type: 'text', placeholder: 'Ej: Johan' },
+      { name: 'monto', label: 'Monto del Préstamo', type: 'number', placeholder: 'Ej: 100000' }
+    ];
+    if (renderInteractiveFormIfMissing(action, fields, appendChatMessage, "registrar el préstamo de nómina", "crear_prestamo")) return;
+
     appendChatMessage("system", `Ejecutando acción: Registrar préstamo a ${action.empleado} por $${action.monto}...`);
     try {
       const cleanMonto = typeof action.monto === 'string' ? Number(action.monto.replace(/\D/g, "")) : Number(action.monto);
@@ -555,58 +630,261 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
   }
 }
 
-// Handler global para los formularios interactivos de creación de clientes cuando faltan datos obligatorios
-window.submitMissingClientData = async (formId, nombre, telefono, email, tipo) => {
+// Handler global para procesar los datos de cualquier acción a la que le falten datos y que el usuario
+// haya rellenado a través de los inputs en la burbuja de chat.
+window.submitMissingActionData = async (formId, actionType, originalActionJsonStr) => {
   const container = document.getElementById(formId);
   if (!container) return;
 
-  const cedulaInput = container.querySelector('input[data-field="cedula"]');
-  const direccionInput = container.querySelector('input[data-field="direccion"]');
+  const originalAction = JSON.parse(decodeURIComponent(originalActionJsonStr));
+  const inputs = container.querySelectorAll('input[data-field], select[data-field], textarea[data-field]');
+  
+  const updatedData = { ...originalAction };
+  let hasEmptyRequired = false;
+  
+  inputs.forEach(input => {
+    const field = input.dataset.field;
+    let val = input.value.trim();
+    
+    if (input.hasAttribute('required') && !val) {
+      hasEmptyRequired = true;
+      input.classList.add('border-red-500');
+    } else {
+      input.classList.remove('border-red-500');
+    }
+    
+    if (input.type === 'number' || input.dataset.type === 'number') {
+      val = Number(val) || 0;
+    }
+    
+    updatedData[field] = val;
+  });
 
-  const cedula = cedulaInput ? cedulaInput.value.trim() : "";
-  const direccion = direccionInput ? direccionInput.value.trim() : "";
-
-  if (!cedula) {
-    showToast("La cédula/documento es obligatoria", "error");
-    if (cedulaInput) cedulaInput.focus();
+  if (hasEmptyRequired) {
+    showToast("Por favor, completa todos los campos obligatorios.", "error");
     return;
   }
-  if (!direccion) {
-    showToast("La dirección es obligatoria", "error");
-    if (direccionInput) direccionInput.focus();
-    return;
-  }
 
-  // Deshabilitar botón e inputs mientras se procesa
   const btn = container.querySelector('button');
   if (btn) {
     btn.disabled = true;
-    btn.textContent = "Guardando...";
+    btn.textContent = "Procesando...";
   }
 
   try {
-    const res = await crearCliente({
-      cedula,
-      nombre,
-      telefono: telefono || "",
-      direccion,
-      email: email || "",
-      tipo: tipo || "Natural"
-    });
-
-    if (res && res.success) {
-      showToast("Cliente registrado con éxito", "success");
-      
-      // Reemplazar el contenedor con un mensaje de éxito
-      container.outerHTML = `
+    let res;
+    let successMessageHtml = "";
+    
+    if (actionType === 'registrar_egreso') {
+      res = await registrarEgreso({
+        categoria: updatedData.categoria || "Otros",
+        concepto: updatedData.concepto || "Egreso vía IA",
+        responsable: updatedData.responsable || "Asistente IA",
+        monto: Number(updatedData.monto || 0)
+      });
+      successMessageHtml = `
         <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-          ✅ Cliente <strong>${nombre}</strong> registrado exitosamente.<br/>
-          • Cédula/NIT: ${cedula}<br/>
-          • Dirección: ${direccion}
+          ✅ Egreso registrado exitosamente por $${Number(updatedData.monto).toLocaleString('es-CO')}.<br/>
+          • Concepto: ${updatedData.concepto}<br/>
+          • Categoría: ${updatedData.categoria || "Otros"}
         </div>
       `;
+    }
+    else if (actionType === 'crear_tarea') {
+      res = await crearTarea({
+        tarea: updatedData.tarea,
+        fecha_inicio: updatedData.fecha_inicio || new Date().toISOString().split('T')[0],
+        fecha_vencimiento: updatedData.fecha_vencimiento || new Date().toISOString().split('T')[0],
+        prioridad: updatedData.prioridad || "Media",
+        estado: "Pendiente",
+        responsable: updatedData.responsable || "",
+        notas: updatedData.notas || "Creada por Asistente de Voz",
+        color: updatedData.color || "#eab308"
+      });
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          📌 Tarea "${updatedData.tarea}" creada exitosamente.<br/>
+          • Prioridad: ${updatedData.prioridad || "Media"}<br/>
+          • Vence: ${updatedData.fecha_vencimiento || "Hoy"}
+        </div>
+      `;
+    }
+    else if (actionType === 'crear_cliente') {
+      res = await crearCliente({
+        cedula: updatedData.cedula,
+        nombre: updatedData.nombre,
+        telefono: updatedData.telefono || "",
+        direccion: updatedData.direccion || "",
+        email: updatedData.email || "",
+        tipo: updatedData.tipo || "Natural"
+      });
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          ✅ Cliente <strong>${updatedData.nombre}</strong> registrado exitosamente.<br/>
+          • Cédula/NIT: ${updatedData.cedula}<br/>
+          • Dirección: ${updatedData.direccion}
+        </div>
+      `;
+    }
+    else if (actionType === 'crear_producto') {
+      const id = updatedData.id || `PROD-${Date.now()}`;
+      res = await crearProducto([
+        id,
+        updatedData.nombre,
+        updatedData.marca || "Universal",
+        updatedData.categoria || "Accesorios",
+        updatedData.tipo || "Accesorio",
+        Number(updatedData.costo || 0),
+        Number(updatedData.precioVenta || 0),
+        Number(updatedData.stockMinimo || 2),
+        Number(updatedData.stockActual || 0),
+        updatedData.ubicacion || "",
+        updatedData.sku || "",
+        updatedData.imagen || "",
+        0
+      ]);
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          📦 Producto "${updatedData.nombre}" agregado al inventario.<br/>
+          • Venta: $${Number(updatedData.precioVenta).toLocaleString('es-CO')} | Costo: $${Number(updatedData.costo).toLocaleString('es-CO')}<br/>
+          • Stock inicial: ${updatedData.stockActual} unidades
+        </div>
+      `;
+    }
+    else if (actionType === 'crear_equipo') {
+      // Intentar crear plantilla si no hay id_producto
+      let productId = updatedData.id_producto || "";
+      if (!productId) {
+        productId = `PROD-${Date.now()}`;
+        await crearProducto([
+          productId,
+          updatedData.nombre,
+          updatedData.marca || "Universal",
+          "Celulares",
+          "Físico",
+          Number(updatedData.costo || 0),
+          Number(updatedData.venta || 0),
+          1,
+          1,
+          "Vitrina",
+          "",
+          "",
+          0
+        ]);
+      }
+      res = await crearEquipo({
+        imei1: updatedData.imei1,
+        imei2: updatedData.imei2 || "",
+        id_producto: productId,
+        marca: updatedData.marca || "",
+        nombre: updatedData.nombre,
+        proveedor: updatedData.proveedor || "",
+        costo: Number(updatedData.costo || 0),
+        venta: Number(updatedData.venta || 0),
+        estado: updatedData.estado || "Disponible"
+      });
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          📱 Celular "${updatedData.nombre}" registrado con éxito.<br/>
+          • IMEI1: ${updatedData.imei1}<br/>
+          • Precio: $${Number(updatedData.venta).toLocaleString('es-CO')}
+        </div>
+      `;
+    }
+    else if (actionType === 'crear_servicio_tecnico') {
+      const orderId = `ST-${Date.now()}`;
+      res = await crearServicioTecnico([
+        orderId,
+        updatedData.cliente,
+        updatedData.telefono || "",
+        updatedData.equipo,
+        updatedData.imei_serie || "",
+        updatedData.falla,
+        updatedData.clave_patron || "",
+        updatedData.repuestos || "",
+        Number(updatedData.costo_taller || 0),
+        Number(updatedData.abono || 0),
+        Number(updatedData.precio_final || 0),
+        updatedData.estado || "Recibido",
+        ""
+      ]);
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          🛠️ Orden de servicio ${orderId} creada para ${updatedData.cliente}.<br/>
+          • Equipo: ${updatedData.equipo}<br/>
+          • Falla: ${updatedData.falla}
+        </div>
+      `;
+    }
+    else if (actionType === 'crear_credito') {
+      res = await crearCredito({
+        cliente: updatedData.cliente,
+        telefono: updatedData.telefono || "",
+        idFactura: "",
+        total: Number(updatedData.total || 0),
+        detalle: updatedData.detalle || "Crédito vía Asistente IA"
+      });
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          💳 Crédito de $${Number(updatedData.total).toLocaleString('es-CO')} registrado para ${updatedData.cliente}.<br/>
+          • Detalle: ${updatedData.detalle}
+        </div>
+      `;
+    }
+    else if (actionType === 'crear_reventa') {
+      res = await crearReventa({
+        producto: updatedData.producto,
+        categoria: updatedData.categoria || "Reventa",
+        costo: Number(updatedData.costo || 0),
+        precio: Number(updatedData.precio || 0),
+        proveedor: updatedData.proveedor || ""
+      });
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          📈 Reventa registrada: ${updatedData.producto}.<br/>
+          • Venta: $${Number(updatedData.precio).toLocaleString('es-CO')} | Costo: $${Number(updatedData.costo).toLocaleString('es-CO')}
+        </div>
+      `;
+    }
+    else if (actionType === 'crear_meta') {
+      res = await crearMeta({
+        titulo: updatedData.titulo,
+        monto_objetivo: Number(updatedData.monto_objetivo || 0),
+        tipo_calculo: updatedData.tipo_calculo || "Ventas",
+        fecha_inicio: updatedData.fecha_inicio || new Date().toISOString().split('T')[0],
+        fecha_limite: updatedData.fecha_limite || new Date().toISOString().split('T')[0],
+        notas: updatedData.notas || "Creada por Asistente de Voz",
+        estado: "Activa"
+      });
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          🎯 Meta "${updatedData.titulo}" creada exitosamente.
+        </div>
+      `;
+    }
+    else if (actionType === 'crear_prestamo') {
+      res = await crearPrestamo({
+        fecha: updatedData.fecha || new Date().toISOString(),
+        empleado: updatedData.empleado,
+        tipo: updatedData.tipo_prestamo || 'Dinero',
+        monto: Number(updatedData.monto || 0),
+        producto_id: updatedData.producto_id || '',
+        producto_nombre: updatedData.producto_nombre || '',
+        cantidad: updatedData.cantidad ? Number(updatedData.cantidad) : 0,
+        estado: 'Pendiente',
+        notas: updatedData.notas || 'Préstamo vía Asistente de Voz'
+      });
+      successMessageHtml = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          💵 Préstamo de $${Number(updatedData.monto).toLocaleString('es-CO')} registrado para ${updatedData.empleado}.
+        </div>
+      `;
+    }
 
-      // Recargar la vista de clientes en pantalla
+    if (res && res.success) {
+      showToast("Registro completado con éxito", "success");
+      container.outerHTML = successMessageHtml;
+      
       if (window.viewReloaders) {
         Object.keys(window.viewReloaders).forEach(key => {
           const reloadFn = window.viewReloaders[key];
@@ -616,17 +894,17 @@ window.submitMissingClientData = async (formId, nombre, telefono, email, tipo) =
         });
       }
     } else {
-      showToast(res.mensaje || "Error al registrar cliente", "error");
+      showToast(res.mensaje || "Error al completar registro", "error");
       if (btn) {
         btn.disabled = false;
-        btn.textContent = "Guardar Cliente";
+        btn.textContent = "Completar Registro";
       }
     }
   } catch (err) {
     showToast("Error de conexión: " + err.message, "error");
     if (btn) {
       btn.disabled = false;
-      btn.textContent = "Guardar Cliente";
+      btn.textContent = "Completar Registro";
     }
   }
 };
