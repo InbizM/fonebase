@@ -422,4 +422,18 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
       appendChatMessage("system", `[Error] Excepción al actualizar producto: ${e.message}`);
     }
   }
+
+  // Recargar cualquier vista activa en pantalla para reflejar los cambios en tiempo real
+  if (window.viewReloaders) {
+    Object.keys(window.viewReloaders).forEach(key => {
+      const reloadFn = window.viewReloaders[key];
+      if (typeof reloadFn === 'function') {
+        try {
+          reloadFn();
+        } catch (e) {
+          console.error(`Error recargando vista ${key}:`, e);
+        }
+      }
+    });
+  }
 }

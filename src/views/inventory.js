@@ -942,6 +942,11 @@ window.inventorySetAsProductPhoto = async (index) => {
 };
 
 export function initInventory() {
+  window.viewReloaders = window.viewReloaders || {};
+  window.viewReloaders.inventory = async () => {
+    await loadInventario();
+  };
+
   // Physical Barcode Scanner Integration
   document.addEventListener("barcodeScanned", (e) => {
     // Verificar si estamos en la vista de inventario

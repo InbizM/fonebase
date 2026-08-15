@@ -13,6 +13,12 @@ let elDoc, elNombre, elTel, elEmail, elDir, elTipo, elOriginal;
 export function initClients() {
   return async () => {
     bindElements();
+
+    window.viewReloaders = window.viewReloaders || {};
+    window.viewReloaders.clients = async () => {
+      await loadData();
+      renderTable(_clientes);
+    };
     
     if (!_isLoaded) {
       await loadData();

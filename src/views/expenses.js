@@ -14,6 +14,12 @@ export function initExpenses() {
   return async () => {
     bindElements();
     
+    window.viewReloaders = window.viewReloaders || {};
+    window.viewReloaders.expenses = async () => {
+      await loadData();
+      renderTable(_egresos);
+    };
+
     if (!_isLoaded) {
       await loadData();
       setupEvents();
