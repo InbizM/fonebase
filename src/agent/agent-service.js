@@ -207,7 +207,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
           { role: "user", content: userContent }
         ],
         temperature: 0.3,
-        max_tokens: 1200
+        max_tokens: 4000
       })
     });
 

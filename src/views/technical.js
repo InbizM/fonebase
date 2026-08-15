@@ -16,6 +16,13 @@ export function initTechnical() {
     } catch(e) {
       console.error("Error al cargar ajustes de empresa en servicio técnico:", e);
     }
+
+    window.viewReloaders = window.viewReloaders || {};
+    window.viewReloaders.technical = async () => {
+      await loadData();
+      renderGrid(_servicios);
+    };
+
     if (!_isLoaded) {
       await loadData();
       setupEvents();

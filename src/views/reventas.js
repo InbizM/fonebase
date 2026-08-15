@@ -14,6 +14,12 @@ export function initReventas() {
   return async () => {
     bindElements();
     
+    window.viewReloaders = window.viewReloaders || {};
+    window.viewReloaders.reventas = async () => {
+      await loadData();
+      renderTable(_pedidos);
+    };
+
     if (!_isLoaded) {
       await loadData();
       setupEvents();

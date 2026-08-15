@@ -9,6 +9,15 @@ let _isLoaded = false;
 export function initTasks() {
   return async () => {
     bindEvents();
+
+    window.viewReloaders = window.viewReloaders || {};
+    window.viewReloaders.tasks = async () => {
+      await Promise.all([
+        loadTasks(),
+        loadMetas()
+      ]);
+    };
+    
     await Promise.all([
       loadTasks(),
       loadMetas()

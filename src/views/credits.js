@@ -9,6 +9,12 @@ let _isProcessing = false;
 
 export function initCredits() {
   return async () => {
+    window.viewReloaders = window.viewReloaders || {};
+    window.viewReloaders.credits = async () => {
+      await loadData();
+      renderTable(_creditos);
+    };
+
     if (!_isLoaded) {
       await loadData();
       setupEvents();

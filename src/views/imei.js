@@ -101,6 +101,12 @@ export function initIMEI() {
   return async () => {
     bindElements();
     
+    window.viewReloaders = window.viewReloaders || {};
+    window.viewReloaders.imei = async () => {
+      await loadData();
+      renderTable(_equipos);
+    };
+
     if (!_isLoaded) {
       await loadData();
       setupEvents();
