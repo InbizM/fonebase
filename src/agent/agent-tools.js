@@ -19,6 +19,23 @@ import { showToast } from "../toast.js";
 export async function ejecutarAccionIA(action, base64Image = null, appendChatMessage) {
   if (!action || !action.type) return;
 
+  // Interceptar appendChatMessage para que los logs del sistema ("system") se muestren como Toasts (notificaciones flotantes)
+  // en lugar de contaminar el chat del usuario.
+  const originalAppend = appendChatMessage;
+  appendChatMessage = (role, text, html) => {
+    if (role === "system" && text) {
+      if (text.startsWith("[OK]")) {
+        showToast(text.replace("[OK]", "").trim(), "success");
+      } else if (text.startsWith("[Error]")) {
+        showToast(text.replace("[Error]", "").trim(), "error");
+      } else {
+        console.log("[IA System Log]:", text);
+      }
+      return;
+    }
+    originalAppend(role, text, html);
+  };
+
   if (action.type === 'registrar_egreso') {
     appendChatMessage("system", `Ejecutando acción: Registrar egreso por $${action.monto}...`);
     try {

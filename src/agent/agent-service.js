@@ -236,21 +236,21 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
     try {
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed === "object") {
-        // Si el modelo olvidó poner "response", generamos uno con los datos de la acción
         if (!parsed.response || parsed.response.trim() === "") {
-          parsed.response = buildSmartFallbackResponse(parsed.action, instruccion);
+          parsed.response = parsed.action
+            ? "⚠️ El modelo de IA ejecutó la acción pero no proporcionó un mensaje explicativo."
+            : "⚠️ Respuesta vacía del modelo de IA.";
         }
         return parsed;
       }
-      return { response: text || buildSmartFallbackResponse(null, instruccion), action: null };
     } catch (parseErr) {
-      console.warn("[IA] JSON.parse falló, usando regex fallback:", parseErr.message);
+      console.warn("[IA] JSON.parse falló, intentando regex fallback:", parseErr.message);
 
-      // Regex fallback
+      // Intentar regex fallback para extraer campos
       const responseMatch = text.match(/"response"\s*:\s*"([\s\S]*?)"\s*[,}]/);
       let responseText = responseMatch
         ? responseMatch[1].replace(/\\"/g, '"').trim()
-        : buildSmartFallbackResponse(null, instruccion);
+        : "";
 
       let actionObj = null;
       const typeMatch = text.match(/"type"\s*:\s*"([^"]+)"/);
@@ -268,8 +268,27 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
         });
       }
 
-      return { response: responseText, action: actionObj };
+      if (responseText || actionObj) {
+        if (!responseText) {
+          responseText = "⚠️ Acción interpretada, pero la IA no especificó una explicación textual.";
+        }
+        return { response: responseText, action: actionObj };
+      }
     }
+
+    // Si la respuesta es texto plano conversacional normal sin formato JSON
+    if (text && text.trim().length > 0 && !text.trim().startsWith("{")) {
+      return {
+        response: text,
+        action: null
+      };
+    }
+
+    // Fallback de error
+    return {
+      response: "⚠️ No se pudo procesar tu instrucción. Por favor, sé más específico o revisa la ortografía (ej: 'egreso' y no 'egereso').",
+      action: null
+    };
   } catch (e) {
     console.error("[IA] Error al procesar:", e);
     return {
@@ -279,41 +298,4 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
   }
 }
 
-// ── Genera una respuesta inteligente cuando el modelo no pone el campo "response" ──
-function buildSmartFallbackResponse(action, instruccion) {
-  if (!action) {
-    return `Recibí tu instrucción: "${instruccion?.slice(0, 80)}". Procesando...`;
-  }
-  const t = action.type;
-  if (t === "crear_equipo") {
-    return `✅ Registrando equipo: ${action.nombre || ""} ${action.marca || ""} | IMEI: ${action.imei1 || "N/A"} | RAM: ${action.ram || "?"} | ROM: ${action.memoria || "?"} | Color: ${action.color || "?"} | Precio: $${action.venta?.toLocaleString('es-CO') || "?"}`;
-  }
-  if (t === "crear_producto") {
-    return `✅ Agregando al inventario: ${action.nombre || ""} ${action.marca || ""} | RAM: ${action.ram || ""} ROM: ${action.memoria || ""} | Precio: $${action.precioVenta?.toLocaleString('es-CO') || "?"} | Stock: ${action.stockActual ?? "?"}`;
-  }
-  if (t === "crear_cliente") {
-    return `✅ Registrando cliente: ${action.nombre || ""} | Doc: ${action.cedula || "N/A"} | Tel: ${action.telefono || "N/A"}`;
-  }
-  if (t === "registrar_egreso") {
-    return `✅ Registrando egreso: ${action.concepto || ""} | Categoría: ${action.categoria || ""} | Monto: $${action.monto?.toLocaleString('es-CO') || "?"}`;
-  }
-  if (t === "crear_servicio_tecnico") {
-    return `✅ Orden de servicio para ${action.cliente || ""}: ${action.equipo || ""} — Falla: ${action.falla || "N/A"} | Precio: $${action.precio_final?.toLocaleString('es-CO') || "?"}`;
-  }
-  if (t === "crear_credito") {
-    return `✅ Crédito registrado para ${action.cliente || ""}: $${action.total?.toLocaleString('es-CO') || "?"} — ${action.detalle || ""}`;
-  }
-  if (t === "crear_tarea") {
-    return `📌 Tarea creada: "${action.tarea || ""}" | Prioridad: ${action.prioridad || "Media"} | Vence: ${action.fecha_vencimiento || "N/A"}`;
-  }
-  if (t === "ir_a") {
-    return `🧭 Navegando a la sección: ${action.destino || ""}`;
-  }
-  if (t === "buscar_cliente") {
-    return `🔍 Buscando cliente: "${action.query || ""}"`;
-  }
-  if (t === "actualizar_producto") {
-    return `✏️ Actualizando producto: "${action.nombre_actual || ""}" → "${action.nuevo_nombre || action.nombre_actual || ""}"`;
-  }
-  return `✅ Acción "${t}" ejecutada correctamente.`;
-}
+
