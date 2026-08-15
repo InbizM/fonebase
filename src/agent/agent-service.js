@@ -112,7 +112,7 @@ REGISTRO POR IMAGEN:
 4. Navegar a sección:
 {"response":"Voy a llevarte a Inventario ahora mismo.","action":{"type":"ir_a","destino":"inventory"}}
 
-5. Crear cliente:
+5. Crear cliente (Cédula y Dirección son OBLIGATORIOS. Si el usuario no los indica, deja "cedula" y/or "direccion" vacíos o null; NO los inventes):
 {"response":"✅ Registré al cliente Juan García, cédula 123456, teléfono 3001234567.","action":{"type":"crear_cliente","cedula":"123456","nombre":"Juan García","telefono":"3001234567","direccion":"Calle 5 #10","email":"","tipo":"Natural"}}
 
 6. Crear producto en inventario:

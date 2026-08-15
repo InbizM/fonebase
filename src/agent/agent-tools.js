@@ -141,11 +141,60 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     }, 1000);
   }
   else if (action.type === 'crear_cliente') {
+    const hasCedula = action.cedula && String(action.cedula).trim() !== "" && !String(action.cedula).startsWith("TEMP-");
+    const hasDireccion = action.direccion && String(action.direccion).trim() !== "";
+
+    if (!hasCedula || !hasDireccion) {
+      const formId = `form-cli-missing-${Date.now()}`;
+      
+      let fieldsHtml = `
+        <div class="space-y-3">
+          <p class="font-bold text-sm text-yellow-600 dark:text-yellow-400">
+            ⚠️ Para registrar al cliente <strong>${action.nombre || 'Nuevo Cliente'}</strong>, la cédula y la dirección son obligatorias:
+          </p>
+          <div id="${formId}" class="space-y-2 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
+      `;
+      
+      if (!hasCedula) {
+        fieldsHtml += `
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Cédula o NIT *</label>
+            <input type="text" data-field="cedula" placeholder="Ej: 1012345678" class="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:border-primary text-slate-900 dark:text-white" required />
+          </div>
+        `;
+      } else {
+        fieldsHtml += `<input type="hidden" data-field="cedula" value="${action.cedula}" />`;
+      }
+
+      if (!hasDireccion) {
+        fieldsHtml += `
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">Dirección *</label>
+            <input type="text" data-field="direccion" placeholder="Ej: Calle 10 #5-20" class="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:border-primary text-slate-900 dark:text-white" required />
+          </div>
+        `;
+      } else {
+        fieldsHtml += `<input type="hidden" data-field="direccion" value="${action.direccion}" />`;
+      }
+
+      fieldsHtml += `
+            <div class="flex gap-2 justify-end mt-3">
+              <button type="button" onclick="window.submitMissingClientData('${formId}', '${action.nombre || 'Cliente'}', '${action.telefono || ''}', '${action.email || ''}', '${action.tipo || 'Natural'}')" class="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-lg hover:bg-primary/90 active:scale-95 transition-all shadow-md">
+                Guardar Cliente
+              </button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      appendChatMessage("ai", null, fieldsHtml);
+      return;
+    }
+
     appendChatMessage("system", `Creando cliente: ${action.nombre}...`);
     try {
-      const cleanCedula = action.cedula ? String(action.cedula).trim() : `TEMP-${Date.now()}`;
       const res = await crearCliente({
-        cedula: cleanCedula,
+        cedula: action.cedula,
         nombre: action.nombre,
         telefono: action.telefono || "",
         direccion: action.direccion || "",
@@ -505,3 +554,79 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
     });
   }
 }
+
+// Handler global para los formularios interactivos de creación de clientes cuando faltan datos obligatorios
+window.submitMissingClientData = async (formId, nombre, telefono, email, tipo) => {
+  const container = document.getElementById(formId);
+  if (!container) return;
+
+  const cedulaInput = container.querySelector('input[data-field="cedula"]');
+  const direccionInput = container.querySelector('input[data-field="direccion"]');
+
+  const cedula = cedulaInput ? cedulaInput.value.trim() : "";
+  const direccion = direccionInput ? direccionInput.value.trim() : "";
+
+  if (!cedula) {
+    showToast("La cédula/documento es obligatoria", "error");
+    if (cedulaInput) cedulaInput.focus();
+    return;
+  }
+  if (!direccion) {
+    showToast("La dirección es obligatoria", "error");
+    if (direccionInput) direccionInput.focus();
+    return;
+  }
+
+  // Deshabilitar botón e inputs mientras se procesa
+  const btn = container.querySelector('button');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+  }
+
+  try {
+    const res = await crearCliente({
+      cedula,
+      nombre,
+      telefono: telefono || "",
+      direccion,
+      email: email || "",
+      tipo: tipo || "Natural"
+    });
+
+    if (res && res.success) {
+      showToast("Cliente registrado con éxito", "success");
+      
+      // Reemplazar el contenedor con un mensaje de éxito
+      container.outerHTML = `
+        <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          ✅ Cliente <strong>${nombre}</strong> registrado exitosamente.<br/>
+          • Cédula/NIT: ${cedula}<br/>
+          • Dirección: ${direccion}
+        </div>
+      `;
+
+      // Recargar la vista de clientes en pantalla
+      if (window.viewReloaders) {
+        Object.keys(window.viewReloaders).forEach(key => {
+          const reloadFn = window.viewReloaders[key];
+          if (typeof reloadFn === 'function') {
+            try { reloadFn(); } catch (e) { console.error(e); }
+          }
+        });
+      }
+    } else {
+      showToast(res.mensaje || "Error al registrar cliente", "error");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Guardar Cliente";
+      }
+    }
+  } catch (err) {
+    showToast("Error de conexión: " + err.message, "error");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Guardar Cliente";
+    }
+  }
+};
