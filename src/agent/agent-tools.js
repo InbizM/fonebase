@@ -10,7 +10,8 @@ import {
   crearCredito,
   crearValeFisico,
   crearReventa,
-  getInventario
+  getInventario,
+  crearMeta
 } from "../api.js";
 import { navigate } from "../router.js";
 import { showToast } from "../toast.js";
@@ -437,6 +438,29 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
       }
     } catch (e) {
       appendChatMessage("system", `[Error] Excepción al actualizar producto: ${e.message}`);
+    }
+  }
+  else if (action.type === 'crear_meta') {
+    appendChatMessage("system", `Ejecutando acción: Crear meta "${action.titulo}" por $${action.monto_objetivo}...`);
+    try {
+      const cleanMonto = typeof action.monto_objetivo === 'string' ? Number(action.monto_objetivo.replace(/\D/g, "")) : Number(action.monto_objetivo);
+      const res = await crearMeta({
+        titulo: action.titulo || "Meta financiera",
+        monto_objetivo: isNaN(cleanMonto) ? 0 : cleanMonto,
+        tipo_calculo: action.tipo_calculo || "Ventas",
+        fecha_inicio: action.fecha_inicio || new Date().toISOString().split('T')[0],
+        fecha_limite: action.fecha_limite || new Date().toISOString().split('T')[0],
+        notas: action.notas || "Creada por Asistente de Voz",
+        estado: "Activa"
+      });
+      if (res && res.success) {
+        showToast("Meta financiera creada con éxito", "success");
+        appendChatMessage("system", `[OK] Meta creada: "${action.titulo}" por $${action.monto_objetivo}`);
+      } else {
+        appendChatMessage("system", `[Error] Error al crear meta: ${res.mensaje || 'Error desconocido'}`);
+      }
+    } catch (e) {
+      appendChatMessage("system", `[Error] Excepción al crear meta: ${e.message}`);
     }
   }
 

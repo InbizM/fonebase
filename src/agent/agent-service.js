@@ -136,6 +136,9 @@ REGISTRO POR IMAGEN:
 12. Actualizar producto:
 {"response":"✅ Actualicé el producto 'Tecno KN3' → nuevo nombre 'Tecno Spark Go 2024', 8GB RAM, 128GB ROM, precio venta: $580.000.","action":{"type":"actualizar_producto","nombre_actual":"Tecno KN3","nuevo_nombre":"Tecno Spark Go 2024","ram":"8GB","memoria":"128GB","color":"","costo":380000,"precioVenta":580000,"stockMinimo":2,"stockActual":10,"sku":""}}
 
+13. Crear meta financiera:
+{"response":"✅ Creé la meta financiera 'Ventas de hoy' con objetivo de $100.000 y cálculo tipo Ventas.","action":{"type":"crear_meta","titulo":"Ventas de hoy","monto_objetivo":100000,"tipo_calculo":"Ventas","fecha_inicio":"2026-08-15","fecha_limite":"2026-08-15","notas":"Creada por Asistente de Voz"}}
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 RESPUESTAS DE CONSULTA (action = null):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -286,7 +289,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 
     // Fallback de error
     return {
-      response: "⚠️ No se pudo procesar tu instrucción. Por favor, sé más específico o revisa la ortografía (ej: 'egreso' y no 'egereso').",
+      response: "⚠️ No se pudo procesar tu instrucción. Asegúrate de indicar la acción de forma clara (ej: 'crea una tarea para...', 'registra un egreso de...', 'crea una meta de...') y que los datos sean correctos.",
       action: null
     };
   } catch (e) {
