@@ -768,7 +768,14 @@ export function setupAssistantEvents() {
     showToast("Procesando " + files.length + " imagen(es)...", "info");
     for (const file of files) {
       try {
-        const compressed = await compressImage(file, 800, 800, 0.7);
+        const base64Data = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (evt) => resolve(evt.target.result);
+          reader.onerror = (err) => reject(new Error("Error leyendo el archivo"));
+          reader.readAsDataURL(file);
+        });
+
+        const compressed = await compressImage(base64Data, 800, 800, 0.7);
         _assistantPendingImages.push(compressed);
       } catch (err) {
         console.error("Error comprimiendo imagen:", err);
