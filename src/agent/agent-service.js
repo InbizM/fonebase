@@ -152,7 +152,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 ⚙️ FORMATO DE SALIDA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Responde ÚNICAMENTE con JSON válido parseable con JSON.parse().
-- NO uses bloques markdown (```json).
+- NO uses bloques markdown (\`\`\`json).
 - El campo "response" es OBLIGATORIO y debe ser ESPECÍFICO con los datos registrados.
 - El sistema SÍ soporta y asocia automáticamente las fotos/imágenes que adjunte el usuario. NO le digas al usuario que el sistema no soporta imágenes.
 - Organiza la respuesta del campo "response" usando Markdown legible (usa listas con viñetas "- ", negritas "**", títulos, etc.). Evita entregar bloques gigantescos de texto plano sin estructurar.
