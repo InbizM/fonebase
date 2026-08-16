@@ -271,26 +271,49 @@ window.wizardSaveAndNext = async (wizardId) => {
   }
 
   try {
-    const productId = `PROD-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+    // Buscar si ya existe el producto base en inventario
+    const currentInv = await getInventario().catch(() => []);
+    const existingProd = currentInv.find(p => p.nombre && p.nombre.toLowerCase().trim() === item.nombre.toLowerCase().trim());
     
-    // Crear en inventario
-    await crearProducto([
-      productId,
-      item.nombre,
-      item.marca || "Universal",
-      "Celulares",
-      "Físico",
-      item.costo,
-      item.precioVenta,
-      1,
-      item.stockActual || 1,
-      item.ubicacion || "Vitrina",
-      item.sku || "",
-      item.imagen || item.foto_base64 || "",
-      0
-    ]);
+    let productId = existingProd ? existingProd.id : `PROD-${Date.now()}-${Math.floor(Math.random()*1000)}`;
 
-    // Si tiene IMEI o es crear_equipo
+    if (!existingProd) {
+      // Crear producto base en inventario
+      await crearProducto([
+        productId,
+        item.nombre,
+        item.marca || "Universal",
+        "Celulares",
+        "Físico",
+        item.costo,
+        item.precioVenta,
+        1,
+        item.stockActual || 1,
+        item.ubicacion || "Vitrina",
+        item.sku || "",
+        item.imagen || item.foto_base64 || "",
+        0
+      ]);
+    } else {
+      // Incrementar stock del producto existente
+      const updatedStock = (existingProd.stockActual || 0) + (Number(item.stockActual) || 1);
+      await actualizarProducto(existingProd.id, [
+        existingProd.nombre,
+        existingProd.marca || item.marca || "Universal",
+        existingProd.categoria || "Celulares",
+        existingProd.tipo || "Físico",
+        item.costo > 0 ? item.costo : existingProd.costo,
+        item.precioVenta > 0 ? item.precioVenta : existingProd.precioVenta,
+        existingProd.stockMinimo || 1,
+        updatedStock,
+        existingProd.ubicacion || "Vitrina",
+        existingProd.sku || "",
+        existingProd.imagen || item.imagen || item.foto_base64 || "",
+        existingProd.fijado || 0
+      ]);
+    }
+
+    // Si tiene IMEI o es crear_equipo, guardarlo en la tabla equipos con sus variantes completas
     if (item.type === 'crear_equipo' || item.imei1) {
       await crearEquipo({
         imei1: item.imei1 || `SN-${Date.now()}`,
@@ -300,7 +323,7 @@ window.wizardSaveAndNext = async (wizardId) => {
         nombre: item.nombre,
         proveedor: item.proveedor || "",
         costo: item.costo,
-        venta: item.venta,
+        venta: item.venta || item.precioVenta,
         estado: "Disponible",
         color: item.color || "",
         ram: item.ram || "",
