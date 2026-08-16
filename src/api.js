@@ -265,7 +265,7 @@ export async function inicializarEsquemaBaseDeDatos() {
     `CREATE TABLE IF NOT EXISTS usuarios (email TEXT PRIMARY KEY, password TEXT, nombre TEXT, rol TEXT, estado TEXT)`,
     `CREATE TABLE IF NOT EXISTS clientes (id TEXT PRIMARY KEY, nombre TEXT, telefono TEXT, direccion TEXT, email TEXT, tipo TEXT, fecha_registro TEXT)`,
     `CREATE TABLE IF NOT EXISTS inventario (id TEXT PRIMARY KEY, nombre TEXT, marca TEXT, categoria TEXT, tipo TEXT, costo REAL, precio_venta REAL, stock_minimo INTEGER, stock_actual INTEGER, ubicacion TEXT, sku TEXT, imagen TEXT, fijado INTEGER DEFAULT 0)`,
-    `CREATE TABLE IF NOT EXISTS equipos (imei1 TEXT PRIMARY KEY, imei2 TEXT, id_producto TEXT, marca TEXT, nombre TEXT, proveedor TEXT, costo REAL, venta REAL, estado TEXT, fecha_ingreso TEXT)`,
+    `CREATE TABLE IF NOT EXISTS equipos (imei1 TEXT PRIMARY KEY, imei2 TEXT, id_producto TEXT, marca TEXT, nombre TEXT, proveedor TEXT, costo REAL, venta REAL, estado TEXT, fecha_ingreso TEXT, color TEXT DEFAULT '', ram TEXT DEFAULT '', memoria TEXT DEFAULT '', condicion TEXT DEFAULT 'Nuevo', notas TEXT DEFAULT '')`,
     `CREATE TABLE IF NOT EXISTS ventas (id_factura TEXT PRIMARY KEY, fecha TEXT, cedula TEXT, cliente TEXT, direccion TEXT, producto_nombre TEXT, cantidad TEXT, cantidad_items TEXT, imeis TEXT, subtotal REAL, descuento REAL, total REAL, metodo TEXT, vendedor TEXT, firma_vendedor TEXT, firma_comprador TEXT, evidencia TEXT, ciudad TEXT, telefono TEXT, tipo_factura TEXT)`,
     `CREATE TABLE IF NOT EXISTS egresos (id_gasto TEXT PRIMARY KEY, fecha TEXT, categoria TEXT, concepto TEXT, responsable TEXT, monto REAL, nota TEXT)`,
     `CREATE TABLE IF NOT EXISTS servicio_tecnico (id_orden TEXT PRIMARY KEY, cliente TEXT, telefono TEXT, equipo TEXT, imei_serie TEXT, falla TEXT, clave_patron TEXT, repuestos TEXT, costo_taller REAL, abono REAL, precio_final REAL, estado TEXT, evidencias TEXT)`,
@@ -301,6 +301,12 @@ export async function inicializarEsquemaBaseDeDatos() {
   // Migración: Asegurar columna sucursal_id en usuarios
   try {
     await queryTurso("ALTER TABLE usuarios ADD COLUMN sucursal_id TEXT DEFAULT '1'", true);
+    // Migraciones equipos - nuevos campos de variante
+    try { await queryTurso("ALTER TABLE equipos ADD COLUMN color TEXT DEFAULT ''", true); } catch(e) {}
+    try { await queryTurso("ALTER TABLE equipos ADD COLUMN ram TEXT DEFAULT ''", true); } catch(e) {}
+    try { await queryTurso("ALTER TABLE equipos ADD COLUMN memoria TEXT DEFAULT ''", true); } catch(e) {}
+    try { await queryTurso("ALTER TABLE equipos ADD COLUMN condicion TEXT DEFAULT 'Nuevo'", true); } catch(e) {}
+    try { await queryTurso("ALTER TABLE equipos ADD COLUMN notas TEXT DEFAULT ''", true); } catch(e) {}
   } catch (e) { /* Columna ya existe */ }
 }
 
@@ -821,17 +827,17 @@ export const eliminarProducto = (id) => queryTurso({ sql: "DELETE FROM inventari
 // ── EQUIPOS ──
 export const getEquipos = async () => (await queryTurso("SELECT * FROM equipos"))[0] || [];
 export const crearEquipo = (d) => queryTurso({ 
-  sql: "INSERT INTO equipos VALUES (?,?,?,?,?,?,?,?,?,?)", 
-  args: mapArgs([d.imei1, d.imei2, d.id_producto || '', d.marca, d.nombre, d.proveedor, d.costo, d.venta, d.estado, d.fecha_ingreso || new Date().toISOString()]) 
+  sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
+  args: mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']) 
 });
 export const actualizarEquipo = (id, d) => queryTurso({ 
-  sql: "UPDATE equipos SET imei1=?, imei2=?, id_producto=?, marca=?, nombre=?, proveedor=?, costo=?, venta=?, estado=?, fecha_ingreso=? WHERE imei1=?", 
-  args: [...mapArgs([d.imei1, d.imei2, d.id_producto || '', d.marca, d.nombre, d.proveedor, d.costo, d.venta, d.estado, d.fecha_ingreso || new Date().toISOString()]), { type: "text", value: id }] 
+  sql: "UPDATE equipos SET imei1=?, imei2=?, id_producto=?, marca=?, nombre=?, proveedor=?, costo=?, venta=?, estado=?, fecha_ingreso=?, color=?, ram=?, memoria=?, condicion=?, notas=? WHERE imei1=?", 
+  args: [...mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']), { type: "text", value: id }] 
 });
 export const eliminarEquipo = (id) => queryTurso({ sql: "DELETE FROM equipos WHERE imei1 = ?", args: [{ type: "text", value: id }] });
 export const crearEquiposLote = (list) => {
   const requests = list.map(d => ({
-    sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, estado, fecha_ingreso) VALUES (?,?,?,?,?,?,?,?,?,?)",
+    sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     args: mapArgs([
       d.imei1,
       d.imei2 || '',
@@ -842,7 +848,12 @@ export const crearEquiposLote = (list) => {
       d.costo || 0,
       d.venta || 0,
       d.estado || 'Disponible',
-      d.fecha_ingreso || new Date().toISOString()
+      d.fecha_ingreso || new Date().toISOString(),
+      d.color || '',
+      d.ram || '',
+      d.memoria || '',
+      d.condicion || 'Nuevo',
+      d.notas || ''
     ])
   }));
   return queryTurso(requests);

@@ -395,7 +395,12 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
         proveedor: action.proveedor || "",
         costo: Number(action.costo || 0),
         venta: Number(action.venta || 0),
-        estado: action.estado || "Disponible"
+        estado: action.estado || "Disponible",
+        color: action.color || "",
+        ram: action.ram || "",
+        memoria: action.memoria || "",
+        condicion: action.condicion || "Nuevo",
+        notas: action.notas || ""
       });
       if (res && res.success) {
         showToast("Equipo IMEI registrado con éxito", "success");
@@ -841,7 +846,12 @@ window.submitMissingActionData = async (formId, actionType, originalActionJsonSt
         proveedor: updatedData.proveedor || "",
         costo: Number(updatedData.costo || 0),
         venta: Number(updatedData.venta || 0),
-        estado: updatedData.estado || "Disponible"
+        estado: updatedData.estado || "Disponible",
+        color: updatedData.color || "",
+        ram: updatedData.ram || "",
+        memoria: updatedData.memoria || "",
+        condicion: updatedData.condicion || "Nuevo",
+        notas: updatedData.notas || ""
       });
       successMessageHtml = `
         <div class="mt-2 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">

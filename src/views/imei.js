@@ -85,6 +85,7 @@ let _isProcessing = false;
 let elTable, elSearch, elFilter, elBtnNew;
 let elModal, elModalClose, elModalBackdrop, elForm, elBtnSave;
 let elImei1, elImei2, elNombre, elMarca, elProv, elCosto, elVenta, elEstado, elOriginal;
+let elColor, elRam, elMemoria, elCondicion, elNotas;
 let elDropdownTrigger, elDropdownMenu, elDropdownSearch, elDropdownOptions, elDropdownSelectedText;
 
 // Bulk Elements
@@ -138,6 +139,11 @@ function bindElements() {
   elVenta = document.getElementById("imei-venta");
   elEstado = document.getElementById("imei-estado");
   elOriginal = document.getElementById("imei-original");
+  elColor = document.getElementById("imei-color");
+  elRam = document.getElementById("imei-ram");
+  elMemoria = document.getElementById("imei-memoria");
+  elCondicion = document.getElementById("imei-condicion");
+  elNotas = document.getElementById("imei-notas");
   
   elDropdownTrigger = document.getElementById("imei-dropdown-trigger");
   elDropdownMenu = document.getElementById("imei-dropdown-menu");
@@ -431,6 +437,12 @@ function renderTable(lista) {
         <td class="px-4 py-3">
           <p class="font-black text-sm text-on-surface">${e.nombre || '-'}</p>
           <p class="text-[11px] text-on-surface-variant font-medium">${e.marca || 'N/A'}</p>
+          ${(e.color || e.ram || e.memoria) ? `
+          <div class="flex flex-wrap gap-1 mt-1">
+            ${e.color ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-50 text-blue-600 border border-blue-100">${e.color}</span>` : ''}
+            ${e.ram ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-violet-50 text-violet-600 border border-violet-100">${e.ram}</span>` : ''}
+            ${e.memoria ? `<span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-slate-100 text-slate-600 border border-slate-200">${e.memoria}</span>` : ''}
+          </div>` : ''}
         </td>
         <td class="px-4 py-3">
           <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${statusColor}">
@@ -869,6 +881,11 @@ function openModal(obj) {
     elCosto.value = obj.costo ? new Intl.NumberFormat("es-CO").format(parseInt(String(obj.costo).replace(/\D/g, "")) || 0) : "";
     elVenta.value = obj.venta ? new Intl.NumberFormat("es-CO").format(parseInt(String(obj.venta).replace(/\D/g, "")) || 0) : "";
     elEstado.value = obj.estado || "Disponible";
+    if (elColor) elColor.value = obj.color || "";
+    if (elRam) elRam.value = obj.ram || "";
+    if (elMemoria) elMemoria.value = obj.memoria || "";
+    if (elCondicion) elCondicion.value = obj.condicion || "Nuevo";
+    if (elNotas) elNotas.value = obj.notas || "";
 
     // Set dropdown selected label
     const p = _inventory.find(x => x.id === obj.id_producto);
@@ -897,6 +914,11 @@ function openModal(obj) {
     elCosto.value = "";
     elVenta.value = "";
     elEstado.value = "Disponible";
+    if (elColor) elColor.value = "";
+    if (elRam) elRam.value = "";
+    if (elMemoria) elMemoria.value = "";
+    if (elCondicion) elCondicion.value = "Nuevo";
+    if (elNotas) elNotas.value = "";
     
     elDropdownSelectedText.innerHTML = "Seleccione un equipo...";
     elDropdownSelectedText.classList.add("text-slate-500");
@@ -951,6 +973,11 @@ async function saveEquipo() {
       costo: parseInt(elCosto.value.replace(/\D/g, "")) || 0,
       venta: parseInt(elVenta.value.replace(/\D/g, "")) || 0,
       estado: elEstado.value,
+      color: elColor ? elColor.value.trim() : "",
+      ram: elRam ? elRam.value.trim() : "",
+      memoria: elMemoria ? elMemoria.value.trim() : "",
+      condicion: elCondicion ? elCondicion.value : "Nuevo",
+      notas: elNotas ? elNotas.value.trim() : "",
       fecha_ingreso: existingEq ? existingEq.fecha_ingreso : new Date().toISOString()
     };
 
