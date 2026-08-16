@@ -77,9 +77,13 @@ function renderInteractiveFormIfMissing(action, requiredFields, appendChatMessag
 export async function ejecutarAccionIA(action, base64Image = null, appendChatMessage) {
   if (!action || !action.type) return;
 
-  // Preservar la imagen en el objeto action para que no se pierda al serializarse en formularios interactivos
+  // Preservar la imagen correcta en action según imagen_index (para múltiples fotos adjuntas)
   if (base64Image) {
-    const singleImg = (Array.isArray(base64Image) ? base64Image[0] : base64Image) || "";
+    const imgArray = Array.isArray(base64Image) ? base64Image : [base64Image];
+    const idx = (action.imagen_index !== undefined && action.imagen_index !== null)
+      ? Number(action.imagen_index)
+      : 0;
+    const singleImg = imgArray[idx] || imgArray[0] || "";
     if (singleImg) {
       action.imagen = singleImg;
       action.foto_base64 = singleImg;
