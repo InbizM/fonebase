@@ -33,10 +33,10 @@ window.wizardOnCostoInput = (input, wizardId) => {
   let val = input.value.replace(/\D/g, "");
   if (!val) {
     input.value = "";
-    return;
+    val = "0";
   }
   const numCosto = Number(val);
-  input.value = numCosto.toLocaleString('es-CO');
+  if (numCosto > 0) input.value = numCosto.toLocaleString('es-CO');
 
   const container = document.getElementById(wizardId);
   if (!container) return;
@@ -44,46 +44,33 @@ window.wizardOnCostoInput = (input, wizardId) => {
   const precioInput = container.querySelector('[data-field="precio"]');
   const revendedorInput = container.querySelector('[data-field="precioRevendedor"]');
 
-  // Si el precio de venta está vacío o fue autocalculado, sugerir con +20% redondeado a $1.000
-  if (precioInput && (!precioInput.value || precioInput.dataset.autoCalculated === "true")) {
-    const sugerido = Math.ceil((numCosto * 1.20) / 1000) * 1000;
-    precioInput.value = sugerido.toLocaleString('es-CO');
-    precioInput.dataset.autoCalculated = "true";
-  }
+  // 1. Calificación Revendedor (+5% o +$20.000 redondeado a $1.000)
+  const revPrice = numCosto > 0 ? Math.ceil(Math.max(numCosto * 1.05, numCosto + 20000) / 1000) * 1000 : 0;
+  // 2. Calificación Cliente Final (+20% redondeado a $1.000)
+  const finalPrice = numCosto > 0 ? Math.ceil((numCosto * 1.20) / 1000) * 1000 : 0;
 
-  // Sugerir precio revendedor (+5% o +$20.000 redondeado a $1.000)
-  if (revendedorInput && (!revendedorInput.value || revendedorInput.dataset.autoCalculated === "true")) {
-    const sugeridoRev = Math.ceil(Math.max(numCosto * 1.05, numCosto + 20000) / 1000) * 1000;
-    revendedorInput.value = sugeridoRev.toLocaleString('es-CO');
-    revendedorInput.dataset.autoCalculated = "true";
-  }
-};
+  if (precioInput) precioInput.value = finalPrice > 0 ? finalPrice.toLocaleString('es-CO') : '';
+  if (revendedorInput) revendedorInput.value = revPrice > 0 ? revPrice.toLocaleString('es-CO') : '';
 
-window.wizardApplyMargin = (wizardId, targetField, type, amount) => {
-  const container = document.getElementById(wizardId);
-  if (!container) return;
+  // Actualizar desglose visual en vivo
+  const revPreview = container.querySelector('[data-preview="rev-price"]');
+  const revProfit = container.querySelector('[data-preview="rev-profit"]');
+  const finalPreview = container.querySelector('[data-preview="final-price"]');
+  const finalProfit = container.querySelector('[data-preview="final-profit"]');
+  const esc15 = container.querySelector('[data-preview="esc-15"]');
+  const esc25 = container.querySelector('[data-preview="esc-25"]');
+  const esc30 = container.querySelector('[data-preview="esc-30"]');
 
-  const costoInput = container.querySelector('[data-field="costo"]');
-  const targetInput = container.querySelector(`[data-field="${targetField}"]`);
-  if (!costoInput || !targetInput) return;
+  const fmt = n => `$${Number(n).toLocaleString('es-CO')}`;
 
-  const numCosto = Number(costoInput.value.replace(/\D/g, "")) || 0;
-  if (numCosto === 0) {
-    if (window.showToast) window.showToast("Ingresa primero el costo de compra", "warning");
-    costoInput.focus();
-    return;
-  }
+  if (revPreview) revPreview.textContent = numCosto > 0 ? fmt(revPrice) : '$—';
+  if (revProfit) revProfit.textContent = numCosto > 0 ? `Ganancia: +${fmt(revPrice - numCosto)}` : '+ $0';
+  if (finalPreview) finalPreview.textContent = numCosto > 0 ? fmt(finalPrice) : '$—';
+  if (finalProfit) finalProfit.textContent = numCosto > 0 ? `Ganancia: +${fmt(finalPrice - numCosto)}` : '+ $0';
 
-  let finalPrice = 0;
-  if (type === 'percent') {
-    finalPrice = Math.ceil((numCosto * (1 + amount / 100)) / 1000) * 1000;
-  } else if (type === 'fixed') {
-    finalPrice = Math.ceil((numCosto + amount) / 1000) * 1000;
-  }
-
-  targetInput.value = finalPrice.toLocaleString('es-CO');
-  targetInput.dataset.autoCalculated = "false";
-  if (window.showToast) window.showToast(`Precio calculado: $${targetInput.value}`, "info");
+  if (esc15) esc15.textContent = numCosto > 0 ? fmt(Math.ceil((numCosto * 1.15) / 1000) * 1000) : '$—';
+  if (esc25) esc25.textContent = numCosto > 0 ? fmt(Math.ceil((numCosto * 1.25) / 1000) * 1000) : '$—';
+  if (esc30) esc30.textContent = numCosto > 0 ? fmt(Math.ceil((numCosto * 1.30) / 1000) * 1000) : '$—';
 };
 
 window.wizardApplyToAll = (wizardId) => {
@@ -164,9 +151,18 @@ function buildWizardStepHtml(wizardId, stepIndex) {
   if (item.color) badges.push(`<span class="px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/50 font-bold">Color: ${item.color}</span>`);
   if (item.imei1) badges.push(`<span class="px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 font-mono font-bold">IMEI: ${item.imei1}</span>`);
 
-  const costoVal = item.costo ? Number(item.costo).toLocaleString('es-CO') : '';
-  const precioVal = (item.precioVenta || item.venta || item.precio) ? Number(item.precioVenta || item.venta || item.precio).toLocaleString('es-CO') : '';
-  const revVal = item.precioRevendedor ? Number(item.precioRevendedor).toLocaleString('es-CO') : '';
+  const numCosto = Number(item.costo) || 0;
+  const costoVal = numCosto > 0 ? numCosto.toLocaleString('es-CO') : '';
+  
+  // Calcular en automático
+  const autoFinal = numCosto > 0 ? Math.ceil((numCosto * 1.20) / 1000) * 1000 : (Number(item.precioVenta || item.venta) || 0);
+  const autoRev = numCosto > 0 ? Math.ceil(Math.max(numCosto * 1.05, numCosto + 20000) / 1000) * 1000 : (Number(item.precioRevendedor) || 0);
+
+  const precioVal = autoFinal > 0 ? autoFinal.toLocaleString('es-CO') : '';
+  const revVal = autoRev > 0 ? autoRev.toLocaleString('es-CO') : '';
+
+  const fmt = n => `$${Number(n).toLocaleString('es-CO')}`;
+
   const isLast = stepIndex === total - 1;
   const isSingle = total === 1;
 
@@ -208,70 +204,87 @@ function buildWizardStepHtml(wizardId, stepIndex) {
 
       <!-- Missing Inputs Grid -->
       <div class="space-y-3 pt-1">
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <!-- Costo de Compra -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400">Costo de compra *</label>
-              ${total > 1 ? `
-                <button type="button" onclick="window.wizardApplyToAll('${wizardId}')" class="text-[9px] font-bold text-primary hover:underline flex items-center gap-0.5">
-                  <span class="material-symbols-outlined text-[11px]">bolt</span> Aplicar a los ${total}
-                </button>
-              ` : ''}
-            </div>
-            <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
-              <span class="text-slate-500 font-bold text-xs mr-1.5">$</span>
-              <input type="text" data-field="costo" placeholder="Ej: 450.000" value="${costoVal}" oninput="window.wizardOnCostoInput(this, '${wizardId}')" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" required />
-            </div>
+        <!-- Input Costo -->
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400">1. Ingresa el Costo de Compra *</label>
+            ${total > 1 ? `
+              <button type="button" onclick="window.wizardApplyToAll('${wizardId}')" class="text-[9px] font-bold text-primary hover:underline flex items-center gap-0.5">
+                <span class="material-symbols-outlined text-[11px]">bolt</span> Aplicar a los ${total}
+              </button>
+            ` : ''}
           </div>
-
-          <!-- Precio de Venta Público -->
-          <div>
-            <div class="flex items-center justify-between mb-1">
-              <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400">Precio Venta (Público) *</label>
-              <span class="text-[9px] text-slate-500 font-medium">Margen sugerido</span>
-            </div>
-            <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
-              <span class="text-primary font-bold text-xs mr-1.5">$</span>
-              <input type="text" data-field="precio" placeholder="Ej: 550.000" value="${precioVal}" oninput="window.wizardFormatCurrency(this); this.dataset.autoCalculated='false';" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" required />
-            </div>
+          <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2 focus-within:border-primary">
+            <span class="text-slate-400 font-bold text-sm mr-2">$</span>
+            <input type="text" data-field="costo" placeholder="Escribe el costo (Ej: 450.000)" value="${costoVal}" oninput="window.wizardOnCostoInput(this, '${wizardId}')" class="w-full bg-transparent text-sm sm:text-base text-white font-mono font-bold outline-none" required autofocus />
           </div>
         </div>
 
-        <!-- Botones de Margen Rápido Precio Público -->
-        <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800/80 flex items-center gap-1.5 flex-wrap">
-          <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
-            <span class="material-symbols-outlined text-[13px] text-primary">trending_up</span> Margen Público:
-          </span>
-          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'percent', 15)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+15%</button>
-          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'percent', 20)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+20%</button>
-          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'percent', 25)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+25%</button>
-          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'percent', 30)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+30%</button>
-          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'fixed', 50000)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+$50k</button>
-          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'fixed', 100000)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+$100k</button>
-        </div>
+        <!-- Matriz de Calificación Automática de Precios -->
+        <div class="bg-slate-950/80 p-3 rounded-xl border border-slate-800 space-y-2.5">
+          <div class="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-slate-400">
+            <span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-primary">auto_graph</span> Precios Calculados en Automático:</span>
+            <span class="text-emerald-400 font-bold">✓ Listo para guardar</span>
+          </div>
 
-        <!-- Precio Revendedor / Mayorista (Opcional) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          <div>
-            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Precio Revendedor / Mayorista</label>
-            <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
-              <span class="text-amber-400 font-bold text-xs mr-1.5">$</span>
-              <input type="text" data-field="precioRevendedor" placeholder="Ej: 470.000" value="${revVal}" oninput="window.wizardFormatCurrency(this); this.dataset.autoCalculated='false';" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" />
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <!-- Calificación Revendedor -->
+            <div class="bg-amber-950/20 border border-amber-800/40 p-2.5 rounded-xl space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-amber-400 flex items-center gap-1">💼 Para Revendedor</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-900/50 text-amber-300 font-bold">+5% / +$20k</span>
+              </div>
+              <div class="flex items-baseline justify-between">
+                <span class="text-sm sm:text-base font-black text-white font-mono" data-preview="rev-price">${autoRev > 0 ? fmt(autoRev) : '$—'}</span>
+                <span class="text-[10px] text-amber-300/80 font-mono" data-preview="rev-profit">${numCosto > 0 ? `Ganancia: +${fmt(autoRev - numCosto)}` : '+ $0'}</span>
+              </div>
+              <input type="hidden" data-field="precioRevendedor" value="${revVal}" />
+            </div>
+
+            <!-- Calificación Cliente Final -->
+            <div class="bg-emerald-950/20 border border-emerald-800/40 p-2.5 rounded-xl space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold text-emerald-400 flex items-center gap-1">🛍️ Para Cliente Final</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-900/50 text-emerald-300 font-bold">+20%</span>
+              </div>
+              <div class="flex items-baseline justify-between">
+                <span class="text-sm sm:text-base font-black text-white font-mono" data-preview="final-price">${autoFinal > 0 ? fmt(autoFinal) : '$—'}</span>
+                <span class="text-[10px] text-emerald-300/80 font-mono" data-preview="final-profit">${numCosto > 0 ? `Ganancia: +${fmt(autoFinal - numCosto)}` : '+ $0'}</span>
+              </div>
+              <input type="hidden" data-field="precio" value="${precioVal}" />
             </div>
           </div>
-          <div>
-            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Margen Revendedor</label>
-            <div class="flex items-center gap-1.5 py-1 flex-wrap">
-              <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precioRevendedor', 'percent', 5)" class="px-2 py-1 rounded-lg bg-amber-950/50 text-amber-300 hover:bg-amber-600 hover:text-white text-[10px] font-bold border border-amber-800/60 transition-colors">+5%</button>
-              <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precioRevendedor', 'percent', 8)" class="px-2 py-1 rounded-lg bg-amber-950/50 text-amber-300 hover:bg-amber-600 hover:text-white text-[10px] font-bold border border-amber-800/60 transition-colors">+8%</button>
-              <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precioRevendedor', 'fixed', 10000)" class="px-2 py-1 rounded-lg bg-amber-950/50 text-amber-300 hover:bg-amber-600 hover:text-white text-[10px] font-bold border border-amber-800/60 transition-colors">+$10.000</button>
-              <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precioRevendedor', 'fixed', 20000)" class="px-2 py-1 rounded-lg bg-amber-950/50 text-amber-300 hover:bg-amber-600 hover:text-white text-[10px] font-bold border border-amber-800/60 transition-colors">+$20.000</button>
-            </div>
+
+          <!-- Escalas de referencia rápida -->
+          <div class="flex items-center justify-between text-[10px] text-slate-400 pt-1.5 border-t border-slate-900 font-mono flex-wrap gap-1">
+            <span>Escala 15%: <b class="text-slate-200" data-preview="esc-15">${numCosto > 0 ? fmt(Math.ceil((numCosto * 1.15) / 1000) * 1000) : '$—'}</b></span>
+            <span>Escala 25%: <b class="text-slate-200" data-preview="esc-25">${numCosto > 0 ? fmt(Math.ceil((numCosto * 1.25) / 1000) * 1000) : '$—'}</b></span>
+            <span>Escala 30%: <b class="text-slate-200" data-preview="esc-30">${numCosto > 0 ? fmt(Math.ceil((numCosto * 1.30) / 1000) * 1000) : '$—'}</b></span>
           </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          ${item.type === 'crear_equipo' ? `
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">IMEI Principal (15 dígitos)</label>
+            <input type="text" data-field="imei1" placeholder="Ej: 356251200774692" value="${item.imei1 || ''}" maxlength="15" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color</label>
+            <input type="text" data-field="color" placeholder="Ej: Azul, Negro" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
+          </div>
+          ` : `
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Stock Inicial</label>
+            <input type="number" data-field="stockActual" placeholder="1" value="${item.stockActual || 1}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color / Versión</label>
+            <input type="text" data-field="color" placeholder="Ej: Azul, 128GB" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
+          </div>
+          `}
+        </div>
+      </div>
           ${item.type === 'crear_equipo' ? `
           <div>
             <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">IMEI Principal (15 dígitos)</label>
