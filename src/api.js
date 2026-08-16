@@ -908,6 +908,33 @@ export const registrarVenta = async (v) => {
     requests.push({ sql: "UPDATE inventario SET stock_actual = stock_actual - 1 WHERE id = ?", args: [{ type: "text", value: v.productoId || "" }] });
   }
 
+  // Actualizar estado de equipos a 'Vendido' en la tabla equipos
+  if (v.imeis && v.imeis !== "N/A" && v.imeis !== "{}" && v.imeis !== "[]") {
+    let imeiList = [];
+    try {
+      const parsed = typeof v.imeis === 'string' ? JSON.parse(v.imeis) : v.imeis;
+      if (Array.isArray(parsed)) {
+        imeiList = parsed;
+      } else if (typeof parsed === 'object') {
+        imeiList = Object.values(parsed).flat();
+      }
+    } catch (_) {
+      if (typeof v.imeis === 'string') {
+        imeiList = v.imeis.split(/[\s,;]+/).filter(Boolean);
+      }
+    }
+
+    imeiList.forEach(imei => {
+      const cleanImei = String(imei).trim();
+      if (cleanImei && cleanImei !== "N/A" && cleanImei !== "{}") {
+        requests.push({
+          sql: "UPDATE equipos SET estado = 'Vendido' WHERE imei1 = ? OR imei2 = ?",
+          args: [{ type: "text", value: cleanImei }, { type: "text", value: cleanImei }]
+        });
+      }
+    });
+  }
+
   await queryTurso(requests);
   return { success: true, idFactura: idFac };
 };

@@ -1,4 +1,4 @@
-import { getInventario, registrarVenta, crearCredito, uploadFoto, uploadSignature, uploadEvidencia, getAjustesEmpresa } from "../api.js";
+import { getInventario, getEquipos, registrarVenta, crearCredito, uploadFoto, uploadSignature, uploadEvidencia, getAjustesEmpresa } from "../api.js";
 import { showToast } from "../toast.js";
 import { openScanner } from "../scanner.js";
 import { openCustomerSelector } from "../customer-selector.js";
@@ -6,6 +6,7 @@ import { navigate } from "../router.js";
 import { printBluetoothTicket } from "../bluetooth-printer.js";
 
 let _productos = [];
+let _equipos = [];
 let _carrito = [];
 let _isLoaded = false;
 let _isProcessing = false;
@@ -114,9 +115,16 @@ function bindUIElements() {
 
 async function loadProductos() {
   try {
-    const data = await getInventario();
-    _productos = data.filter(p => p.stockActual > 0);
-  } catch (err) { _productos = []; }
+    const [data, eqData] = await Promise.all([
+      getInventario(),
+      getEquipos().catch(() => [])
+    ]);
+    _productos = (data || []).filter(p => p.stockActual > 0);
+    _equipos = (eqData || []).filter(e => (e.estado || "").toLowerCase() === "disponible");
+  } catch (err) {
+    _productos = [];
+    _equipos = [];
+  }
 }
 
 function renderProductos(lista) {
@@ -278,21 +286,57 @@ function setupEvents() {
     }
   });
 
-  // IMEI scanner button delegation
+  // IMEI select and scanner event delegation
+  elImeiList?.addEventListener("change", (e) => {
+    const select = e.target.closest(".pos-imei-select");
+    if (!select) return;
+    const card = select.closest("[data-imei-card]");
+    if (!card) return;
+    const manualCont = card.querySelector(".pos-imei-manual-container");
+    const manualInput = card.querySelector(".pos-imei-input");
+
+    if (select.value === "__manual__") {
+      if (manualCont) manualCont.classList.remove("hidden");
+      if (manualInput) {
+        manualInput.value = "";
+        manualInput.focus();
+      }
+    } else {
+      if (manualCont) manualCont.classList.add("hidden");
+      if (manualInput) manualInput.value = select.value;
+    }
+  });
+
   elImeiList?.addEventListener("click", (e) => {
     const btn = e.target.closest(".pos-imei-scan-btn");
     if (!btn) return;
     e.preventDefault();
     openScanner({
-      title: "Escanear IMEI",
-      filter: /^\d{15}$/,
+      title: "Escanear IMEI de Equipo",
+      filter: /^\d{14,16}$/,
       filterLabel: "IMEI",
       onScan: (code) => {
-        const input = btn.previousElementSibling;
+        const card = btn.closest("[data-imei-card]");
+        if (!card) return;
+        const input = card.querySelector(".pos-imei-input");
+        const select = card.querySelector(".pos-imei-select");
         if (input) {
           input.value = code;
           input.dispatchEvent(new Event("input", { bubbles: true }));
         }
+        if (select) {
+          const opt = Array.from(select.options).find(o => o.value === code);
+          if (opt) {
+            select.value = code;
+            const manualCont = card.querySelector(".pos-imei-manual-container");
+            if (manualCont) manualCont.classList.add("hidden");
+          } else {
+            select.value = "__manual__";
+            const manualCont = card.querySelector(".pos-imei-manual-container");
+            if (manualCont) manualCont.classList.remove("hidden");
+          }
+        }
+        showToast(`IMEI asignado: ${code}`, "success");
       }
     });
   });
@@ -481,22 +525,102 @@ function updateFab(itemCount, sub) {
   if (fabLabel) fabLabel.textContent = itemCount > 0 ? `${itemCount} producto${itemCount !== 1 ? 's' : ''}` : 'Ver carrito';
 }
 
+function isPhoneProduct(prod) {
+  if (!prod) return false;
+  const cat = (prod.categoria || "").toLowerCase();
+  const name = (prod.nombre || "").toLowerCase();
+  const tipo = (prod.tipo || "").toLowerCase();
+  if (cat.includes("celular") || cat.includes("telefono") || cat.includes("teléfono") || tipo.includes("celular")) return true;
+  if (name.includes("celular") || name.includes("telefono") || name.includes("teléfono") || name.includes("smartphone")) return true;
+  if (_equipos.some(e => e.id_producto === prod.id || (e.nombre && prod.nombre && e.nombre.toLowerCase().trim() === prod.nombre.toLowerCase().trim()))) return true;
+  return false;
+}
+
 function updateImeiList() {
-  const phones = _carrito.filter(i => { const prod = _productos.find(p => p.id === i.id); return prod && (prod.categoria === "Celulares" || prod.nombre.toLowerCase().includes("celular") || prod.nombre.toLowerCase().includes("teléfono")); });
-  if (phones.length > 0) {
-    elImeiContainer.classList.remove("hidden");
-    elImeiList.innerHTML = phones.map(p => `
-      <div class="bg-white p-2 rounded-lg border border-amber-200">
-        <p class="text-[9px] font-black text-slate-500 uppercase mb-1">${p.nombre}</p>
-        <div class="flex gap-1">
-          <input type="text" placeholder="IMEI principal" data-id="${p.id}" class="pos-imei-input w-full bg-slate-50 border border-slate-200 rounded px-2 py-1 text-xs outline-none focus:border-primary">
-          <button type="button" class="pos-imei-scan-btn p-1 bg-amber-100 text-amber-800 rounded border border-amber-300 hover:bg-amber-200 transition-colors flex items-center justify-center" title="Escanear o Tomar foto de IMEI" data-prod-id="${p.id}">
-            <span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>
-          </button>
-        </div>
-      </div>
-    `).join("");
-  } else { elImeiContainer.classList.add("hidden"); elImeiList.innerHTML = ""; }
+  const phoneItems = _carrito.filter(i => {
+    const prod = _productos.find(p => p.id === i.id) || i;
+    return isPhoneProduct(prod);
+  });
+
+  if (!elImeiContainer || !elImeiList) return;
+
+  if (phoneItems.length === 0) {
+    elImeiContainer.classList.add("hidden");
+    elImeiList.innerHTML = "";
+    return;
+  }
+
+  elImeiContainer.classList.remove("hidden");
+
+  let html = "";
+  phoneItems.forEach(item => {
+    const prod = _productos.find(p => p.id === item.id) || item;
+    const qty = Number(item.qty) || 1;
+
+    // Buscar IMEIs disponibles en _equipos para este producto
+    const matchingEqs = _equipos.filter(e => {
+      const isMatch = (e.id_producto && e.id_producto === prod.id) ||
+                      (e.nombre && prod.nombre && e.nombre.toLowerCase().trim() === prod.nombre.toLowerCase().trim()) ||
+                      (prod.nombre && e.nombre && prod.nombre.toLowerCase().includes(e.nombre.toLowerCase().trim()));
+      return isMatch && (e.estado || "").toLowerCase() === "disponible";
+    });
+
+    for (let u = 1; u <= qty; u++) {
+      const unitKey = `${prod.id}_u${u}`;
+      const unitTitle = qty > 1 ? `${prod.nombre} (Unidad #${u})` : prod.nombre;
+
+      if (matchingEqs.length > 0) {
+        html += `
+          <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200 dark:border-amber-900/60 shadow-xs space-y-1.5" data-imei-card="${unitKey}">
+            <div class="flex items-center justify-between">
+              <p class="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight truncate">${unitTitle}</p>
+              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 flex items-center gap-0.5">
+                <span class="material-symbols-outlined text-[11px]">inventory_2</span> ${matchingEqs.length} en stock
+              </span>
+            </div>
+            <div>
+              <select data-id="${prod.id}" data-unit="${u}" class="pos-imei-select w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-2 text-xs text-slate-800 dark:text-slate-100 font-mono outline-none focus:border-primary">
+                <option value="">-- Seleccionar IMEI en Stock --</option>
+                ${matchingEqs.map((eq, idx) => {
+                  const specs = [];
+                  if (eq.color) specs.push(eq.color);
+                  if (eq.ram) specs.push(eq.ram);
+                  if (eq.memoria) specs.push(eq.memoria);
+                  if (eq.condicion && eq.condicion !== 'Nuevo') specs.push(eq.condicion);
+                  const specsStr = specs.length > 0 ? ` • ${specs.join(' / ')}` : '';
+                  return `<option value="${eq.imei1}">IMEI: ${eq.imei1}${specsStr}</option>`;
+                }).join("")}
+                <option value="__manual__">✏️ Ingresar o escanear otro IMEI...</option>
+              </select>
+              <div class="pos-imei-manual-container hidden mt-1.5 flex gap-1.5">
+                <input type="text" placeholder="Escribir IMEI (15 dígitos)" data-id="${prod.id}" data-unit="${u}" class="pos-imei-input w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-100 outline-none focus:border-primary">
+                <button type="button" class="pos-imei-scan-btn px-2.5 py-1.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 rounded-lg border border-amber-300 dark:border-amber-700 hover:bg-amber-200 transition-all flex items-center justify-center shrink-0 active:scale-95" title="Escanear IMEI">
+                  <span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      } else {
+        html += `
+          <div class="bg-white dark:bg-slate-900 p-3 rounded-xl border border-amber-200 dark:border-amber-900/60 shadow-xs space-y-1.5" data-imei-card="${unitKey}">
+            <div class="flex items-center justify-between">
+              <p class="text-[10px] font-black text-slate-800 dark:text-slate-200 uppercase tracking-tight truncate">${unitTitle}</p>
+              <span class="text-[9px] text-amber-700 dark:text-amber-400 font-medium">Ingreso manual</span>
+            </div>
+            <div class="flex gap-1.5">
+              <input type="text" placeholder="Ingresar IMEI (15 dígitos)" data-id="${prod.id}" data-unit="${u}" class="pos-imei-input w-full bg-slate-50 dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-100 outline-none focus:border-primary">
+              <button type="button" class="pos-imei-scan-btn px-2.5 py-1.5 bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-200 rounded-lg border border-amber-300 dark:border-amber-700 hover:bg-amber-200 transition-all flex items-center justify-center shrink-0 active:scale-95" title="Escanear IMEI">
+                <span class="material-symbols-outlined text-[16px]">qr_code_scanner</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }
+    }
+  });
+
+  elImeiList.innerHTML = html;
 }
 
 function resizePosCanvases() {
@@ -559,12 +683,15 @@ function openCheckoutModal() {
   elDireccion.value = ""; elCiudad.value = ""; elTelefono.value = "";
   document.querySelector('input[name="pos-billing-type"][value="fisica"]').checked = true;
   document.getElementById("pos-evidencia-container").classList.remove("hidden");
-  elDigitalFields.classList.add("hidden"); elSignaturesCont.classList.add("hidden"); elImeiContainer.classList.add("hidden");
+  elDigitalFields.classList.add("hidden"); elSignaturesCont.classList.add("hidden");
 
   _evidenciaFile = null;
   if (elFileCamera) elFileCamera.value = "";
   if (elFileGallery) elFileGallery.value = "";
   if (elEvidenciaStatus) elEvidenciaStatus.classList.add("hidden");
+
+  // Mostrar selector de IMEIs si hay celulares en el carrito
+  updateImeiList();
 }
 
 function closeCheckoutModal() { elModal.classList.add("hidden"); elModal.classList.remove("flex"); }
@@ -595,8 +722,25 @@ async function procesarVenta() {
       } else { showToast("Por favor sube la foto de la factura física", "warning"); _isProcessing = false; elModalConfirm.textContent = "Confirmar y Facturar"; elModalConfirm.disabled = false; return; }
     }
 
-    const imeiInputs = document.querySelectorAll(".pos-imei-input");
-    const imeis = {}; imeiInputs.forEach(inp => { const id = inp.dataset.id; if (inp.value.trim()) { if (!imeis[id]) imeis[id] = []; imeis[id].push(inp.value.trim()); } });
+    const imeis = {};
+    const imeiCards = elImeiList.querySelectorAll('[data-imei-card]');
+    imeiCards.forEach(card => {
+      const select = card.querySelector('.pos-imei-select');
+      const input = card.querySelector('.pos-imei-input');
+      let val = "";
+      let prodId = "";
+      if (select && select.value && select.value !== "__manual__") {
+        val = select.value.trim();
+        prodId = select.dataset.id;
+      } else if (input && input.value.trim()) {
+        val = input.value.trim();
+        prodId = input.dataset.id;
+      }
+      if (val && prodId) {
+        if (!imeis[prodId]) imeis[prodId] = [];
+        if (!imeis[prodId].includes(val)) imeis[prodId].push(val);
+      }
+    });
 
     elModalConfirm.textContent = "Registrando venta...";
     const sub = Number(elSubtotal.textContent.replace(/\D/g, ""));
@@ -660,7 +804,13 @@ async function procesarVenta() {
         syncCustomSelectUI("pos-metodo-pago-container-mobile", "Efectivo");
       }
       closeCheckoutModal();
-      loadProductos().then(() => renderProductos(_productos));
+      await loadProductos();
+      renderProductos(_productos);
+      if (window.viewReloaders) {
+        Object.keys(window.viewReloaders).forEach(k => {
+          try { window.viewReloaders[k](); } catch (_) {}
+        });
+      }
     } else { showToast("Error al guardar", "error"); }
   } catch (err) { showToast(err.message, "error"); }
   finally { _isProcessing = false; elModalConfirm.textContent = "Confirmar y Facturar"; elModalConfirm.disabled = false; }
