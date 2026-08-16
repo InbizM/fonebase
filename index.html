@@ -1548,14 +1548,31 @@
                 <p id="inv-d-sku" class="text-sm font-mono text-on-surface-variant"></p>
               </div>
             </div>
+
+            <!-- Sección de Equipos e IMEIs asociados a este producto -->
+            <div id="inv-detail-equipos-wrap" class="hidden mt-5 pt-4 border-t border-surface-variant">
+              <div class="flex items-center justify-between mb-2.5">
+                <div class="flex items-center gap-1.5">
+                  <span class="material-symbols-outlined text-primary text-[18px]">smartphone</span>
+                  <h4 class="font-bold text-xs uppercase tracking-wider text-on-surface">Equipos Físicos / IMEIs</h4>
+                </div>
+                <span id="inv-detail-equipos-count" class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">0 unidades</span>
+              </div>
+              <div id="inv-detail-equipos-list" class="space-y-2 max-h-56 overflow-y-auto pr-1"></div>
+            </div>
           </div>
-          <div class="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface-variant bg-surface-container-low rounded-b-2xl">
-            <button id="inv-detail-close2" class="px-4 py-2.5 text-sm font-semibold text-on-surface-variant border border-surface-variant rounded-lg hover:bg-surface-container">
-              Cerrar
+          <div class="flex items-center justify-between px-6 py-4 border-t border-surface-variant bg-surface-container-low rounded-b-2xl">
+            <button id="inv-detail-add-imei-btn" class="flex items-center gap-1 px-3 py-2 text-xs font-bold text-primary hover:bg-primary/10 rounded-lg transition-colors">
+              <span class="material-symbols-outlined text-[16px]">add_circle</span> + Agregar IMEI
             </button>
-            <button id="inv-detail-edit-btn" class="flex items-center gap-1.5 px-5 py-2.5 bg-primary text-on-primary text-sm font-bold rounded-lg shadow-sm">
-              <span class="material-symbols-outlined text-[18px]">edit</span> Editar
-            </button>
+            <div class="flex items-center gap-2">
+              <button id="inv-detail-close2" class="px-4 py-2 text-sm font-semibold text-on-surface-variant border border-surface-variant rounded-lg hover:bg-surface-container">
+                Cerrar
+              </button>
+              <button id="inv-detail-edit-btn" class="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg shadow-sm">
+                <span class="material-symbols-outlined text-[16px]">edit</span> Editar
+              </button>
+            </div>
           </div>
         </div>
       </div>

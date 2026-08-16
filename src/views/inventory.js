@@ -1,4 +1,4 @@
-import { getInventario, crearProducto, actualizarProducto, eliminarProducto, uploadFoto, analyzeLabelImage, analyzeImeiLabel, getAjustesEmpresa, pinProducto } from "../api.js";
+import { getInventario, getEquipos, crearProducto, actualizarProducto, eliminarProducto, uploadFoto, analyzeLabelImage, analyzeImeiLabel, getAjustesEmpresa, pinProducto } from "../api.js";
 
 async function compressImage(base64Str, maxWidth = 1024, maxHeight = 1024, quality = 0.75) {
   return new Promise((resolve, reject) => {
@@ -608,6 +608,88 @@ window.inventoryView = {
     if (editBtn) {
       if (isAdmin) editBtn.classList.remove("hidden");
       else editBtn.classList.add("hidden");
+    }
+
+    // Cargar y mostrar equipos e IMEIs asociados a este producto
+    const eqWrap = document.getElementById("inv-detail-equipos-wrap");
+    const eqList = document.getElementById("inv-detail-equipos-list");
+    const eqCount = document.getElementById("inv-detail-equipos-count");
+    const addImeiBtn = document.getElementById("inv-detail-add-imei-btn");
+
+    if (eqWrap && eqList) {
+      getEquipos().then(allEquipos => {
+        const matchingEqs = (allEquipos || []).filter(e => {
+          return (e.id_producto && e.id_producto === p.id) ||
+                 (e.nombre && p.nombre && e.nombre.toLowerCase().trim() === p.nombre.toLowerCase().trim()) ||
+                 (p.nombre && e.nombre && p.nombre.toLowerCase().includes(e.nombre.toLowerCase().trim()));
+        });
+
+        const isCelular = (p.categoria || "").toLowerCase().includes("celular") || (p.nombre || "").toLowerCase().includes("celular");
+
+        if (matchingEqs.length > 0 || isCelular) {
+          eqWrap.classList.remove("hidden");
+          const dispCount = matchingEqs.filter(e => (e.estado || "").toLowerCase() === "disponible").length;
+          if (eqCount) eqCount.textContent = `${dispCount} disponible${dispCount !== 1 ? 's' : ''} / ${matchingEqs.length} total`;
+
+          if (matchingEqs.length === 0) {
+            eqList.innerHTML = `<p class="text-xs italic text-on-surface-variant/60 py-2 text-center bg-surface-container-low rounded-lg">No hay IMEIs registrados para este modelo todavía.</p>`;
+          } else {
+            eqList.innerHTML = matchingEqs.map(eq => {
+              const isDisp = (eq.estado || "").toLowerCase() === "disponible";
+              const specs = [];
+              if (eq.memoria) specs.push(`<span class="px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300 font-bold">${eq.memoria}</span>`);
+              if (eq.ram) specs.push(`<span class="px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950/60 text-purple-800 dark:text-purple-300">${eq.ram} RAM</span>`);
+              if (eq.color) specs.push(`<span class="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200">${eq.color}</span>`);
+              if (eq.condicion && eq.condicion !== 'Nuevo') specs.push(`<span class="px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300">${eq.condicion}</span>`);
+
+              const precioStr = eq.venta ? `$${fmt(eq.venta)}` : `$${fmt(p.precioVenta)}`;
+              const costoStr = eq.costo ? `$${fmt(eq.costo)}` : `$${fmt(p.costo)}`;
+
+              return `
+                <div class="p-2.5 bg-surface-container-low border border-surface-variant rounded-xl flex items-center justify-between gap-2">
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center gap-1.5 mb-1 flex-wrap">
+                      <span class="font-mono text-xs font-bold text-on-surface">${eq.imei1}</span>
+                      ${specs.join(" ")}
+                    </div>
+                    <div class="flex items-center gap-3 text-[10px] text-on-surface-variant">
+                      <span>Venta: <b class="text-primary">${precioStr}</b></span>
+                      ${!isTecnico ? `<span>Costo: <b>${costoStr}</b></span>` : ''}
+                      ${eq.imei2 ? `<span class="font-mono text-[9px] opacity-75">SIM2: ${eq.imei2}</span>` : ''}
+                    </div>
+                  </div>
+                  <span class="shrink-0 px-2 py-0.5 rounded-full text-[10px] font-bold ${isDisp ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-400'}">
+                    ${eq.estado || 'Disponible'}
+                  </span>
+                </div>
+              `;
+            }).join("");
+          }
+        } else {
+          eqWrap.classList.add("hidden");
+        }
+      }).catch(() => {
+        eqWrap.classList.add("hidden");
+      });
+    }
+
+    if (addImeiBtn) {
+      addImeiBtn.onclick = () => {
+        const dm = document.getElementById("inv-detail-modal");
+        if (dm) { dm.classList.add("hidden"); dm.classList.remove("flex"); }
+        if (window.navigate) window.navigate("imei");
+        setTimeout(() => {
+          const bulkBtn = document.getElementById("imei-add-btn");
+          if (bulkBtn) bulkBtn.click();
+          const nombreInp = document.getElementById("imei-nombre");
+          if (nombreInp) {
+            nombreInp.value = p.nombre || "";
+            nombreInp.setAttribute("data-id", p.id || "");
+          }
+          const marcaInp = document.getElementById("imei-marca");
+          if (marcaInp) marcaInp.value = p.marca || "";
+        }, 150);
+      };
     }
 
     const dm = document.getElementById("inv-detail-modal");

@@ -286,7 +286,7 @@ function setupEvents() {
     }
   });
 
-  // IMEI select and scanner event delegation
+  // IMEI select and scanner event delegation with variant price sync
   elImeiList?.addEventListener("change", (e) => {
     const select = e.target.closest(".pos-imei-select");
     if (!select) return;
@@ -294,6 +294,7 @@ function setupEvents() {
     if (!card) return;
     const manualCont = card.querySelector(".pos-imei-manual-container");
     const manualInput = card.querySelector(".pos-imei-input");
+    const prodId = select.dataset.id;
 
     if (select.value === "__manual__") {
       if (manualCont) manualCont.classList.remove("hidden");
@@ -304,6 +305,18 @@ function setupEvents() {
     } else {
       if (manualCont) manualCont.classList.add("hidden");
       if (manualInput) manualInput.value = select.value;
+
+      // Si el equipo físico seleccionado tiene un precio de venta específico según sus GB:
+      const selectedEq = _equipos.find(eq => eq.imei1 === select.value || eq.imei2 === select.value);
+      if (selectedEq && selectedEq.venta && Number(selectedEq.venta) > 0) {
+        const cartItem = _carrito.find(item => item.id === prodId);
+        if (cartItem) {
+          cartItem.precioManual = Number(selectedEq.venta);
+          updateTotalsOnly();
+          const fmt = new Intl.NumberFormat('es-CO').format(Number(selectedEq.venta));
+          showToast(`Precio ajustado a $${fmt} (${selectedEq.memoria ? selectedEq.memoria + ' • ' : ''}${selectedEq.color || 'Equipo seleccionado'})`, "info");
+        }
+      }
     }
   });
 
@@ -320,6 +333,7 @@ function setupEvents() {
         if (!card) return;
         const input = card.querySelector(".pos-imei-input");
         const select = card.querySelector(".pos-imei-select");
+        const prodId = input ? input.dataset.id : (select ? select.dataset.id : "");
         if (input) {
           input.value = code;
           input.dispatchEvent(new Event("input", { bubbles: true }));
@@ -336,6 +350,16 @@ function setupEvents() {
             if (manualCont) manualCont.classList.remove("hidden");
           }
         }
+
+        const selectedEq = _equipos.find(eq => eq.imei1 === code || eq.imei2 === code);
+        if (selectedEq && selectedEq.venta && Number(selectedEq.venta) > 0 && prodId) {
+          const cartItem = _carrito.find(item => item.id === prodId);
+          if (cartItem) {
+            cartItem.precioManual = Number(selectedEq.venta);
+            updateTotalsOnly();
+          }
+        }
+
         showToast(`IMEI asignado: ${code}`, "success");
       }
     });

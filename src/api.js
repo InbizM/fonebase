@@ -825,7 +825,15 @@ export const pinProducto = (id, fijado) => queryTurso({ sql: "UPDATE inventario 
 export const eliminarProducto = (id) => queryTurso({ sql: "DELETE FROM inventario WHERE id = ?", args: [{ type: "text", value: id }] });
 
 // ── EQUIPOS ──
-export const getEquipos = async () => (await queryTurso("SELECT * FROM equipos"))[0] || [];
+export const getEquipos = async () => {
+  try { await queryTurso("ALTER TABLE equipos ADD COLUMN color TEXT DEFAULT ''"); } catch (_) {}
+  try { await queryTurso("ALTER TABLE equipos ADD COLUMN ram TEXT DEFAULT ''"); } catch (_) {}
+  try { await queryTurso("ALTER TABLE equipos ADD COLUMN memoria TEXT DEFAULT ''"); } catch (_) {}
+  try { await queryTurso("ALTER TABLE equipos ADD COLUMN condicion TEXT DEFAULT 'Nuevo'"); } catch (_) {}
+  try { await queryTurso("ALTER TABLE equipos ADD COLUMN notas TEXT DEFAULT ''"); } catch (_) {}
+  try { await queryTurso("ALTER TABLE equipos ADD COLUMN id_producto TEXT DEFAULT ''"); } catch (_) {}
+  return (await queryTurso("SELECT * FROM equipos ORDER BY fecha_ingreso DESC, imei1 DESC"))[0] || [];
+};
 export const crearEquipo = (d) => queryTurso({ 
   sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
   args: mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']) 
