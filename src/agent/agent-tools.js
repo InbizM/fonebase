@@ -168,6 +168,7 @@ function buildWizardStepHtml(wizardId, stepIndex) {
   const precioVal = (item.precioVenta || item.venta || item.precio) ? Number(item.precioVenta || item.venta || item.precio).toLocaleString('es-CO') : '';
   const revVal = item.precioRevendedor ? Number(item.precioRevendedor).toLocaleString('es-CO') : '';
   const isLast = stepIndex === total - 1;
+  const isSingle = total === 1;
 
   return `
     <div id="${wizardId}" class="wizard-container space-y-3 bg-slate-900/95 text-white p-4 sm:p-5 rounded-2xl border border-slate-700/80 shadow-2xl" data-wizard-id="${wizardId}" data-msg-id="${msgId}">
@@ -175,17 +176,19 @@ function buildWizardStepHtml(wizardId, stepIndex) {
       <div class="flex items-center justify-between border-b border-slate-800 pb-3 gap-2">
         <div class="flex items-center gap-2 min-w-0">
           <div class="w-7 h-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-            <span class="material-symbols-outlined text-[16px]">inventory_2</span>
+            <span class="material-symbols-outlined text-[16px]">smartphone</span>
           </div>
           <div class="min-w-0">
-            <h4 class="text-xs font-black text-white tracking-tight truncate">Registro de Productos (${total})</h4>
-            <p class="text-[10px] text-slate-400">Completando producto <span class="text-primary font-bold">${stepIndex + 1}</span> de <span class="font-bold">${total}</span></p>
+            <h4 class="text-xs font-black text-white tracking-tight truncate">${isSingle ? (item.type === 'crear_equipo' ? 'Registro de Celular con IMEI' : 'Registro de Producto') : `Registro de Productos (${total})`}</h4>
+            <p class="text-[10px] text-slate-400">${isSingle ? 'Ingresa costo para calcular precio de venta en automático' : `Completando producto <span class="text-primary font-bold">${stepIndex + 1}</span> de <span class="font-bold">${total}</span>`}</p>
           </div>
         </div>
+        ${!isSingle ? `
         <!-- Tabs -->
         <div class="flex items-center gap-1 overflow-x-auto max-w-[50%] sm:max-w-[60%] py-0.5">
           ${tabsHtml}
         </div>
+        ` : ''}
       </div>
 
       <!-- Current Step Product Card -->
@@ -292,15 +295,17 @@ function buildWizardStepHtml(wizardId, stepIndex) {
       </div>
 
       <!-- Navigation & Action Buttons -->
-      <div class="flex items-center justify-between pt-2 border-t border-slate-800 gap-2">
+      <div class="flex items-center ${isSingle ? 'justify-end' : 'justify-between'} pt-2 border-t border-slate-800 gap-2">
+        ${!isSingle ? `
         <button type="button" onclick="window.wizardGoToPrev('${wizardId}')" ${stepIndex === 0 ? 'disabled' : ''} class="px-3 py-2 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none rounded-xl hover:bg-slate-800 transition-all flex items-center gap-1">
           <span class="material-symbols-outlined text-[16px]">arrow_back</span> Anterior
         </button>
+        ` : ''}
 
         <div class="flex items-center gap-2">
           <button type="button" onclick="window.wizardSaveAndNext('${wizardId}')" class="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-xl hover:bg-primary/90 active:scale-95 transition-all shadow-md flex items-center gap-1.5">
-            <span>${isLast ? 'Guardar y Finalizar ✓' : 'Guardar y Siguiente'}</span>
-            <span class="material-symbols-outlined text-[16px]">${isLast ? 'check' : 'arrow_forward'}</span>
+            <span>${isSingle ? 'Guardar Producto ✓' : (isLast ? 'Guardar y Finalizar ✓' : 'Guardar y Siguiente')}</span>
+            <span class="material-symbols-outlined text-[16px]">${(isSingle || isLast) ? 'check' : 'arrow_forward'}</span>
           </button>
         </div>
       </div>
@@ -658,9 +663,11 @@ export async function ejecutarAccionIA(actionOrActions, base64Image = null, appe
     return originalAppend(role, text, html, ...rest);
   };
 
-  // Si hay más de un producto detectado con datos faltantes o son múltiples productos:
+  // Si hay productos o celulares detectados que requieren definir costo/precio de venta o son lote:
   const productActions = actionsList.filter(a => a.type === 'crear_producto' || a.type === 'crear_equipo');
-  if (actionsList.length > 1 && productActions.length > 1) {
+  const needsPricing = productActions.some(a => !a.costo || Number(a.costo) === 0 || (!a.precioVenta && !a.venta) || (Number(a.precioVenta) === 0 && Number(a.venta) === 0));
+
+  if (productActions.length > 0 && (needsPricing || actionsList.length > 1)) {
     renderMultiProductWizard(actionsList, appendChatMessage);
     return;
   }
