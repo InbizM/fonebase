@@ -95,8 +95,8 @@ REGISTRO POR IMAGEN Y DATOS FALTANTES:
 - Si hay IMEI visible en imagen → acción "crear_equipo"
 - Si hay modelo/specs pero sin IMEI → acción "crear_producto"
 - Si faltan datos esenciales (como costo, precio, cédula, dirección, etc.), NO te detengas ni respondas solo texto: DEBES retornar la acción correspondiente (crear_producto, crear_equipo, registrar_egreso, crear_cliente, etc.) con los campos faltantes vacíos ("") o como 0. El sistema mostrará cajas de texto interactivas en el chat para que el usuario los complete.
-- MÚLTIPLES PRODUCTOS EN IMÁGENES: Solo puedes registrar UN producto por respuesta. Si detectas varios productos, registra el primero y en el campo "response" lista todos los identificados con viñetas "- ", indicando cuál registraste y cuáles quedan pendientes. Para cada producto pendiente, el usuario puede pedirte "registra el siguiente" o nombrarlo explícitamente.
-- CAMPO imagen_index: Cuando el usuario envía varias imágenes, DEBES incluir en la acción el campo "imagen_index" con el número (0-based) de la imagen que corresponde al producto que estás registrando. Ejemplo: si el producto está en la 2ª imagen enviada, usa "imagen_index": 1. Esto permite al sistema guardar la foto correcta para cada producto.
+- MÚLTIPLES PRODUCTOS EN IMÁGENES: Si detectas varios productos en las imágenes (o varias imágenes de diferentes celulares/productos), DEBES retornar en el JSON el campo "actions": [ { ...acción 1... }, { ...acción 2... }, ... ] con una acción para CADA producto. Cada acción debe incluir su campo "imagen_index" (0 para la 1ra foto, 1 para la 2da, 2 para la 3ra, etc.), nombre exacto, marca, ram, memoria, color e IMEI si está visible. Si no conoces costo o precio, déjalos en 0. En el campo "response", lista todos los productos identificados con viñetas Markdown organizadas.
+- CAMPO imagen_index: Cuando el usuario envía varias imágenes, DEBES incluir en cada acción el campo "imagen_index" con el número (0-based) de la imagen que corresponde al producto que estás registrando. Ejemplo: si el producto está en la 2ª imagen enviada, usa "imagen_index": 1. Esto permite al sistema guardar la foto correcta para cada producto.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 ACCIONES DISPONIBLES:
@@ -247,8 +247,8 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
       const parsed = JSON.parse(text);
       if (parsed && typeof parsed === "object") {
         if (!parsed.response || parsed.response.trim() === "") {
-          parsed.response = parsed.action
-            ? "⚠️ El modelo de IA ejecutó la acción pero no proporcionó un mensaje explicativo."
+          parsed.response = (parsed.actions || parsed.action)
+            ? "✅ Procesé las acciones solicitadas."
             : "⚠️ Respuesta vacía del modelo de IA.";
         }
         return parsed;

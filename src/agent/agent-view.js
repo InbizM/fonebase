@@ -237,6 +237,22 @@ export function saveChatMessageToStorage(msgObj) {
   }
 }
 
+export function updateStoredChatMessage(msgId, newHtmlContent, newText = null) {
+  try {
+    const activeId = getActiveChatId();
+    const history = getChatMessages(activeId);
+    const msg = history.find(m => m.id === msgId || String(m.timestamp) === String(msgId));
+    if (msg) {
+      if (newHtmlContent !== undefined && newHtmlContent !== null) msg.htmlContent = newHtmlContent;
+      if (newText !== undefined && newText !== null) msg.text = newText;
+      saveChatMessages(activeId, history);
+    }
+  } catch (e) {
+    console.error("Error updating stored chat message:", e);
+  }
+}
+window.updateStoredChatMessage = updateStoredChatMessage;
+
 export function clearReplyState() {
   _replyingToMessage = null;
   const replyContainer = document.getElementById("assistant-reply-container");
@@ -260,7 +276,7 @@ export function renderChatHistoryFromStorage() {
   }
   
   history.forEach(msg => {
-    appendChatMessage(msg.sender, msg.text, msg.htmlContent, msg.base64Image, false, msg.replyContext, msg.timestamp);
+    appendChatMessage(msg.sender, msg.text, msg.htmlContent, msg.base64Image, false, msg.replyContext, msg.timestamp, msg.id);
   });
   
   chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -344,18 +360,21 @@ export function parseMarkdownToHtml(text) {
   return html;
 }
 
-export function appendChatMessage(sender, text, htmlContent = null, base64Image = null, saveToStorage = true, replyContext = null, existingTimestamp = null) {
+export function appendChatMessage(sender, text, htmlContent = null, base64Image = null, saveToStorage = true, replyContext = null, existingTimestamp = null, msgId = null) {
   const chatContainer = document.getElementById("voice-chat-history");
-  if (!chatContainer) return;
+  if (!chatContainer) return null;
 
   const timestamp = existingTimestamp || Date.now();
+  const id = msgId || `msg_${timestamp}_${Math.random().toString(36).substr(2, 6)}`;
   const timeStr = new Date(timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   if (saveToStorage) {
-    saveChatMessageToStorage({ sender, text, htmlContent, base64Image, replyContext, timestamp });
+    saveChatMessageToStorage({ id, sender, text, htmlContent, base64Image, replyContext, timestamp });
   }
 
   const msgDiv = document.createElement("div");
+  msgDiv.id = id;
+  msgDiv.dataset.msgId = id;
   const isUser = sender === "user";
   const isSystem = sender === "system";
 
@@ -413,7 +432,7 @@ export function appendChatMessage(sender, text, htmlContent = null, base64Image 
       '<span class="material-symbols-outlined text-[18px]">' + avatarIcon + '</span>' +
     '</div>' +
     '<div class="flex flex-col ' + userAlignClass + ' min-w-0 flex-1">' +
-      '<div data-chat-bubble class="px-4 py-3 ' + bubbleBg + ' max-w-full overflow-hidden">' +
+      '<div data-chat-bubble data-msg-id="' + id + '" class="px-4 py-3 ' + bubbleBg + ' max-w-full overflow-hidden">' +
         replyContextHtml +
         imagesHtml +
         bodyContent +
@@ -435,6 +454,7 @@ export function appendChatMessage(sender, text, htmlContent = null, base64Image 
 
   chatContainer.appendChild(msgDiv);
   chatContainer.scrollTop = chatContainer.scrollHeight;
+  return id;
 }
 
 export async function procesarTextoConIA(promptText, base64Image = null, replyContext = null) {
@@ -480,10 +500,11 @@ export async function procesarTextoConIA(promptText, base64Image = null, replyCo
       return;
     }
 
-    appendChatMessage("ai", result.response);
+    const aiMsgId = appendChatMessage("ai", result.response);
 
-    if (result.action) {
-      await ejecutarAccionIA(result.action, base64Image, appendChatMessage);
+    const actionToExec = result.actions || result.action;
+    if (actionToExec) {
+      await ejecutarAccionIA(actionToExec, base64Image, appendChatMessage, aiMsgId);
     }
   } catch (err) {
     console.error("Error processing AI command:", err);

@@ -17,8 +17,370 @@ import {
 import { navigate } from "../router.js";
 import { showToast } from "../toast.js";
 
+// ── WIZARD MULTI-PRODUCTO Y FORMULARIOS INTERACTIVOS ──
+window.wizardStateStore = window.wizardStateStore || {};
+
+window.wizardFormatCurrency = (input) => {
+  let val = input.value.replace(/\D/g, "");
+  if (!val) {
+    input.value = "";
+    return;
+  }
+  input.value = Number(val).toLocaleString('es-CO');
+};
+
+function buildWizardStepHtml(wizardId, stepIndex) {
+  const state = window.wizardStateStore[wizardId];
+  if (!state || !state.items || state.items.length === 0) return "";
+  
+  const total = state.items.length;
+  const item = state.items[stepIndex] || state.items[0];
+  const msgId = state.msgId || "";
+
+  // Step Tabs / Pills
+  const tabsHtml = state.items.map((it, idx) => {
+    const isCurrent = idx === stepIndex;
+    const isSaved = it.saved;
+    const cleanName = (it.nombre || `Prod #${idx + 1}`).slice(0, 14);
+    
+    let pillClass = "bg-slate-800/80 text-slate-400 border-slate-700/80 hover:bg-slate-700 hover:text-white";
+    if (isCurrent) {
+      pillClass = "bg-primary text-on-primary border-primary font-bold shadow-sm";
+    } else if (isSaved) {
+      pillClass = "bg-emerald-950/60 text-emerald-300 border-emerald-800/80 font-bold";
+    }
+
+    return `
+      <button type="button" onclick="window.wizardGoToStep('${wizardId}', ${idx})" 
+        class="px-2.5 py-1 rounded-lg text-[10px] border shrink-0 flex items-center gap-1 transition-all ${pillClass}">
+        ${isSaved ? '<span class="material-symbols-outlined text-[12px] text-emerald-400">check_circle</span>' : ''}
+        <span>#${idx + 1} ${cleanName}</span>
+      </button>
+    `;
+  }).join("");
+
+  // Product Image
+  let imgHtml = "";
+  if (item.imagen || item.foto_base64) {
+    const src = (item.imagen || item.foto_base64).startsWith("data:") ? (item.imagen || item.foto_base64) : `data:image/jpeg;base64,${item.imagen || item.foto_base64}`;
+    imgHtml = `<img src="${src}" class="w-16 h-16 sm:w-20 sm:h-20 object-cover rounded-xl border border-slate-700 bg-slate-900 shrink-0 shadow-sm" />`;
+  } else {
+    imgHtml = `
+      <div class="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-slate-800 border border-slate-700 flex flex-col items-center justify-center text-slate-400 shrink-0">
+        <span class="material-symbols-outlined text-[24px]">smartphone</span>
+      </div>
+    `;
+  }
+
+  // Specs badges
+  const badges = [];
+  if (item.ram) badges.push(`<span class="px-2 py-0.5 rounded bg-violet-950/60 text-violet-300 border border-violet-800/50 font-bold">RAM: ${item.ram}</span>`);
+  if (item.memoria) badges.push(`<span class="px-2 py-0.5 rounded bg-blue-950/60 text-blue-300 border border-blue-800/50 font-bold">ROM: ${item.memoria}</span>`);
+  if (item.color) badges.push(`<span class="px-2 py-0.5 rounded bg-amber-950/60 text-amber-300 border border-amber-800/50 font-bold">Color: ${item.color}</span>`);
+  if (item.imei1) badges.push(`<span class="px-2 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-800/50 font-mono font-bold">IMEI: ${item.imei1}</span>`);
+
+  const costoVal = item.costo ? Number(item.costo).toLocaleString('es-CO') : '';
+  const precioVal = (item.precioVenta || item.venta || item.precio) ? Number(item.precioVenta || item.venta || item.precio).toLocaleString('es-CO') : '';
+  const isLast = stepIndex === total - 1;
+
+  return `
+    <div id="${wizardId}" class="wizard-container space-y-3 bg-slate-900/95 text-white p-4 sm:p-5 rounded-2xl border border-slate-700/80 shadow-2xl" data-wizard-id="${wizardId}" data-msg-id="${msgId}">
+      <!-- Wizard Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3 gap-2">
+        <div class="flex items-center gap-2 min-w-0">
+          <div class="w-7 h-7 rounded-lg bg-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+            <span class="material-symbols-outlined text-[16px]">inventory_2</span>
+          </div>
+          <div class="min-w-0">
+            <h4 class="text-xs font-black text-white tracking-tight truncate">Registro de Productos (${total})</h4>
+            <p class="text-[10px] text-slate-400">Completando producto <span class="text-primary font-bold">${stepIndex + 1}</span> de <span class="font-bold">${total}</span></p>
+          </div>
+        </div>
+        <!-- Tabs -->
+        <div class="flex items-center gap-1 overflow-x-auto max-w-[50%] sm:max-w-[60%] py-0.5">
+          ${tabsHtml}
+        </div>
+      </div>
+
+      <!-- Current Step Product Card -->
+      <div class="flex gap-3 bg-slate-950/70 p-3 rounded-xl border border-slate-800/80 items-center">
+        ${imgHtml}
+        <div class="flex-1 min-w-0 space-y-1">
+          <div class="flex items-center gap-2">
+            <span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded bg-primary/20 text-primary border border-primary/30 shrink-0">${item.marca || 'Universal'}</span>
+            <span class="text-[9px] font-bold uppercase tracking-wider text-slate-400">${item.type === 'crear_equipo' ? 'Equipo IMEI' : 'Inventario General'}</span>
+          </div>
+          <h5 class="text-xs sm:text-sm font-bold text-white leading-snug">${item.nombre || 'Producto sin nombre'}</h5>
+          <div class="flex flex-wrap gap-1 text-[9px] pt-0.5">
+            ${badges.join("")}
+          </div>
+        </div>
+      </div>
+
+      <!-- Missing Inputs Grid -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+        <div>
+          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Costo de compra *</label>
+          <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
+            <span class="text-slate-500 font-bold text-xs mr-1.5">$</span>
+            <input type="text" data-field="costo" placeholder="Ej: 450.000" value="${costoVal}" oninput="window.wizardFormatCurrency(this)" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" required />
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Precio de venta *</label>
+          <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
+            <span class="text-primary font-bold text-xs mr-1.5">$</span>
+            <input type="text" data-field="precio" placeholder="Ej: 650.000" value="${precioVal}" oninput="window.wizardFormatCurrency(this)" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" required />
+          </div>
+        </div>
+
+        ${item.type === 'crear_equipo' ? `
+        <div>
+          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">IMEI Principal (15 dígitos)</label>
+          <input type="text" data-field="imei1" placeholder="Ej: 356251200774692" value="${item.imei1 || ''}" maxlength="15" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
+        </div>
+        <div>
+          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color</label>
+          <input type="text" data-field="color" placeholder="Ej: Azul, Negro" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
+        </div>
+        ` : `
+        <div>
+          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Stock Inicial</label>
+          <input type="number" data-field="stockActual" placeholder="1" value="${item.stockActual || 1}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
+        </div>
+        <div>
+          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color / Versión</label>
+          <input type="text" data-field="color" placeholder="Ej: Azul, 128GB" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
+        </div>
+        `}
+      </div>
+
+      <!-- Navigation & Action Buttons -->
+      <div class="flex items-center justify-between pt-2 border-t border-slate-800 gap-2">
+        <button type="button" onclick="window.wizardGoToPrev('${wizardId}')" ${stepIndex === 0 ? 'disabled' : ''} class="px-3 py-2 text-xs font-bold text-slate-400 hover:text-white disabled:opacity-30 disabled:pointer-events-none rounded-xl hover:bg-slate-800 transition-all flex items-center gap-1">
+          <span class="material-symbols-outlined text-[16px]">arrow_back</span> Anterior
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="window.wizardSaveAndNext('${wizardId}')" class="px-4 py-2 bg-primary text-on-primary text-xs font-bold rounded-xl hover:bg-primary/90 active:scale-95 transition-all shadow-md flex items-center gap-1.5">
+            <span>${isLast ? 'Guardar y Finalizar ✓' : 'Guardar y Siguiente'}</span>
+            <span class="material-symbols-outlined text-[16px]">${isLast ? 'check' : 'arrow_forward'}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMultiProductWizard(itemsList, appendChatMessage) {
+  const wizardId = `wizard-${Date.now()}`;
+  window.wizardStateStore[wizardId] = {
+    step: 0,
+    items: itemsList.map(a => ({
+      ...a,
+      costo: a.costo || "",
+      precioVenta: a.precioVenta || a.venta || a.precio || "",
+      venta: a.venta || a.precioVenta || a.precio || "",
+      stockActual: a.stockActual !== undefined ? a.stockActual : (a.stock || 1),
+      saved: false
+    }))
+  };
+
+  const html = buildWizardStepHtml(wizardId, 0);
+  const msgId = appendChatMessage("ai", null, html, null, true);
+  if (window.wizardStateStore[wizardId]) {
+    window.wizardStateStore[wizardId].msgId = msgId;
+  }
+}
+
+window.wizardGoToStep = (wizardId, targetStep) => {
+  const state = window.wizardStateStore[wizardId];
+  if (!state || targetStep < 0 || targetStep >= state.items.length) return;
+
+  const container = document.getElementById(wizardId);
+  if (!container) return;
+
+  // Save current step fields
+  const stepIndex = state.step;
+  const item = state.items[stepIndex];
+  const costoInput = container.querySelector('[data-field="costo"]');
+  const precioInput = container.querySelector('[data-field="precio"]');
+  const imeiInput = container.querySelector('[data-field="imei1"]');
+  const stockInput = container.querySelector('[data-field="stockActual"]');
+  const colorInput = container.querySelector('[data-field="color"]');
+
+  if (costoInput) item.costo = Number(costoInput.value.replace(/\D/g, "")) || item.costo;
+  if (precioInput) {
+    const val = Number(precioInput.value.replace(/\D/g, "")) || item.precioVenta;
+    item.precioVenta = val;
+    item.venta = val;
+  }
+  if (imeiInput && imeiInput.value.trim()) item.imei1 = imeiInput.value.trim();
+  if (stockInput) item.stockActual = Number(stockInput.value) || 1;
+  if (colorInput) item.color = colorInput.value.trim();
+
+  state.step = targetStep;
+  container.outerHTML = buildWizardStepHtml(wizardId, state.step);
+};
+
+window.wizardGoToPrev = (wizardId) => {
+  const state = window.wizardStateStore[wizardId];
+  if (!state || state.step <= 0) return;
+  window.wizardGoToStep(wizardId, state.step - 1);
+};
+
+window.wizardSaveAndNext = async (wizardId) => {
+  const state = window.wizardStateStore[wizardId];
+  if (!state) return;
+
+  const container = document.getElementById(wizardId);
+  if (!container) return;
+
+  const stepIndex = state.step;
+  const item = state.items[stepIndex];
+
+  // Read inputs
+  const costoInput = container.querySelector('[data-field="costo"]');
+  const precioInput = container.querySelector('[data-field="precio"]');
+  const imeiInput = container.querySelector('[data-field="imei1"]');
+  const stockInput = container.querySelector('[data-field="stockActual"]');
+  const colorInput = container.querySelector('[data-field="color"]');
+
+  const costoVal = costoInput ? Number(costoInput.value.replace(/\D/g, "")) : 0;
+  const precioVal = precioInput ? Number(precioInput.value.replace(/\D/g, "")) : 0;
+
+  if (costoVal <= 0 || precioVal <= 0) {
+    if (costoInput && costoVal <= 0) costoInput.parentElement.classList.add('border-red-500');
+    if (precioInput && precioVal <= 0) precioInput.parentElement.classList.add('border-red-500');
+    showToast("Por favor ingresa el Costo y Precio de venta.", "warning");
+    return;
+  }
+
+  item.costo = costoVal;
+  item.precioVenta = precioVal;
+  item.venta = precioVal;
+  if (imeiInput && imeiInput.value.trim()) item.imei1 = imeiInput.value.trim();
+  if (stockInput) item.stockActual = Number(stockInput.value) || 1;
+  if (colorInput) item.color = colorInput.value.trim();
+
+  const btn = container.querySelector('button.bg-primary');
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Guardando...";
+  }
+
+  try {
+    const productId = `PROD-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+    
+    // Crear en inventario
+    await crearProducto([
+      productId,
+      item.nombre,
+      item.marca || "Universal",
+      "Celulares",
+      "Físico",
+      item.costo,
+      item.precioVenta,
+      1,
+      item.stockActual || 1,
+      item.ubicacion || "Vitrina",
+      item.sku || "",
+      item.imagen || item.foto_base64 || "",
+      0
+    ]);
+
+    // Si tiene IMEI o es crear_equipo
+    if (item.type === 'crear_equipo' || item.imei1) {
+      await crearEquipo({
+        imei1: item.imei1 || `SN-${Date.now()}`,
+        imei2: item.imei2 || "",
+        id_producto: productId,
+        marca: item.marca || "",
+        nombre: item.nombre,
+        proveedor: item.proveedor || "",
+        costo: item.costo,
+        venta: item.venta,
+        estado: "Disponible",
+        color: item.color || "",
+        ram: item.ram || "",
+        memoria: item.memoria || "",
+        condicion: item.condicion || "Nuevo",
+        notas: item.notas || ""
+      });
+    }
+
+    item.saved = true;
+    showToast(`✅ Guardado: ${item.nombre}`, "success");
+
+    // Check if more steps
+    if (stepIndex < state.items.length - 1) {
+      state.step = stepIndex + 1;
+      container.outerHTML = buildWizardStepHtml(wizardId, state.step);
+    } else {
+      // Completed all products!
+      const total = state.items.length;
+      const completedSummaryHtml = `
+        <div class="bg-slate-900/95 text-white p-4 sm:p-5 rounded-2xl border border-emerald-500/50 shadow-2xl space-y-3">
+          <div class="flex items-center gap-2.5 text-emerald-400">
+            <span class="material-symbols-outlined text-[24px]">check_circle</span>
+            <div>
+              <h4 class="text-sm font-black text-white">¡Todos los productos (${total}) fueron registrados con éxito!</h4>
+              <p class="text-[11px] text-emerald-300/80 font-medium">Fotos, especificaciones y precios guardados en el inventario</p>
+            </div>
+          </div>
+          <div class="space-y-2 max-h-[300px] overflow-y-auto pr-1 divide-y divide-slate-800">
+            ${state.items.map(it => `
+              <div class="flex items-center gap-3 pt-2">
+                ${it.imagen || it.foto_base64 ? `<img src="${(it.imagen||it.foto_base64).startsWith('data:')?(it.imagen||it.foto_base64):'data:image/jpeg;base64,'+(it.imagen||it.foto_base64)}" class="w-10 h-10 object-cover rounded-lg border border-slate-700 bg-slate-950 shrink-0" />` : '<div class="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center text-slate-400 shrink-0"><span class="material-symbols-outlined text-[18px]">smartphone</span></div>'}
+                <div class="flex-1 min-w-0">
+                  <p class="text-xs font-bold text-white truncate">${it.nombre}</p>
+                  <p class="text-[10px] text-slate-400">${it.marca || ''} ${it.ram ? '• ' + it.ram : ''} ${it.memoria ? '• ' + it.memoria : ''} ${it.color ? '• ' + it.color : ''}</p>
+                </div>
+                <div class="text-right shrink-0">
+                  <p class="text-xs font-black text-emerald-400">$${Number(it.precioVenta || it.venta || 0).toLocaleString('es-CO')}</p>
+                  <p class="text-[10px] text-slate-400">Costo: $${Number(it.costo || 0).toLocaleString('es-CO')}</p>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+      `;
+
+      const bubble = container.closest('[data-chat-bubble]') || container.parentElement;
+      if (bubble) {
+        bubble.innerHTML = completedSummaryHtml;
+      } else {
+        container.outerHTML = completedSummaryHtml;
+      }
+
+      // Persist completed state to localStorage!
+      const targetMsgId = state.msgId || container.dataset?.msgId || container.closest('[data-msg-id]')?.dataset?.msgId;
+      if (targetMsgId && window.updateStoredChatMessage) {
+        window.updateStoredChatMessage(targetMsgId, completedSummaryHtml);
+      }
+
+      // Reload active views
+      if (window.viewReloaders) {
+        Object.keys(window.viewReloaders).forEach(key => {
+          const reloadFn = window.viewReloaders[key];
+          if (typeof reloadFn === 'function') {
+            try { reloadFn(); } catch (e) { console.error(e); }
+          }
+        });
+      }
+    }
+  } catch (err) {
+    showToast("Error al guardar: " + err.message, "error");
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = stepIndex === state.items.length - 1 ? 'Guardar y Finalizar ✓' : 'Guardar y Siguiente';
+    }
+  }
+};
+
 // Función helper para pintar un formulario interactivo dentro de la burbuja del chat
-// cuando faltan campos obligatorios.
+// cuando faltan campos obligatorios en una sola acción.
 function renderInteractiveFormIfMissing(action, requiredFields, appendChatMessage, titleText, actionType) {
   const missing = [];
   requiredFields.forEach(f => {
@@ -40,6 +402,19 @@ function renderInteractiveFormIfMissing(action, requiredFields, appendChatMessag
         <div id="${formId}" class="space-y-2 bg-slate-50 dark:bg-slate-900/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800">
     `;
 
+    if (action.imagen || action.foto_base64) {
+      const src = (action.imagen || action.foto_base64).startsWith("data:") ? (action.imagen || action.foto_base64) : `data:image/jpeg;base64,${action.imagen || action.foto_base64}`;
+      fieldsHtml += `
+        <div class="flex items-center gap-3 bg-white dark:bg-slate-950 p-2 rounded-xl border border-slate-200 dark:border-slate-800 mb-2">
+          <img src="${src}" class="w-12 h-12 object-cover rounded-lg border border-slate-200 dark:border-slate-700 shrink-0" />
+          <div class="min-w-0">
+            <p class="text-xs font-bold text-slate-900 dark:text-white truncate">${action.nombre || 'Producto'}</p>
+            <p class="text-[10px] text-slate-500 dark:text-slate-400">${action.marca || ''} ${action.ram ? '• ' + action.ram : ''} ${action.memoria ? '• ' + action.memoria : ''} ${action.color ? '• ' + action.color : ''}</p>
+          </div>
+        </div>
+      `;
+    }
+
     requiredFields.forEach(f => {
       const isMissing = missing.includes(f);
       const val = action[f.name] !== undefined && action[f.name] !== null ? action[f.name] : "";
@@ -48,7 +423,7 @@ function renderInteractiveFormIfMissing(action, requiredFields, appendChatMessag
         fieldsHtml += `
           <div>
             <label class="block text-[10px] font-black uppercase tracking-wider text-slate-500 mb-1">${f.label} *</label>
-            <input type="${f.type === 'number' ? 'number' : 'text'}" data-field="${f.name}" placeholder="${f.placeholder}" class="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:border-primary text-slate-900 dark:text-white" required />
+            <input type="${f.type === 'number' ? 'text' : 'text'}" data-field="${f.name}" placeholder="${f.placeholder}" ${f.type === 'number' ? 'oninput="window.wizardFormatCurrency(this)"' : ''} class="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-800 rounded-lg focus:outline-none focus:border-primary text-slate-900 dark:text-white font-mono" required />
           </div>
         `;
       } else {
@@ -66,32 +441,37 @@ function renderInteractiveFormIfMissing(action, requiredFields, appendChatMessag
       </div>
     `;
 
-    // saveToStorage = false para que el formulario no persista en localStorage al recargar
-    appendChatMessage("ai", null, fieldsHtml, null, false);
+    // saveToStorage = true para persistir el mensaje, el cual luego se actualizará a solo lectura al completar
+    appendChatMessage("ai", null, fieldsHtml, null, true);
     return true; // Indica que se pintó el formulario
   }
   return false;
 }
 
 // ── EJECUTOR DE ACCIONES Y HERRAMIENTAS PARA EL AGENTE DE IA ──
-export async function ejecutarAccionIA(action, base64Image = null, appendChatMessage) {
-  if (!action || !action.type) return;
+export async function ejecutarAccionIA(actionOrActions, base64Image = null, appendChatMessage, parentMsgId = null) {
+  if (!actionOrActions) return;
 
-  // Preservar la imagen correcta en action según imagen_index (para múltiples fotos adjuntas)
-  if (base64Image) {
-    const imgArray = Array.isArray(base64Image) ? base64Image : [base64Image];
-    const idx = (action.imagen_index !== undefined && action.imagen_index !== null)
-      ? Number(action.imagen_index)
-      : 0;
-    const singleImg = imgArray[idx] || imgArray[0] || "";
-    if (singleImg) {
-      action.imagen = singleImg;
-      action.foto_base64 = singleImg;
+  const actionsList = Array.isArray(actionOrActions) ? actionOrActions : [actionOrActions];
+  if (actionsList.length === 0) return;
+
+  const imgArray = base64Image ? (Array.isArray(base64Image) ? base64Image : [base64Image]) : [];
+
+  // Asignar imagen adecuada a cada acción según su imagen_index
+  actionsList.forEach(act => {
+    if (imgArray.length > 0) {
+      const idx = (act.imagen_index !== undefined && act.imagen_index !== null)
+        ? Number(act.imagen_index)
+        : 0;
+      const singleImg = imgArray[idx] || imgArray[0] || "";
+      if (singleImg) {
+        act.imagen = singleImg;
+        act.foto_base64 = singleImg;
+      }
     }
-  }
+  });
 
-  // Interceptar appendChatMessage para que los logs del sistema ("system") se muestren como Toasts (notificaciones flotantes)
-  // en lugar de contaminar el chat del usuario.
+  // Interceptar appendChatMessage para que los logs del sistema ("system") se muestren como Toasts
   const originalAppend = appendChatMessage;
   appendChatMessage = (role, text, html, ...rest) => {
     if (role === "system" && text) {
@@ -104,8 +484,24 @@ export async function ejecutarAccionIA(action, base64Image = null, appendChatMes
       }
       return;
     }
-    originalAppend(role, text, html, ...rest);
+    return originalAppend(role, text, html, ...rest);
   };
+
+  // Si hay más de un producto detectado con datos faltantes o son múltiples productos:
+  const productActions = actionsList.filter(a => a.type === 'crear_producto' || a.type === 'crear_equipo');
+  if (actionsList.length > 1 && productActions.length > 1) {
+    renderMultiProductWizard(actionsList, appendChatMessage);
+    return;
+  }
+
+  // Ejecución individual
+  for (const action of actionsList) {
+    await ejecutarAccionIndividual(action, appendChatMessage);
+  }
+}
+
+async function ejecutarAccionIndividual(action, appendChatMessage) {
+  if (!action || !action.type) return;
 
   if (action.type === 'registrar_egreso') {
     const fields = [
@@ -694,8 +1090,9 @@ window.submitMissingActionData = async (formId, actionType, originalActionJsonSt
       input.classList.remove('border-red-500');
     }
     
-    if (input.type === 'number' || input.dataset.type === 'number') {
-      val = Number(val) || 0;
+    if (input.type === 'number' || input.dataset.type === 'number' || field === 'costo' || field === 'precio' || field === 'precioVenta' || field === 'venta' || field === 'monto') {
+      const cleanDigits = val.replace(/\D/g, "");
+      val = cleanDigits ? Number(cleanDigits) : 0;
     }
     
     updatedData[field] = val;
@@ -954,17 +1351,25 @@ window.submitMissingActionData = async (formId, actionType, originalActionJsonSt
     if (res && res.success) {
       showToast("Registro completado con éxito", "success");
 
+      const finalHtml = successMessageHtml || `
+        <div class="mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
+          ✅ Registro completado exitosamente.
+        </div>
+      `;
+
       // Reemplazar toda la burbuja del chat (el padre del container) con el mensaje de éxito
       // para que desaparezca tanto el formulario como el título de advertencia.
       const bubble = container.closest('[data-chat-bubble]') || container.parentElement;
       if (bubble) {
-        bubble.innerHTML = successMessageHtml || `
-          <div class="mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-xl border border-emerald-200 dark:border-emerald-900/50 text-emerald-800 dark:text-emerald-300 text-xs font-semibold">
-            ✅ Registro completado exitosamente.
-          </div>
-        `;
+        bubble.innerHTML = finalHtml;
       } else {
-        container.outerHTML = successMessageHtml;
+        container.outerHTML = finalHtml;
+      }
+
+      // Persistir el estado completado en localStorage
+      const targetMsgId = container.dataset?.msgId || container.closest('[data-msg-id]')?.dataset?.msgId;
+      if (targetMsgId && window.updateStoredChatMessage) {
+        window.updateStoredChatMessage(targetMsgId, finalHtml);
       }
       
       if (window.viewReloaders) {
