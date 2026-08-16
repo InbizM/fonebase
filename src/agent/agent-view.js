@@ -105,8 +105,10 @@ export function renderChatsList() {
   
   if (chats.length === 0) {
     container.innerHTML = `
-      <div class="text-center py-6 text-sm text-slate-400 dark:text-slate-500 italic">
-        No hay chats guardados
+      <div class="flex flex-col items-center justify-center py-10 text-center text-slate-400 dark:text-slate-500">
+        <span class="material-symbols-outlined text-[36px] text-slate-300 dark:text-slate-600 mb-2">forum</span>
+        <p class="text-xs font-bold text-slate-600 dark:text-slate-400">No hay chats guardados</p>
+        <p class="text-[10px] text-slate-400 mt-0.5">Tus conversaciones con IA aparecerán aquí</p>
       </div>
     `;
     return;
@@ -123,19 +125,30 @@ export function renderChatsList() {
     });
     
     const activeClass = isActive 
-      ? "bg-indigo-50 dark:bg-indigo-950/40 border-l-4 border-primary text-slate-800 dark:text-slate-200" 
-      : "hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300";
+      ? "bg-primary/10 border-primary/40 shadow-xs ring-1 ring-primary/20" 
+      : "bg-white dark:bg-slate-950/60 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40";
       
     return `
-      <div class="flex items-center justify-between p-3 rounded-xl transition-all cursor-pointer ${activeClass}" onclick="window.switchChatSession('${chat.id}')">
-        <div class="flex-1 min-w-0 pr-2">
-          <p class="text-sm font-bold truncate">${chat.title}</p>
-          <p class="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">${dateStr}</p>
+      <div class="group flex items-center justify-between p-3 rounded-xl border transition-all cursor-pointer ${activeClass}" onclick="window.switchChatSession('${chat.id}')">
+        <div class="flex items-center gap-3 min-w-0 flex-1 pr-2">
+          <div class="w-8 h-8 rounded-lg ${isActive ? 'bg-primary text-on-primary' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'} flex items-center justify-center shrink-0 shadow-xs">
+            <span class="material-symbols-outlined text-[18px]">${isActive ? 'forum' : 'chat_bubble_outline'}</span>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="flex items-center gap-2">
+              <p class="text-xs font-bold truncate ${isActive ? 'text-primary dark:text-primary-300' : 'text-slate-800 dark:text-slate-100'}">${chat.title}</p>
+              ${isActive ? '<span class="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-primary text-on-primary shrink-0">Activo</span>' : ''}
+            </div>
+            <p class="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5 font-medium flex items-center gap-1">
+              <span class="material-symbols-outlined text-[11px]">schedule</span> ${dateStr}
+            </p>
+          </div>
         </div>
         <button type="button" onclick="event.stopPropagation(); window.deleteChatSession('${chat.id}')" 
-          class="p-1.5 text-slate-400 hover:text-red-500 rounded-lg transition-colors flex items-center justify-center focus:outline-none" title="Eliminar chat">
+          class="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg transition-all flex items-center justify-center shrink-0 focus:outline-none opacity-70 group-hover:opacity-100" title="Eliminar conversación">
           <span class="material-symbols-outlined text-[18px]">delete</span>
         </button>
+      </div>
     `;
   }).join("");
 }
