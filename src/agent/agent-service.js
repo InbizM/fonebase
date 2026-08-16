@@ -135,14 +135,11 @@ REGISTRO POR IMAGEN Y DATOS FALTANTES:
 11. Reventa:
 {"response":"✅ Registré reventa rápida: Auriculares Bluetooth, costo $35.000, precio venta $60.000, proveedor: Distribuidora Norte.","action":{"type":"crear_reventa","producto":"Auriculares Bluetooth","categoria":"Accesorios","costo":35000,"precio":60000,"proveedor":"Distribuidora Norte"}}
 
-12. Actualizar producto:
-{"response":"✅ Actualicé el producto 'Tecno KN3' → nuevo nombre 'Tecno Spark Go 2024', 8GB RAM, 128GB ROM, precio venta: $580.000.","action":{"type":"actualizar_producto","nombre_actual":"Tecno KN3","nuevo_nombre":"Tecno Spark Go 2024","ram":"8GB","memoria":"128GB","color":"","costo":380000,"precioVenta":580000,"stockMinimo":2,"stockActual":10,"sku":""}}
-
-13. Crear meta financiera:
-{"response":"✅ Creé la meta financiera 'Ventas de hoy' con objetivo de $100.000 y cálculo tipo Ventas.","action":{"type":"crear_meta","titulo":"Ventas de hoy","monto_objetivo":100000,"tipo_calculo":"Ventas","fecha_inicio":"2026-08-15","fecha_limite":"2026-08-15","notas":"Creada por Asistente de Voz"}}
-
-14. Crear préstamo o adelanto a empleado (nómina):
+12. Crear préstamo o adelanto a empleado (nómina):
 {"response":"✅ Registré un préstamo de $100.000 para el empleado Johan.","action":{"type":"crear_prestamo","empleado":"Johan","monto":100000,"tipo_prestamo":"Dinero","notas":"Préstamo solicitado por el empleado"}}
+
+13. Registrar múltiples productos de imágenes o fotos:
+{"response":"Identifiqué 3 celulares en las imágenes:\n- **Redmi 15C** (128GB ROM / 8GB RAM, Azul)\n- **Tecno Pova Curve 2** (128GB ROM / 8GB RAM, Negro)\n- **Tecno Spark 50** (128GB ROM)\n\nPor favor completa los costos y precios de venta en el asistente interactivo:","actions":[{"type":"crear_producto","imagen_index":0,"nombre":"Redmi 15C","marca":"Xiaomi","ram":"8GB","memoria":"128GB","color":"Azul","costo":0,"precioVenta":0},{"type":"crear_producto","imagen_index":1,"nombre":"Tecno Pova Curve 2","marca":"Tecno","ram":"8GB","memoria":"128GB","color":"Negro","costo":0,"precioVenta":0},{"type":"crear_producto","imagen_index":2,"nombre":"Tecno Spark 50","marca":"Tecno","ram":"","memoria":"128GB","color":"","costo":0,"precioVenta":0}]}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 RESPUESTAS DE CONSULTA (action = null):
@@ -157,7 +154,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 - NO uses bloques markdown (\`\`\`json).
 - El campo "response" es OBLIGATORIO y debe ser ESPECÍFICO con los datos registrados.
 - El sistema SÍ soporta y asocia automáticamente las fotos/imágenes que adjunte el usuario. NO le digas al usuario que el sistema no soporta imágenes.
-- Organiza la respuesta del campo "response" usando Markdown legible (usa listas con viñetas "- ", negritas "**", títulos, etc.). Evita entregar bloques gigantescos de texto plano sin estructurar.
+- Organiza la respuesta del campo "response" usando Markdown legible (usa listas con viñetas "- ", negritas "**", títulos, etc.).
 - Si no entiendes la petición, responde: {"response":"No entendí tu instrucción. Puedo registrar equipos, productos, clientes, gastos, servicios técnicos, tareas, metas, créditos, reventas y préstamos a empleados. ¿Qué necesitas?","action":null}
 `;
 
@@ -232,58 +229,10 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
     let text = data.choices?.[0]?.message?.content || "";
     console.log("[IA] ← Respuesta cruda:", text.slice(0, 500));
 
-    // Limpiar markdown si el modelo lo añade
-    text = text.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
-
-    // Extraer solo el JSON si hay texto extra
-    const firstBrace = text.indexOf("{");
-    const lastBrace = text.lastIndexOf("}");
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-      text = text.substring(firstBrace, lastBrace + 1);
-    }
-
-    // Intentar parsear JSON
-    try {
-      const parsed = JSON.parse(text);
-      if (parsed && typeof parsed === "object") {
-        if (!parsed.response || parsed.response.trim() === "") {
-          parsed.response = (parsed.actions || parsed.action)
-            ? "✅ Procesé las acciones solicitadas."
-            : "⚠️ Respuesta vacía del modelo de IA.";
-        }
-        return parsed;
-      }
-    } catch (parseErr) {
-      console.warn("[IA] JSON.parse falló, intentando regex fallback:", parseErr.message);
-
-      // Intentar regex fallback para extraer campos
-      const responseMatch = text.match(/"response"\s*:\s*"([\s\S]*?)"\s*[,}]/);
-      let responseText = responseMatch
-        ? responseMatch[1].replace(/\\"/g, '"').trim()
-        : "";
-
-      let actionObj = null;
-      const typeMatch = text.match(/"type"\s*:\s*"([^"]+)"/);
-      if (typeMatch) {
-        actionObj = { type: typeMatch[1] };
-        const fields = ["cedula","nombre","telefono","direccion","email","tipo","marca","categoria","costo","precioVenta","stockMinimo","stockActual","ubicacion","sku","imei1","imei2","proveedor","venta","estado","cliente","equipo","imei_serie","falla","clave_patron","repuestos","costo_taller","abono","precio_final","total","detalle","producto","cantidad","monto","nombre_actual","nuevo_nombre","ram","memoria","color","tarea","prioridad","notas","color","concepto","responsable","query","destino","precio"];
-        fields.forEach(f => {
-          const strMatch = text.match(new RegExp(`"${f}"\\s*:\\s*"([\\s\\S]*?)"\\s*[,}]`));
-          if (strMatch) {
-            actionObj[f] = strMatch[1].replace(/\\"/g, '"').trim();
-          } else {
-            const numMatch = text.match(new RegExp(`"${f}"\\s*:\\s*([0-9.]+)\\s*[,}]`));
-            if (numMatch) actionObj[f] = Number(numMatch[1]);
-          }
-        });
-      }
-
-      if (responseText || actionObj) {
-        if (!responseText) {
-          responseText = "⚠️ Acción interpretada, pero la IA no especificó una explicación textual.";
-        }
-        return { response: responseText, action: actionObj };
-      }
+    // ── PARSEO Y REPARACIÓN ROBUSTA DE JSON EN 3 NIVELES ──
+    const parsedResult = cleanAndParseAgentJSON(text);
+    if (parsedResult) {
+      return parsedResult;
     }
 
     // Si la respuesta es texto plano conversacional normal sin formato JSON
@@ -296,7 +245,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 
     // Fallback de error
     return {
-      response: "⚠️ No se pudo procesar tu instrucción. Asegúrate de indicar la acción de forma clara (ej: 'crea una tarea para...', 'registra un egreso de...', 'crea una meta de...') y que los datos sean correctos.",
+      response: "⚠️ No se pudo procesar tu instrucción. Asegúrate de indicar la acción de forma clara (ej: 'crea una tarea para...', 'registra un egreso de...', 'agrega estos productos') y que los datos sean correctos.",
       action: null
     };
   } catch (e) {
@@ -306,6 +255,104 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
       action: null
     };
   }
+}
+
+// ── REPARADOR Y EXTRACTOR ROBUSTO DE JSON ──
+function cleanAndParseAgentJSON(raw) {
+  if (!raw) return null;
+  let text = raw.replace(/```json\n?/gi, "").replace(/```\n?/g, "").trim();
+
+  const firstBrace = text.indexOf("{");
+  const lastBrace = text.lastIndexOf("}");
+  if (firstBrace !== -1 && lastBrace > firstBrace) {
+    text = text.substring(firstBrace, lastBrace + 1);
+  }
+
+  // Nivel 1: Parseo directo
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed && typeof parsed === "object") {
+      if (!parsed.response || parsed.response.trim() === "") {
+        parsed.response = (parsed.actions || parsed.action)
+          ? "✅ Procesé las acciones solicitadas."
+          : "⚠️ Respuesta vacía del modelo de IA.";
+      }
+      return parsed;
+    }
+  } catch (_) {}
+
+  // Nivel 2: Reparación de saltos de línea sin escapar dentro de strings y trailing commas
+  try {
+    let inString = false;
+    let escaped = false;
+    let fixed = "";
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (char === '"' && !escaped) {
+        inString = !inString;
+        fixed += char;
+      } else if (inString && (char === '\n' || char === '\r')) {
+        fixed += '\\n';
+      } else if (inString && char === '\t') {
+        fixed += '\\t';
+      } else {
+        fixed += char;
+      }
+      escaped = (char === '\\' && !escaped);
+    }
+    // Eliminar comas finales antes de } o ]
+    fixed = fixed.replace(/,\s*([}\]])/g, "$1");
+    const parsed = JSON.parse(fixed);
+    if (parsed && typeof parsed === "object") {
+      if (!parsed.response || parsed.response.trim() === "") {
+        parsed.response = (parsed.actions || parsed.action)
+          ? "✅ Procesé las acciones solicitadas."
+          : "⚠️ Respuesta vacía del modelo de IA.";
+      }
+      return parsed;
+    }
+  } catch (_) {}
+
+  // Nivel 3: Extracción por Regex de response y bloques de acciones
+  let responseText = "";
+  const responseMatch = text.match(/"response"\s*:\s*"([\s\S]*?)"\s*,\s*"(action|actions)"/i) 
+                     || text.match(/"response"\s*:\s*"([\s\S]*?)"\s*}/i);
+  if (responseMatch) {
+    responseText = responseMatch[1].replace(/\\n/g, "\n").replace(/\\"/g, '"');
+  }
+
+  const actionsList = [];
+  const actionRegex = /\{\s*"type"\s*:\s*"([^"]+)"([\s\S]*?)\}/g;
+  let m;
+  while ((m = actionRegex.exec(text)) !== null) {
+    const fullBlock = m[0];
+    const type = m[1];
+    const obj = { type };
+
+    const kvRegex = /"([a-zA-Z0-9_]+)"\s*:\s*("(?:\\.|[^"\\])*"|[0-9.]+|true|false|null)/g;
+    let kv;
+    while ((kv = kvRegex.exec(fullBlock)) !== null) {
+      const k = kv[1];
+      let v = kv[2];
+      if (v.startsWith('"') && v.endsWith('"')) {
+        obj[k] = v.slice(1, -1).replace(/\\"/g, '"').replace(/\\n/g, '\n');
+      } else if (v === "true") obj[k] = true;
+      else if (v === "false") obj[k] = false;
+      else if (v === "null") obj[k] = null;
+      else obj[k] = Number(v);
+    }
+    actionsList.push(obj);
+  }
+
+  if (actionsList.length > 0 || responseText) {
+    return {
+      response: responseText || "✅ Procesé los productos detectados en las imágenes.",
+      actions: actionsList.length > 1 ? actionsList : undefined,
+      action: actionsList.length === 1 ? actionsList[0] : (actionsList.length > 1 ? actionsList : null)
+    };
+  }
+
+  return null;
 }
 
 
