@@ -29,6 +29,91 @@ window.wizardFormatCurrency = (input) => {
   input.value = Number(val).toLocaleString('es-CO');
 };
 
+window.wizardOnCostoInput = (input, wizardId) => {
+  let val = input.value.replace(/\D/g, "");
+  if (!val) {
+    input.value = "";
+    return;
+  }
+  const numCosto = Number(val);
+  input.value = numCosto.toLocaleString('es-CO');
+
+  const container = document.getElementById(wizardId);
+  if (!container) return;
+
+  const precioInput = container.querySelector('[data-field="precio"]');
+  const revendedorInput = container.querySelector('[data-field="precioRevendedor"]');
+
+  // Si el precio de venta está vacío o fue autocalculado, sugerir con +20% redondeado a $1.000
+  if (precioInput && (!precioInput.value || precioInput.dataset.autoCalculated === "true")) {
+    const sugerido = Math.ceil((numCosto * 1.20) / 1000) * 1000;
+    precioInput.value = sugerido.toLocaleString('es-CO');
+    precioInput.dataset.autoCalculated = "true";
+  }
+
+  // Sugerir precio revendedor (+5% o +$20.000 redondeado a $1.000)
+  if (revendedorInput && (!revendedorInput.value || revendedorInput.dataset.autoCalculated === "true")) {
+    const sugeridoRev = Math.ceil(Math.max(numCosto * 1.05, numCosto + 20000) / 1000) * 1000;
+    revendedorInput.value = sugeridoRev.toLocaleString('es-CO');
+    revendedorInput.dataset.autoCalculated = "true";
+  }
+};
+
+window.wizardApplyMargin = (wizardId, targetField, type, amount) => {
+  const container = document.getElementById(wizardId);
+  if (!container) return;
+
+  const costoInput = container.querySelector('[data-field="costo"]');
+  const targetInput = container.querySelector(`[data-field="${targetField}"]`);
+  if (!costoInput || !targetInput) return;
+
+  const numCosto = Number(costoInput.value.replace(/\D/g, "")) || 0;
+  if (numCosto === 0) {
+    if (window.showToast) window.showToast("Ingresa primero el costo de compra", "warning");
+    costoInput.focus();
+    return;
+  }
+
+  let finalPrice = 0;
+  if (type === 'percent') {
+    finalPrice = Math.ceil((numCosto * (1 + amount / 100)) / 1000) * 1000;
+  } else if (type === 'fixed') {
+    finalPrice = Math.ceil((numCosto + amount) / 1000) * 1000;
+  }
+
+  targetInput.value = finalPrice.toLocaleString('es-CO');
+  targetInput.dataset.autoCalculated = "false";
+  if (window.showToast) window.showToast(`Precio calculado: $${targetInput.value}`, "info");
+};
+
+window.wizardApplyToAll = (wizardId) => {
+  const state = window.wizardStateStore[wizardId];
+  const container = document.getElementById(wizardId);
+  if (!state || !container) return;
+
+  const costoInput = container.querySelector('[data-field="costo"]');
+  const precioInput = container.querySelector('[data-field="precio"]');
+  const revendedorInput = container.querySelector('[data-field="precioRevendedor"]');
+
+  const costoVal = Number(costoInput?.value.replace(/\D/g, "")) || 0;
+  const precioVal = Number(precioInput?.value.replace(/\D/g, "")) || 0;
+  const revVal = Number(revendedorInput?.value.replace(/\D/g, "")) || 0;
+
+  if (costoVal === 0) {
+    if (window.showToast) window.showToast("Ingresa el costo primero", "warning");
+    return;
+  }
+
+  state.items.forEach(it => {
+    it.costo = costoVal;
+    it.precioVenta = precioVal;
+    it.venta = precioVal;
+    it.precioRevendedor = revVal;
+  });
+
+  if (window.showToast) window.showToast(`⚡ Costo y precios aplicados a los ${state.items.length} productos del lote`, "success");
+};
+
 function buildWizardStepHtml(wizardId, stepIndex) {
   const state = window.wizardStateStore[wizardId];
   if (!state || !state.items || state.items.length === 0) return "";
@@ -81,6 +166,7 @@ function buildWizardStepHtml(wizardId, stepIndex) {
 
   const costoVal = item.costo ? Number(item.costo).toLocaleString('es-CO') : '';
   const precioVal = (item.precioVenta || item.venta || item.precio) ? Number(item.precioVenta || item.venta || item.precio).toLocaleString('es-CO') : '';
+  const revVal = item.precioRevendedor ? Number(item.precioRevendedor).toLocaleString('es-CO') : '';
   const isLast = stepIndex === total - 1;
 
   return `
@@ -118,42 +204,91 @@ function buildWizardStepHtml(wizardId, stepIndex) {
       </div>
 
       <!-- Missing Inputs Grid -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-        <div>
-          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Costo de compra *</label>
-          <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
-            <span class="text-slate-500 font-bold text-xs mr-1.5">$</span>
-            <input type="text" data-field="costo" placeholder="Ej: 450.000" value="${costoVal}" oninput="window.wizardFormatCurrency(this)" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" required />
+      <div class="space-y-3 pt-1">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <!-- Costo de Compra -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400">Costo de compra *</label>
+              ${total > 1 ? `
+                <button type="button" onclick="window.wizardApplyToAll('${wizardId}')" class="text-[9px] font-bold text-primary hover:underline flex items-center gap-0.5">
+                  <span class="material-symbols-outlined text-[11px]">bolt</span> Aplicar a los ${total}
+                </button>
+              ` : ''}
+            </div>
+            <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
+              <span class="text-slate-500 font-bold text-xs mr-1.5">$</span>
+              <input type="text" data-field="costo" placeholder="Ej: 450.000" value="${costoVal}" oninput="window.wizardOnCostoInput(this, '${wizardId}')" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" required />
+            </div>
+          </div>
+
+          <!-- Precio de Venta Público -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400">Precio Venta (Público) *</label>
+              <span class="text-[9px] text-slate-500 font-medium">Margen sugerido</span>
+            </div>
+            <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
+              <span class="text-primary font-bold text-xs mr-1.5">$</span>
+              <input type="text" data-field="precio" placeholder="Ej: 550.000" value="${precioVal}" oninput="window.wizardFormatCurrency(this); this.dataset.autoCalculated='false';" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" required />
+            </div>
           </div>
         </div>
 
-        <div>
-          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Precio de venta *</label>
-          <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
-            <span class="text-primary font-bold text-xs mr-1.5">$</span>
-            <input type="text" data-field="precio" placeholder="Ej: 650.000" value="${precioVal}" oninput="window.wizardFormatCurrency(this)" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" required />
+        <!-- Botones de Margen Rápido Precio Público -->
+        <div class="bg-slate-950/60 p-2 rounded-xl border border-slate-800/80 flex items-center gap-1.5 flex-wrap">
+          <span class="text-[9px] font-black uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-[13px] text-primary">trending_up</span> Margen Público:
+          </span>
+          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'percent', 15)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+15%</button>
+          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'percent', 20)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+20%</button>
+          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'percent', 25)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+25%</button>
+          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'percent', 30)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+30%</button>
+          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'fixed', 50000)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+$50k</button>
+          <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precio', 'fixed', 100000)" class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 hover:bg-primary hover:text-white text-[10px] font-bold border border-slate-700 transition-colors">+$100k</button>
+        </div>
+
+        <!-- Precio Revendedor / Mayorista (Opcional) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Precio Revendedor / Mayorista</label>
+            <div class="flex items-center bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 focus-within:border-primary">
+              <span class="text-amber-400 font-bold text-xs mr-1.5">$</span>
+              <input type="text" data-field="precioRevendedor" placeholder="Ej: 470.000" value="${revVal}" oninput="window.wizardFormatCurrency(this); this.dataset.autoCalculated='false';" class="w-full bg-transparent text-xs sm:text-sm text-white font-mono outline-none" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Margen Revendedor</label>
+            <div class="flex items-center gap-1.5 py-1 flex-wrap">
+              <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precioRevendedor', 'percent', 5)" class="px-2 py-1 rounded-lg bg-amber-950/50 text-amber-300 hover:bg-amber-600 hover:text-white text-[10px] font-bold border border-amber-800/60 transition-colors">+5%</button>
+              <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precioRevendedor', 'percent', 8)" class="px-2 py-1 rounded-lg bg-amber-950/50 text-amber-300 hover:bg-amber-600 hover:text-white text-[10px] font-bold border border-amber-800/60 transition-colors">+8%</button>
+              <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precioRevendedor', 'fixed', 10000)" class="px-2 py-1 rounded-lg bg-amber-950/50 text-amber-300 hover:bg-amber-600 hover:text-white text-[10px] font-bold border border-amber-800/60 transition-colors">+$10.000</button>
+              <button type="button" onclick="window.wizardApplyMargin('${wizardId}', 'precioRevendedor', 'fixed', 20000)" class="px-2 py-1 rounded-lg bg-amber-950/50 text-amber-300 hover:bg-amber-600 hover:text-white text-[10px] font-bold border border-amber-800/60 transition-colors">+$20.000</button>
+            </div>
           </div>
         </div>
 
-        ${item.type === 'crear_equipo' ? `
-        <div>
-          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">IMEI Principal (15 dígitos)</label>
-          <input type="text" data-field="imei1" placeholder="Ej: 356251200774692" value="${item.imei1 || ''}" maxlength="15" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          ${item.type === 'crear_equipo' ? `
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">IMEI Principal (15 dígitos)</label>
+            <input type="text" data-field="imei1" placeholder="Ej: 356251200774692" value="${item.imei1 || ''}" maxlength="15" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color</label>
+            <input type="text" data-field="color" placeholder="Ej: Azul, Negro" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
+          </div>
+          ` : `
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Stock Inicial</label>
+            <input type="number" data-field="stockActual" placeholder="1" value="${item.stockActual || 1}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
+          </div>
+          <div>
+            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color / Versión</label>
+            <input type="text" data-field="color" placeholder="Ej: Azul, 128GB" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
+          </div>
+          `}
         </div>
-        <div>
-          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color</label>
-          <input type="text" data-field="color" placeholder="Ej: Azul, Negro" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
-        </div>
-        ` : `
-        <div>
-          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Stock Inicial</label>
-          <input type="number" data-field="stockActual" placeholder="1" value="${item.stockActual || 1}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
-        </div>
-        <div>
-          <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color / Versión</label>
-          <input type="text" data-field="color" placeholder="Ej: Azul, 128GB" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
-        </div>
-        `}
       </div>
 
       <!-- Navigation & Action Buttons -->
@@ -206,6 +341,7 @@ window.wizardGoToStep = (wizardId, targetStep) => {
   const item = state.items[stepIndex];
   const costoInput = container.querySelector('[data-field="costo"]');
   const precioInput = container.querySelector('[data-field="precio"]');
+  const revInput = container.querySelector('[data-field="precioRevendedor"]');
   const imeiInput = container.querySelector('[data-field="imei1"]');
   const stockInput = container.querySelector('[data-field="stockActual"]');
   const colorInput = container.querySelector('[data-field="color"]');
@@ -215,6 +351,9 @@ window.wizardGoToStep = (wizardId, targetStep) => {
     const val = Number(precioInput.value.replace(/\D/g, "")) || item.precioVenta;
     item.precioVenta = val;
     item.venta = val;
+  }
+  if (revInput) {
+    item.precioRevendedor = Number(revInput.value.replace(/\D/g, "")) || item.precioRevendedor;
   }
   if (imeiInput && imeiInput.value.trim()) item.imei1 = imeiInput.value.trim();
   if (stockInput) item.stockActual = Number(stockInput.value) || 1;
@@ -243,23 +382,26 @@ window.wizardSaveAndNext = async (wizardId) => {
   // Read inputs
   const costoInput = container.querySelector('[data-field="costo"]');
   const precioInput = container.querySelector('[data-field="precio"]');
+  const revInput = container.querySelector('[data-field="precioRevendedor"]');
   const imeiInput = container.querySelector('[data-field="imei1"]');
   const stockInput = container.querySelector('[data-field="stockActual"]');
   const colorInput = container.querySelector('[data-field="color"]');
 
   const costoVal = costoInput ? Number(costoInput.value.replace(/\D/g, "")) : 0;
   const precioVal = precioInput ? Number(precioInput.value.replace(/\D/g, "")) : 0;
+  const revVal = revInput ? Number(revInput.value.replace(/\D/g, "")) : 0;
 
   if (costoVal <= 0 || precioVal <= 0) {
     if (costoInput && costoVal <= 0) costoInput.parentElement.classList.add('border-red-500');
     if (precioInput && precioVal <= 0) precioInput.parentElement.classList.add('border-red-500');
-    showToast("Por favor ingresa el Costo y Precio de venta.", "warning");
+    if (window.showToast) window.showToast("Por favor ingresa el Costo y Precio de venta.", "warning");
     return;
   }
 
   item.costo = costoVal;
   item.precioVenta = precioVal;
   item.venta = precioVal;
+  item.precioRevendedor = revVal;
   if (imeiInput && imeiInput.value.trim()) item.imei1 = imeiInput.value.trim();
   if (stockInput) item.stockActual = Number(stockInput.value) || 1;
   if (colorInput) item.color = colorInput.value.trim();
@@ -315,6 +457,12 @@ window.wizardSaveAndNext = async (wizardId) => {
 
     // Si tiene IMEI o es crear_equipo, guardarlo en la tabla equipos con sus variantes completas
     if (item.type === 'crear_equipo' || item.imei1) {
+      const notasArr = [];
+      if (item.precioRevendedor && item.precioRevendedor > 0) {
+        notasArr.push(`Mayorista: $${Number(item.precioRevendedor).toLocaleString('es-CO')}`);
+      }
+      if (item.notas) notasArr.push(item.notas);
+
       await crearEquipo({
         imei1: item.imei1 || `SN-${Date.now()}`,
         imei2: item.imei2 || "",
@@ -329,12 +477,12 @@ window.wizardSaveAndNext = async (wizardId) => {
         ram: item.ram || "",
         memoria: item.memoria || "",
         condicion: item.condicion || "Nuevo",
-        notas: item.notas || ""
+        notas: notasArr.join(" • ")
       });
     }
 
     item.saved = true;
-    showToast(`✅ Guardado: ${item.nombre}`, "success");
+    if (window.showToast) window.showToast(`✅ Guardado: ${item.nombre}`, "success");
 
     // Check if more steps
     if (stepIndex < state.items.length - 1) {
