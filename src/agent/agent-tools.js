@@ -20,6 +20,62 @@ import { showToast } from "../toast.js";
 // ── WIZARD MULTI-PRODUCTO Y FORMULARIOS INTERACTIVOS ──
 window.wizardStateStore = window.wizardStateStore || {};
 
+export function matchExistingInventoryProduct(inv, item) {
+  if (!inv || !Array.isArray(inv) || inv.length === 0) return null;
+  const targetId = (item.id_producto || item.id || "").trim();
+  const targetSku = (item.sku || "").toLowerCase().trim();
+  const rawName = (item.nombre || item.name || "").toLowerCase().trim();
+  const targetBrand = (item.marca || item.brand || "").toLowerCase().trim();
+
+  // 1. Direct match by ID
+  if (targetId) {
+    const byId = inv.find(p => p.id === targetId);
+    if (byId) return byId;
+  }
+
+  // 2. Direct match by SKU / Reference code (e.g. "KN3", "KL7", "15C")
+  if (targetSku) {
+    const bySku = inv.find(p => (p.sku || "").toLowerCase().trim() === targetSku);
+    if (bySku) return bySku;
+  }
+
+  // 3. Exact full name match
+  const byName = inv.find(p => (p.nombre || "").toLowerCase().trim() === rawName);
+  if (byName) return byName;
+
+  // 4. Check if known reference code in item is in existing product name or SKU
+  const extractRef = (str) => {
+    const match = str.match(/\b(kn\d+|kl\d+|bg\d+|a\d+e?|c\d+|\d+c|sm-[a-z\d]+|\d{4}[a-z\d]+)\b/i);
+    return match ? match[1].toLowerCase() : null;
+  };
+  const itemRef = targetSku || extractRef(rawName);
+  if (itemRef) {
+    const byRef = inv.find(p => {
+      const pSku = (p.sku || "").toLowerCase().trim();
+      const pRef = pSku || extractRef(p.nombre || "");
+      if (pRef && pRef === itemRef) return true;
+      const pName = (p.nombre || "").toLowerCase();
+      return pName.includes(itemRef);
+    });
+    if (byRef) return byRef;
+  }
+
+  // 5. Check if names overlap substantially
+  const cleanTokens = rawName.replace(/[\(\)\/\,\.\-\_]/g, " ").split(/\s+/).filter(t => t.length >= 3 && !['tecno', 'xiaomi', 'samsung', 'celular', 'nuevo'].includes(t));
+  if (cleanTokens.length > 0) {
+    const byTokens = inv.find(p => {
+      const pName = (p.nombre || "").toLowerCase();
+      const pBrand = (p.marca || "").toLowerCase();
+      const brandMatch = !targetBrand || pBrand.includes(targetBrand) || targetBrand.includes(pBrand);
+      if (!brandMatch) return false;
+      return cleanTokens.every(token => pName.includes(token));
+    });
+    if (byTokens) return byTokens;
+  }
+
+  return null;
+}
+
 window.wizardFormatCurrency = (input) => {
   let val = input.value.replace(/\D/g, "");
   if (!val) {
@@ -433,7 +489,7 @@ window.wizardSaveAndNext = async (wizardId) => {
   try {
     // Buscar si ya existe el producto base en inventario
     const currentInv = await getInventario().catch(() => []);
-    const existingProd = currentInv.find(p => p.nombre && p.nombre.toLowerCase().trim() === item.nombre.toLowerCase().trim());
+    const existingProd = matchExistingInventoryProduct(currentInv, item);
     
     let productId = existingProd ? existingProd.id : `PROD-${Date.now()}-${Math.floor(Math.random()*1000)}`;
 
@@ -457,6 +513,8 @@ window.wizardSaveAndNext = async (wizardId) => {
     } else {
       // Incrementar stock del producto existente
       const updatedStock = (existingProd.stockActual || 0) + (Number(item.stockActual) || 1);
+      const updatedSku = existingProd.sku || item.sku || "";
+      const updatedImg = existingProd.imagen || item.imagen || item.foto_base64 || "";
       await actualizarProducto(existingProd.id, [
         existingProd.nombre,
         existingProd.marca || item.marca || "Universal",
@@ -467,8 +525,8 @@ window.wizardSaveAndNext = async (wizardId) => {
         existingProd.stockMinimo || 1,
         updatedStock,
         existingProd.ubicacion || "Vitrina",
-        existingProd.sku || "",
-        existingProd.imagen || item.imagen || item.foto_base64 || "",
+        updatedSku,
+        updatedImg,
         existingProd.fijado || 0
       ]);
     }
@@ -976,17 +1034,24 @@ async function ejecutarAccionIndividual(action, appendChatMessage) {
       if (!productId) {
         appendChatMessage("system", `Buscando o creando plantilla de producto para guardar la foto...`);
         const inv = await getInventario();
-        const cleanName = finalProdName.toLowerCase().trim();
-        const existingProd = inv.find(p => (p.nombre || "").toLowerCase().trim() === cleanName);
+        const existingProd = matchExistingInventoryProduct(inv, {
+          id_producto: action.id_producto || action.id,
+          sku: action.sku,
+          nombre: finalProdName || action.nombre,
+          marca: action.marca || action.brand
+        });
         
         if (existingProd) {
           productId = existingProd.id;
-          appendChatMessage("system", `Plantilla existente encontrada: "${existingProd.nombre}"`);
+          appendChatMessage("system", `Plantilla existente vinculada: "${existingProd.nombre}" (Ref: ${existingProd.sku || 'N/A'})`);
           
-          // Si la plantilla existente no tiene imagen y se cargó una nueva, guardarla
+          // Si la plantilla existente no tiene imagen o sku y se cargó uno nuevo, actualizarlo
           const imgToSave = (Array.isArray(base64Image) ? base64Image[0] : base64Image) || action.imagen || "";
-          if (imgToSave && (!existingProd.imagen || existingProd.imagen === "")) {
-            appendChatMessage("system", `Guardando la imagen en la plantilla existente...`);
+          const shouldUpdateImg = imgToSave && (!existingProd.imagen || existingProd.imagen === "");
+          const shouldUpdateSku = action.sku && (!existingProd.sku || existingProd.sku === "");
+
+          if (shouldUpdateImg || shouldUpdateSku) {
+            appendChatMessage("system", `Actualizando imagen y referencia en la plantilla existente...`);
             await actualizarProducto(existingProd.id, [
               existingProd.nombre,
               existingProd.marca || "Universal",
@@ -997,11 +1062,12 @@ async function ejecutarAccionIndividual(action, appendChatMessage) {
               existingProd.stock_minimo || 1,
               existingProd.stock_actual || 1,
               existingProd.ubicacion || "Vitrina",
-              existingProd.sku || "",
-              imgToSave,
+              existingProd.sku || action.sku || "",
+              imgToSave || existingProd.imagen || "",
               existingProd.fijado || 0
             ]);
-            existingProd.imagen = imgToSave;
+            if (imgToSave) existingProd.imagen = imgToSave;
+            if (action.sku) existingProd.sku = action.sku;
           }
         } else {
           productId = `PROD-${Date.now()}`;

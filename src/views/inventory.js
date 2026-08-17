@@ -241,7 +241,7 @@ function cardHtml(p) {
       <!-- Content -->
       <div class="p-3 flex flex-col flex-1">
         <div class="flex justify-between items-start mb-1">
-          <span class="text-[10px] font-medium tracking-widest text-secondary">${p.sku || p.id}</span>
+          <span class="text-[10px] font-bold font-mono tracking-wider ${p.sku ? 'text-primary bg-primary/10 px-1.5 py-0.5 rounded' : 'text-on-surface-variant/70'}">${p.sku ? `Ref: ${p.sku}` : p.id}</span>
           <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded-sm ${catCls}">${p.categoria}</span>
         </div>
         <h3 class="font-semibold text-sm text-on-surface leading-tight mt-1 mb-0.5">${p.nombre}</h3>
@@ -317,7 +317,7 @@ function renderGrid() {
                     <span class="px-2 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase border whitespace-nowrap ${badge.cls}">${badge.label}</span>
                   </div>
                   <p class="text-[10px] uppercase font-bold text-on-surface-variant mb-1">${p.marca || '-'}</p>
-                  <p class="font-mono text-xs font-bold text-on-surface-variant/70 mb-2 truncate" title="${p.sku || p.id}">${p.sku || p.id}</p>
+                  <p class="font-mono text-xs font-bold mb-2 truncate ${p.sku ? 'text-primary' : 'text-on-surface-variant/70'}" title="${p.sku || p.id}">${p.sku ? `Ref: ${p.sku}` : p.id}</p>
                 </div>
               </div>
               <div class="flex items-end justify-between mt-auto pt-3 border-t border-surface-variant/50">
@@ -368,7 +368,7 @@ function renderGrid() {
                   </div>
                 </div>
               </td>
-              <td class="px-4 py-3 font-mono text-xs font-bold text-on-surface-variant">${p.sku || p.id}</td>
+              <td class="px-4 py-3 font-mono text-xs font-bold ${p.sku ? 'text-primary' : 'text-on-surface-variant'}">${p.sku ? `<span class="px-2 py-0.5 rounded bg-primary/10 border border-primary/20">Ref: ${p.sku}</span>` : p.id}</td>
               <td class="px-4 py-3 text-xs text-on-surface-variant">${p.categoria}</td>
               <td class="px-4 py-3">
                 <span class="px-2 py-1 rounded text-[10px] font-bold tracking-wider uppercase border ${badge.cls}">${badge.label}</span>
