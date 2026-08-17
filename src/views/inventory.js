@@ -652,8 +652,9 @@ window.inventoryView = {
                       <span class="font-mono text-xs font-bold text-on-surface">${eq.imei1}</span>
                       ${specs.join(" ")}
                     </div>
-                    <div class="flex items-center gap-3 text-[10px] text-on-surface-variant">
-                      <span>Venta: <b class="text-primary">${precioStr}</b></span>
+                    <div class="flex items-center gap-3 text-[10px] text-on-surface-variant flex-wrap">
+                      <span>Público: <b class="text-primary">${precioStr}</b></span>
+                      ${(eq.precio_revendedor && Number(eq.precio_revendedor) > 0) ? `<span class="text-amber-600 dark:text-amber-400 font-medium">Revendedor: <b class="font-black">$${fmt(eq.precio_revendedor)}</b></span>` : ''}
                       ${!isTecnico ? `<span>Costo: <b>${costoStr}</b></span>` : ''}
                       ${eq.imei2 ? `<span class="font-mono text-[9px] opacity-75">SIM2: ${eq.imei2}</span>` : ''}
                     </div>

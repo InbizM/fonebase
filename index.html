@@ -2274,36 +2274,11 @@
                   <span class="flex-1">Todos los Estados</span>
                   <span class="material-symbols-outlined text-[16px] text-primary check-icon">check_circle</span>
                 </div>
-                <div data-value="Disponible" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
-                  <span class="material-symbols-outlined text-[18px] text-green-500">check_circle</span>
-                  <span class="flex-1">Disponibles</span>
-                  <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
-                </div>
-                <div data-value="Vendido" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
-                  <span class="material-symbols-outlined text-[18px] text-red-500">cancel</span>
-                  <span class="flex-1">Vendidos</span>
-                  <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
-                </div>
-                <div data-value="En Servicio" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
-                  <span class="material-symbols-outlined text-[18px] text-amber-500">construction</span>
-                  <span class="flex-1">En Servicio</span>
-                  <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Table container -->
-        <div class="flex-1 overflow-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm relative">
-          <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
-            <thead class="bg-surface-container text-on-surface-variant sticky top-0 z-10 text-[11px] uppercase tracking-wider font-bold">
-              <tr>
-                <th class="px-4 py-3 border-b border-surface-variant">IMEI 1 / IMEI 2</th>
+<th class="px-4 py-3 border-b border-surface-variant">IMEI 1 / IMEI 2</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Equipo</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Estado</th>
                 <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Proveedor</th>
-                <th class="px-4 py-3 border-b border-surface-variant">Costo / Venta</th>
+                <th class="px-4 py-3 border-b border-surface-variant">Precios (Público / Revendedor)</th>
                 <th class="px-4 py-3 border-b border-surface-variant text-right">Acciones</th>
               </tr>
             </thead>
@@ -2389,19 +2364,32 @@
                     <input id="imei-proveedor" type="text" class="field-input border border-slate-200 focus:border-primary" placeholder="Proveedor del equipo" />
                   </div>
                 </div>
-                <div class="flex flex-row gap-4">
-                  <div class="flex-1 min-w-0">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div>
                     <label class="field-label">Costo <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
                     <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container px-3 gap-1 cursor-not-allowed">
-                      <span class="text-on-surface-variant font-bold shrink-0">$</span>
-                      <input id="imei-costo" type="text" readonly class="flex-1 py-2.5 bg-transparent outline-none font-bold text-on-surface-variant cursor-not-allowed" placeholder="0" />
+                      <span class="text-on-surface-variant font-bold shrink-0 text-xs">$</span>
+                      <input id="imei-costo" type="text" readonly class="flex-1 py-2 bg-transparent outline-none font-bold text-on-surface-variant cursor-not-allowed text-xs" placeholder="0" />
                     </div>
                   </div>
-                  <div class="flex-1 min-w-0">
-                    <label class="field-label">Venta <span class="text-[10px] text-on-surface-variant normal-case font-normal">(auto)</span></label>
+                  <div>
+                    <label class="field-label flex items-center justify-between">
+                      <span>Venta Público</span>
+                      <span class="text-[9px] px-1 py-0.2 rounded bg-primary/10 text-primary font-bold">+20%</span>
+                    </label>
                     <div class="flex items-center border border-surface-variant rounded-xl bg-surface-container px-3 gap-1 cursor-not-allowed">
-                      <span class="text-primary font-bold shrink-0">$</span>
-                      <input id="imei-venta" type="text" readonly class="flex-1 py-2.5 bg-transparent outline-none font-bold text-primary cursor-not-allowed" placeholder="0" />
+                      <span class="text-primary font-bold shrink-0 text-xs">$</span>
+                      <input id="imei-venta" type="text" readonly class="flex-1 py-2 bg-transparent outline-none font-bold text-primary cursor-not-allowed text-xs" placeholder="0" />
+                    </div>
+                  </div>
+                  <div>
+                    <label class="field-label flex items-center justify-between">
+                      <span class="text-amber-500 font-bold">Precio Revendedor</span>
+                      <span class="text-[9px] px-1 py-0.2 rounded bg-amber-500/10 text-amber-500 font-bold">+5%</span>
+                    </label>
+                    <div class="flex items-center border border-amber-500/40 rounded-xl bg-surface-container px-3 gap-1">
+                      <span class="text-amber-500 font-bold shrink-0 text-xs">$</span>
+                      <input id="imei-precio-revendedor" type="text" class="flex-1 py-2 bg-transparent outline-none font-bold text-amber-500 text-xs" placeholder="0" />
                     </div>
                   </div>
                 </div>

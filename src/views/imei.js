@@ -84,7 +84,7 @@ let _isProcessing = false;
 // Elements
 let elTable, elSearch, elFilter, elBtnNew;
 let elModal, elModalClose, elModalBackdrop, elForm, elBtnSave;
-let elImei1, elImei2, elNombre, elMarca, elProv, elCosto, elVenta, elEstado, elOriginal;
+let elImei1, elImei2, elNombre, elMarca, elProv, elCosto, elVenta, elPrecioRevendedor, elEstado, elOriginal;
 let elColor, elRam, elMemoria, elCondicion, elNotas;
 let elDropdownTrigger, elDropdownMenu, elDropdownSearch, elDropdownOptions, elDropdownSelectedText;
 
@@ -135,6 +135,7 @@ function bindElements() {
   elProv = document.getElementById("imei-proveedor");
   elCosto = document.getElementById("imei-costo");
   elVenta = document.getElementById("imei-venta");
+  elPrecioRevendedor = document.getElementById("imei-precio-revendedor");
   elEstado = document.getElementById("imei-estado");
   elOriginal = document.getElementById("imei-original");
   elColor = document.getElementById("imei-color");
@@ -449,10 +450,19 @@ function renderTable(lista) {
             ${e.estado || 'Desconocido'}
           </span>
         </td>
-        <td class="px-4 py-3 text-sm text-on-surface-variant hidden md:table-cell">${e.proveedor || '-'}</td>
         <td class="px-4 py-3">
-          <p class="text-[11px] text-on-surface-variant line-through hidden md:block">$${new Intl.NumberFormat("es-CO").format(parseInt(String(e.costo || 0).replace(/\D/g, "")) || 0)}</p>
-          <p class="text-sm font-black text-primary">$${new Intl.NumberFormat("es-CO").format(parseInt(String(e.venta || 0).replace(/\D/g, "")) || 0)}</p>
+          <div class="flex flex-col gap-1">
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm font-black text-primary" title="Precio Cliente Final">$${new Intl.NumberFormat("es-CO").format(parseInt(String(e.venta || 0).replace(/\D/g, "")) || 0)}</span>
+              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-primary/10 text-primary uppercase">Público</span>
+            </div>
+            ${(e.precio_revendedor && Number(e.precio_revendedor) > 0) ? `
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs font-black text-amber-600 dark:text-amber-400" title="Precio Especial Revendedor">$${new Intl.NumberFormat("es-CO").format(parseInt(String(e.precio_revendedor).replace(/\D/g, "")) || 0)}</span>
+              <span class="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 uppercase">Revendedor</span>
+            </div>` : ''}
+            <p class="text-[10px] text-on-surface-variant line-through hidden md:block">Costo: $${new Intl.NumberFormat("es-CO").format(parseInt(String(e.costo || 0).replace(/\D/g, "")) || 0)}</p>
+          </div>
         </td>
         <td class="px-4 py-3 text-right">
           <div class="flex items-center justify-end gap-1">
@@ -497,6 +507,7 @@ function setupEvents() {
 
   elCosto.addEventListener("input", formatNumberInput);
   elVenta.addEventListener("input", formatNumberInput);
+  if (elPrecioRevendedor) elPrecioRevendedor.addEventListener("input", formatNumberInput);
 
   // Toggle dropdown menu
   elDropdownTrigger.addEventListener("click", () => {
@@ -881,6 +892,7 @@ function openModal(obj) {
     elProv.value = obj.proveedor || "";
     elCosto.value = obj.costo ? new Intl.NumberFormat("es-CO").format(parseInt(String(obj.costo).replace(/\D/g, "")) || 0) : "";
     elVenta.value = obj.venta ? new Intl.NumberFormat("es-CO").format(parseInt(String(obj.venta).replace(/\D/g, "")) || 0) : "";
+    if (elPrecioRevendedor) elPrecioRevendedor.value = obj.precio_revendedor ? new Intl.NumberFormat("es-CO").format(parseInt(String(obj.precio_revendedor).replace(/\D/g, "")) || 0) : "";
     elEstado.value = obj.estado || "Disponible";
     if (elColor) elColor.value = obj.color || "";
     if (elRam) elRam.value = obj.ram || "";
@@ -914,6 +926,7 @@ function openModal(obj) {
     elProv.value = "";
     elCosto.value = "";
     elVenta.value = "";
+    if (elPrecioRevendedor) elPrecioRevendedor.value = "";
     elEstado.value = "Disponible";
     if (elColor) elColor.value = "";
     if (elRam) elRam.value = "";
@@ -973,6 +986,7 @@ async function saveEquipo() {
       proveedor: elProv.value.trim(),
       costo: parseInt(elCosto.value.replace(/\D/g, "")) || 0,
       venta: parseInt(elVenta.value.replace(/\D/g, "")) || 0,
+      precio_revendedor: elPrecioRevendedor ? (parseInt(elPrecioRevendedor.value.replace(/\D/g, "")) || 0) : 0,
       estado: elEstado.value,
       color: elColor ? elColor.value.trim() : "",
       ram: elRam ? elRam.value.trim() : "",

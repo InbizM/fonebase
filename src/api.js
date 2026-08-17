@@ -832,20 +832,21 @@ export const getEquipos = async () => {
   try { await queryTurso("ALTER TABLE equipos ADD COLUMN condicion TEXT DEFAULT 'Nuevo'"); } catch (_) {}
   try { await queryTurso("ALTER TABLE equipos ADD COLUMN notas TEXT DEFAULT ''"); } catch (_) {}
   try { await queryTurso("ALTER TABLE equipos ADD COLUMN id_producto TEXT DEFAULT ''"); } catch (_) {}
+  try { await queryTurso("ALTER TABLE equipos ADD COLUMN precio_revendedor REAL DEFAULT 0"); } catch (_) {}
   return (await queryTurso("SELECT * FROM equipos ORDER BY fecha_ingreso DESC, imei1 DESC"))[0] || [];
 };
 export const crearEquipo = (d) => queryTurso({ 
-  sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
-  args: mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']) 
+  sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, precio_revendedor, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
+  args: mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.precio_revendedor || d.reventa || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']) 
 });
 export const actualizarEquipo = (id, d) => queryTurso({ 
-  sql: "UPDATE equipos SET imei1=?, imei2=?, id_producto=?, marca=?, nombre=?, proveedor=?, costo=?, venta=?, estado=?, fecha_ingreso=?, color=?, ram=?, memoria=?, condicion=?, notas=? WHERE imei1=?", 
-  args: [...mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']), { type: "text", value: id }] 
+  sql: "UPDATE equipos SET imei1=?, imei2=?, id_producto=?, marca=?, nombre=?, proveedor=?, costo=?, venta=?, precio_revendedor=?, estado=?, fecha_ingreso=?, color=?, ram=?, memoria=?, condicion=?, notas=? WHERE imei1=?", 
+  args: [...mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.precio_revendedor || d.reventa || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']), { type: "text", value: id }] 
 });
 export const eliminarEquipo = (id) => queryTurso({ sql: "DELETE FROM equipos WHERE imei1 = ?", args: [{ type: "text", value: id }] });
 export const crearEquiposLote = (list) => {
   const requests = list.map(d => ({
-    sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+    sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, precio_revendedor, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
     args: mapArgs([
       d.imei1,
       d.imei2 || '',
@@ -855,6 +856,7 @@ export const crearEquiposLote = (list) => {
       d.proveedor || '',
       d.costo || 0,
       d.venta || 0,
+      d.precio_revendedor || d.reventa || 0,
       d.estado || 'Disponible',
       d.fecha_ingreso || new Date().toISOString(),
       d.color || '',
