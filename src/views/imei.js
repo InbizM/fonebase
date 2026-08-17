@@ -105,16 +105,14 @@ export function initIMEI() {
     window.viewReloaders = window.viewReloaders || {};
     window.viewReloaders.imei = async () => {
       await loadData();
-      renderTable(_equipos);
     };
 
     if (!_isLoaded) {
-      await loadData();
       setupEvents();
       _isLoaded = true;
     }
     
-    renderTable(_equipos);
+    await loadData();
   };
 }
 
@@ -151,11 +149,10 @@ function bindElements() {
   elDropdownOptions = document.getElementById("imei-dropdown-options");
   elDropdownSelectedText = document.getElementById("imei-dropdown-selected-text");
 
-  elBulkBtn = document.getElementById("imei-bulk-btn");
+  // Bulk Upload Elements
   elBulkModal = document.getElementById("imei-bulk-modal");
   elBulkModalClose = document.getElementById("imei-bulk-modal-close");
   elBulkModalBackdrop = document.getElementById("imei-bulk-modal-backdrop");
-  elBulkCancelBtn = document.getElementById("imei-bulk-cancel-btn");
   elBulkSaveBtn = document.getElementById("imei-bulk-save-btn");
   elBulkFile = document.getElementById("imei-bulk-file");
   elBulkCardContent = document.getElementById("imei-bulk-card-content");
@@ -174,7 +171,9 @@ function bindElements() {
 
 async function loadData() {
   try {
-    elTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-on-surface-variant">Cargando equipos...</td></tr>`;
+    if (elTable) {
+      elTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-on-surface-variant">Cargando equipos...</td></tr>`;
+    }
     _equipos = await getEquipos();
     
     // Load ALL inventory products for selection
@@ -182,10 +181,11 @@ async function loadData() {
     
     renderDropdownOptions();
     renderBulkDropdownOptions();
-
+    filterData();
   } catch (err) {
     showToast("Error cargando equipos: " + err.message, "error");
     _equipos = [];
+    if (elTable) renderTable([]);
   }
 }
 
