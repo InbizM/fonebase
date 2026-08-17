@@ -172,6 +172,7 @@ function bindElements() {
 
 async function loadData() {
   try {
+    bindElements();
     if (elTable) {
       elTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-on-surface-variant">Cargando equipos...</td></tr>`;
     }
@@ -239,12 +240,14 @@ function renderDropdownOptions(filterText = "") {
     }).join("");
   }
 
-  elDropdownOptions.innerHTML = html;
+  if (elDropdownOptions) {
+    elDropdownOptions.innerHTML = html;
+  }
 }
 
 window.imeiSelectProduct = (productId) => {
   if (productId === "__NEW_PRODUCT__") {
-    elDropdownMenu.classList.add("hidden");
+    if (elDropdownMenu) elDropdownMenu.classList.add("hidden");
     // Open inventory modal to create new product catalog item
     if (window.inventoryView && window.inventoryView.openNuevo) {
       window.inventoryView.openNuevo(false, "Celulares");
@@ -255,27 +258,35 @@ window.imeiSelectProduct = (productId) => {
   const p = _inventory.find(x => x.id === productId);
   if (!p) return;
 
-  elNombre.value = p.nombre;
-  elNombre.dataset.id = p.id;
+  if (elNombre) {
+    elNombre.value = p.nombre;
+    elNombre.dataset.id = p.id;
+  }
 
   const imgHtml = p.imagen 
     ? `<img src="${p.imagen}" class="w-6 h-6 rounded-md object-cover bg-slate-50" referrerpolicy="no-referrer">`
     : `<span class="material-symbols-outlined text-[16px] text-slate-400">phone_android</span>`;
 
-  elDropdownSelectedText.innerHTML = `
-    <div class="flex items-center gap-2">
-      ${imgHtml}
-      <span class="font-black text-slate-800 text-xs">${p.nombre}</span>
-      <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">${p.marca || 'Genérico'}</span>
-    </div>
-  `;
-  elDropdownSelectedText.classList.remove("text-slate-500");
+  if (elDropdownSelectedText) {
+    elDropdownSelectedText.innerHTML = `
+      <div class="flex items-center gap-2">
+        ${imgHtml}
+        <span class="font-black text-slate-800 text-xs">${p.nombre}</span>
+        <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">${p.marca || 'Genérico'}</span>
+      </div>
+    `;
+    elDropdownSelectedText.classList.remove("text-slate-500");
+  }
 
-  elMarca.value = p.marca || "";
-  elCosto.value = new Intl.NumberFormat("es-CO").format(p.costo || 0);
-  elVenta.value = new Intl.NumberFormat("es-CO").format(p.precioVenta || 0);
+  if (elMarca) elMarca.value = p.marca || "";
+  if (elCosto) elCosto.value = new Intl.NumberFormat("es-CO").format(p.costo || 0);
+  if (elVenta) elVenta.value = new Intl.NumberFormat("es-CO").format(p.precioVenta || 0);
+  if (elPrecioRevendedor && p.costo) {
+    const rev = Math.ceil(Math.max(Number(p.costo) * 1.05, Number(p.costo) + 20000) / 1000) * 1000;
+    elPrecioRevendedor.value = new Intl.NumberFormat("es-CO").format(rev);
+  }
 
-  elDropdownMenu.classList.add("hidden");
+  if (elDropdownMenu) elDropdownMenu.classList.add("hidden");
 };
 
 function renderBulkDropdownOptions(filterText = "") {
@@ -312,45 +323,52 @@ function renderBulkDropdownOptions(filterText = "") {
       `;
     }).join("");
   }
-  elBulkDropdownOptions.innerHTML = html;
+  if (elBulkDropdownOptions) {
+    elBulkDropdownOptions.innerHTML = html;
+  }
 }
 
 window.imeiSelectBulkProduct = (productId) => {
   const p = _inventory.find(x => x.id === productId);
   if (!p) return;
 
-  elBulkNombre.value = p.nombre;
-  elBulkNombre.dataset.id = p.id;
-  elBulkNombre.dataset.marca = p.marca || "";
-  elBulkNombre.dataset.costo = p.costo || 0;
-  elBulkNombre.dataset.venta = p.precioVenta || 0;
+  if (elBulkNombre) {
+    elBulkNombre.value = p.nombre;
+    elBulkNombre.dataset.id = p.id;
+    elBulkNombre.dataset.marca = p.marca || "";
+    elBulkNombre.dataset.costo = p.costo || 0;
+    elBulkNombre.dataset.venta = p.precioVenta || 0;
+  }
 
   const imgHtml = p.imagen 
     ? `<img src="${p.imagen}" class="w-6 h-6 rounded-md object-cover bg-slate-50" referrerpolicy="no-referrer">`
     : `<span class="material-symbols-outlined text-[16px] text-slate-400">phone_android</span>`;
 
-  elBulkDropdownSelectedText.innerHTML = `
-    <div class="flex items-center gap-2">
-      ${imgHtml}
-      <span class="font-black text-slate-800 text-xs">${p.nombre}</span>
-      <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">${p.marca || 'Genérico'}</span>
-    </div>
-  `;
-  elBulkDropdownSelectedText.classList.remove("text-slate-500");
-  elBulkDropdownMenu.classList.add("hidden");
+  if (elBulkDropdownSelectedText) {
+    elBulkDropdownSelectedText.innerHTML = `
+      <div class="flex items-center gap-2">
+        ${imgHtml}
+        <span class="font-black text-slate-800 text-xs">${p.nombre}</span>
+        <span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-bold uppercase">${p.marca || 'Genérico'}</span>
+      </div>
+    `;
+    elBulkDropdownSelectedText.classList.remove("text-slate-500");
+  }
+  if (elBulkDropdownMenu) elBulkDropdownMenu.classList.add("hidden");
   
   validateBulkFormReady();
 };
 
 function renderBulkImeisList() {
+  if (!elBulkList) return;
   if (_scannedImeis.length === 0) {
     elBulkList.innerHTML = `<p class="p-4 text-center text-xs opacity-50 italic">No hay IMEIs en la lista. Carga una foto o agrégalos manualmente.</p>`;
-    elBulkCount.textContent = "0";
+    if (elBulkCount) elBulkCount.textContent = "0";
     validateBulkFormReady();
     return;
   }
   
-  elBulkCount.textContent = _scannedImeis.length;
+  if (elBulkCount) elBulkCount.textContent = _scannedImeis.length;
   
   elBulkList.innerHTML = _scannedImeis.map((item, idx) => `
     <div class="imei-bulk-row bg-white p-3 rounded-xl border border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 shadow-sm transition-all hover:border-slate-300" data-index="${idx}">
