@@ -2274,7 +2274,32 @@
                   <span class="flex-1">Todos los Estados</span>
                   <span class="material-symbols-outlined text-[16px] text-primary check-icon">check_circle</span>
                 </div>
-<th class="px-4 py-3 border-b border-surface-variant">IMEI 1 / IMEI 2</th>
+                <div data-value="Disponible" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
+                  <span class="material-symbols-outlined text-[18px] text-green-500">check_circle</span>
+                  <span class="flex-1">Disponibles</span>
+                  <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                </div>
+                <div data-value="Vendido" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
+                  <span class="material-symbols-outlined text-[18px] text-red-500">cancel</span>
+                  <span class="flex-1">Vendidos</span>
+                  <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                </div>
+                <div data-value="En Servicio" class="custom-option px-3 py-2 text-sm font-semibold text-on-surface hover:bg-surface-variant/20 flex items-center gap-2 cursor-pointer transition-colors">
+                  <span class="material-symbols-outlined text-[18px] text-amber-500">construction</span>
+                  <span class="flex-1">En Servicio</span>
+                  <span class="material-symbols-outlined text-[16px] text-primary check-icon hidden">check_circle</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Table container -->
+        <div class="flex-1 overflow-auto bg-surface-container-lowest border border-surface-variant rounded-2xl shadow-sm relative">
+          <table class="responsive-table w-full text-left border-collapse text-sm min-w-[800px]">
+            <thead class="bg-surface-container text-on-surface-variant sticky top-0 z-10 text-[11px] uppercase tracking-wider font-bold">
+              <tr>
+                <th class="px-4 py-3 border-b border-surface-variant">IMEI 1 / IMEI 2</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Equipo</th>
                 <th class="px-4 py-3 border-b border-surface-variant">Estado</th>
                 <th class="px-4 py-3 border-b border-surface-variant hidden md:table-cell">Proveedor</th>
