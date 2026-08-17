@@ -469,20 +469,21 @@ function renderTable(lista) {
   }).join("");
 }
 
+function filterData() {
+  const q = elSearch ? elSearch.value.toLowerCase().trim() : "";
+  const st = elFilter ? elFilter.value : "";
+  
+  const filtered = _equipos.filter(e => {
+    const matchQ = (e.imei1 || "").toLowerCase().includes(q) ||
+                   (e.imei2 || "").toLowerCase().includes(q) ||
+                   (e.nombre || "").toLowerCase().includes(q);
+    const matchS = st ? e.estado === st : true;
+    return matchQ && matchS;
+  });
+  renderTable(filtered);
+}
+
 function setupEvents() {
-  const filterData = () => {
-    const q = elSearch.value.toLowerCase().trim();
-    const st = elFilter.value;
-    
-    const filtered = _equipos.filter(e => {
-      const matchQ = (e.imei1 || "").toLowerCase().includes(q) ||
-                     (e.imei2 || "").toLowerCase().includes(q) ||
-                     (e.nombre || "").toLowerCase().includes(q);
-      const matchS = st ? e.estado === st : true;
-      return matchQ && matchS;
-    });
-    renderTable(filtered);
-  };
 
   // Helper to format numbers
   const formatNumberInput = (e) => {
