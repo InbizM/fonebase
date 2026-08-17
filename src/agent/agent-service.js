@@ -143,8 +143,11 @@ REGISTRO POR IMAGEN Y DATOS FALTANTES:
 12. Crear préstamo o adelanto a empleado (nómina):
 {"response":"✅ Registré un préstamo de $100.000 para el empleado Johan.","action":{"type":"crear_prestamo","empleado":"Johan","monto":100000,"tipo_prestamo":"Dinero","notas":"Préstamo solicitado por el empleado"}}
 
-13. Registrar múltiples productos de imágenes o fotos:
-{"response":"Identifiqué 3 celulares en las imágenes:\n- **Redmi 15C** (128GB ROM / 8GB RAM, Azul)\n- **Tecno Pova Curve 2** (128GB ROM / 8GB RAM, Negro)\n- **Tecno Spark 50** (128GB ROM)\n\nPor favor completa los costos y precios de venta en el asistente interactivo:","actions":[{"type":"crear_producto","imagen_index":0,"nombre":"Redmi 15C","marca":"Xiaomi","ram":"8GB","memoria":"128GB","color":"Azul","costo":0,"precioVenta":0},{"type":"crear_producto","imagen_index":1,"nombre":"Tecno Pova Curve 2","marca":"Tecno","ram":"8GB","memoria":"128GB","color":"Negro","costo":0,"precioVenta":0},{"type":"crear_producto","imagen_index":2,"nombre":"Tecno Spark 50","marca":"Tecno","ram":"","memoria":"128GB","color":"","costo":0,"precioVenta":0}]}
+13. Registrar múltiples celulares / IMEIs con precio indicado por el usuario (ej: "registra estos imei todo tiene un precio de 330000"):
+{"response":"✅ Registré con éxito los 2 equipos Tecno KN3 a costo $330.000 y venta $396.000.","actions":[{"type":"crear_equipo","imagen_index":0,"nombre":"Tecno KN3","marca":"Tecno","imei1":"356251200774692","imei2":"356251207450635","color":"In Black","ram":"4GB","memoria":"128GB","costo":330000,"venta":396000,"estado":"Disponible"},{"type":"crear_equipo","imagen_index":1,"nombre":"Tecno KN3","marca":"Tecno","imei1":"356251200227980","imei2":"356251209337434","color":"Titanium Grey","ram":"4GB","memoria":"128GB","costo":330000,"venta":396000,"estado":"Disponible"}]}
+
+14. Registrar múltiples productos de imágenes sin precio (para que el usuario complete en el asistente):
+{"response":"Identifiqué 2 celulares en las imágenes:\n- **Redmi 15C** (128GB ROM / 8GB RAM, Azul)\n- **Tecno Pova Curve 2** (128GB ROM / 8GB RAM, Negro)\n\nPor favor completa los costos en el asistente:","actions":[{"type":"crear_equipo","imagen_index":0,"nombre":"Redmi 15C","marca":"Xiaomi","ram":"8GB","memoria":"128GB","color":"Azul","costo":0,"venta":0},{"type":"crear_equipo","imagen_index":1,"nombre":"Tecno Pova Curve 2","marca":"Tecno","ram":"8GB","memoria":"128GB","color":"Negro","costo":0,"venta":0}]}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📌 RESPUESTAS DE CONSULTA (action = null):
@@ -158,6 +161,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 - Responde ÚNICAMENTE con JSON válido parseable con JSON.parse().
 - NO uses bloques markdown (\`\`\`json).
 - El campo "response" es OBLIGATORIO y debe ser ESPECÍFICO con los datos registrados.
+- SIEMPRE incluye el array "actions" con CADA uno de los celulares/productos a registrar. Sin "actions", los productos NO se guardan en la base de datos.
 - El sistema SÍ soporta y asocia automáticamente las fotos/imágenes que adjunte el usuario. NO le digas al usuario que el sistema no soporta imágenes.
 - Organiza la respuesta del campo "response" usando Markdown legible (usa listas con viñetas "- ", negritas "**", títulos, etc.).
 - Si no entiendes la petición, responde: {"response":"No entendí tu instrucción. Puedo registrar equipos, productos, clientes, gastos, servicios técnicos, tareas, metas, créditos, reventas y préstamos a empleados. ¿Qué necesitas?","action":null}
@@ -262,6 +266,64 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
   }
 }
 
+function extractEquiposFromTextFallback(text) {
+  if (!text || typeof text !== "string") return [];
+  const lines = text.split("\n");
+  const extracted = [];
+
+  let globalCosto = 0;
+  let globalVenta = 0;
+  const costoMatch = text.match(/costo\s*(?:de)?\s*\$?([\d.,]+)/i);
+  if (costoMatch) globalCosto = Number(costoMatch[1].replace(/\D/g, "")) || 0;
+
+  const ventaMatch = text.match(/venta\s*(?:sugerido|de)?\s*\$?([\d.,]+)/i);
+  if (ventaMatch) globalVenta = Number(ventaMatch[1].replace(/\D/g, "")) || 0;
+
+  if (globalCosto > 0 && globalVenta === 0) {
+    globalVenta = Math.ceil((globalCosto * 1.20) / 1000) * 1000;
+  }
+
+  const modelMatch = text.match(/equipos?\s+([A-Za-z0-9\s]+?)(?:\s*\(|\s*con|\s*,|\s*\.|\s*a\s+costo)/i);
+  const globalModel = modelMatch ? modelMatch[1].trim() : "Celular";
+
+  const romMatch = text.match(/(\d+\s*GB|\d+\s*TB)\s*(?:ROM|almacenamiento)?/i);
+  const ramMatch = text.match(/(\d+\s*GB)\s*RAM/i);
+
+  lines.forEach((line, idx) => {
+    const imei1Match = line.match(/IMEI(?:1)?:\s*(\d{14,16})/i);
+    if (imei1Match) {
+      const imei1 = imei1Match[1];
+      const imei2Match = line.match(/IMEI2:\s*(\d{14,16})/i);
+      const imei2 = imei2Match ? imei2Match[1] : "";
+
+      const colorMatch = line.match(/color\s+([A-Za-z0-9\s]+?)(?:,|\s*IMEI|\s*$)/i);
+      const color = colorMatch ? colorMatch[1].trim() : "";
+
+      const specificModelMatch = line.match(/(?:Equipo\s*\d+.*?:|Imagen\s*\d+.*?:)\s*([A-Za-z0-9\s]+?)(?:,|\s*color|\s*IMEI)/i);
+      const nombre = specificModelMatch ? specificModelMatch[1].trim() : globalModel;
+      const marca = nombre.split(" ")[0] || "Universal";
+
+      extracted.push({
+        type: "crear_equipo",
+        imagen_index: extracted.length,
+        nombre: nombre || "Celular",
+        marca: marca,
+        imei1: imei1,
+        imei2: imei2,
+        color: color,
+        ram: ramMatch ? ramMatch[1] : "",
+        memoria: romMatch ? romMatch[1] : "",
+        costo: globalCosto,
+        venta: globalVenta,
+        estado: "Disponible",
+        condicion: "Nuevo"
+      });
+    }
+  });
+
+  return extracted;
+}
+
 // ── REPARADOR Y EXTRACTOR ROBUSTO DE JSON ──
 function cleanAndParseAgentJSON(raw) {
   if (!raw) return null;
@@ -281,6 +343,13 @@ function cleanAndParseAgentJSON(raw) {
         parsed.response = (parsed.actions || parsed.action)
           ? "✅ Procesé las acciones solicitadas."
           : "⚠️ Respuesta vacía del modelo de IA.";
+      }
+      // Si no trajo actions pero el texto tiene IMEIs listados, extraerlos
+      if ((!parsed.actions || parsed.actions.length === 0) && !parsed.action) {
+        const extracted = extractEquiposFromTextFallback(parsed.response);
+        if (extracted.length > 0) {
+          parsed.actions = extracted;
+        }
       }
       return parsed;
     }
@@ -313,6 +382,13 @@ function cleanAndParseAgentJSON(raw) {
         parsed.response = (parsed.actions || parsed.action)
           ? "✅ Procesé las acciones solicitadas."
           : "⚠️ Respuesta vacía del modelo de IA.";
+      }
+      // Si no trajo actions pero el texto tiene IMEIs listados, extraerlos
+      if ((!parsed.actions || parsed.actions.length === 0) && !parsed.action) {
+        const extracted = extractEquiposFromTextFallback(parsed.response);
+        if (extracted.length > 0) {
+          parsed.actions = extracted;
+        }
       }
       return parsed;
     }
@@ -347,6 +423,14 @@ function cleanAndParseAgentJSON(raw) {
       else obj[k] = Number(v);
     }
     actionsList.push(obj);
+  }
+
+  // Si no se extrajeron acciones, intentar desde el texto
+  if (actionsList.length === 0 && responseText) {
+    const extracted = extractEquiposFromTextFallback(responseText);
+    if (extracted.length > 0) {
+      actionsList.push(...extracted);
+    }
   }
 
   if (actionsList.length > 0 || responseText) {
