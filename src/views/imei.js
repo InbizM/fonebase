@@ -433,15 +433,18 @@ window.__onProductCreated = async (product) => {
 };
 
 function renderTable(lista) {
-  if (lista.length === 0) {
-    elTable.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-on-surface-variant">No se encontraron equipos</td></tr>`;
+  const table = elTable || document.getElementById("imei-table-body");
+  if (!table) return;
+
+  if (!Array.isArray(lista) || lista.length === 0) {
+    table.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-on-surface-variant">No se encontraron equipos</td></tr>`;
     return;
   }
 
   const user = JSON.parse(localStorage.getItem("adminpro_user") || "{}");
   const isAdmin = user.rol === "Administrador";
 
-  elTable.innerHTML = lista.map(e => {
+  table.innerHTML = lista.map(e => {
     const isVendido = e.estado === "Vendido";
     const statusColor = e.estado === "Disponible" ? "bg-green-50 text-green-700 border border-green-100" 
                       : e.estado === "Vendido" ? "bg-slate-50 text-slate-500 border border-slate-100" 
@@ -523,33 +526,39 @@ function setupEvents() {
     e.target.value = new Intl.NumberFormat("es-CO").format(parseInt(val, 10));
   };
 
-  elCosto.addEventListener("input", formatNumberInput);
-  elVenta.addEventListener("input", formatNumberInput);
+  if (elCosto) elCosto.addEventListener("input", formatNumberInput);
+  if (elVenta) elVenta.addEventListener("input", formatNumberInput);
   if (elPrecioRevendedor) elPrecioRevendedor.addEventListener("input", formatNumberInput);
 
   // Toggle dropdown menu
-  elDropdownTrigger.addEventListener("click", () => {
-    elDropdownMenu.classList.toggle("hidden");
-    if (!elDropdownMenu.classList.contains("hidden")) {
-      elDropdownSearch.value = "";
-      elDropdownSearch.focus();
-      renderDropdownOptions();
-    }
-  });
+  if (elDropdownTrigger && elDropdownMenu) {
+    elDropdownTrigger.addEventListener("click", () => {
+      elDropdownMenu.classList.toggle("hidden");
+      if (!elDropdownMenu.classList.contains("hidden")) {
+        if (elDropdownSearch) {
+          elDropdownSearch.value = "";
+          elDropdownSearch.focus();
+        }
+        renderDropdownOptions();
+      }
+    });
+  }
 
   // Search filter inside dropdown
-  elDropdownSearch.addEventListener("input", (e) => {
-    renderDropdownOptions(e.target.value);
-  });
+  if (elDropdownSearch) {
+    elDropdownSearch.addEventListener("input", (e) => {
+      renderDropdownOptions(e.target.value);
+    });
+  }
 
   // Close dropdown when clicking outside
   document.addEventListener("click", (e) => {
-    if (!elDropdownTrigger.contains(e.target) && !elDropdownMenu.contains(e.target)) {
+    if (elDropdownTrigger && elDropdownMenu && !elDropdownTrigger.contains(e.target) && !elDropdownMenu.contains(e.target)) {
       elDropdownMenu.classList.add("hidden");
     }
   });
 
-  elSearch.addEventListener("input", filterData);
+  if (elSearch) elSearch.addEventListener("input", filterData);
   if (window.setupCustomSelect) {
     window.setupCustomSelect("imei-filter-status-container", "imei-filter-status", filterData);
     window.setupCustomSelect("imei-estado-container", "imei-estado");
