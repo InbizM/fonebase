@@ -676,12 +676,63 @@ export async function ejecutarAccionIA(actionOrActions, base64Image = null, appe
     return originalAppend(role, text, html, ...rest);
   };
 
-  // Si hay productos o celulares detectados que requieren definir costo/precio de venta o son lote:
-  const productActions = actionsList.filter(a => a.type === 'crear_producto' || a.type === 'crear_equipo');
-  const needsPricing = productActions.some(a => !a.costo || Number(a.costo) === 0 || (!a.precioVenta && !a.venta) || (Number(a.precioVenta) === 0 && Number(a.venta) === 0));
+  // Normalizar precios y costos si vienen definidos en el mensaje o en la acción
+  actionsList.forEach(act => {
+    if (act.type === 'crear_producto' || act.type === 'crear_equipo') {
+      const c = Number(act.costo) || 0;
+      const v = Number(act.venta || act.precioVenta || act.precio) || 0;
 
-  if (productActions.length > 0 && (needsPricing || actionsList.length > 1)) {
+      if (c > 0 && v === 0) {
+        act.costo = c;
+        act.venta = Math.ceil((c * 1.20) / 1000) * 1000;
+        act.precioVenta = act.venta;
+        act.precioRevendedor = Math.ceil(Math.max(c * 1.05, c + 20000) / 1000) * 1000;
+      } else if (v > 0 && c === 0) {
+        // Si el usuario envió un precio en el texto (ej: "precio de 330000"), ese es el costo de compra:
+        act.costo = v;
+        act.venta = Math.ceil((v * 1.20) / 1000) * 1000;
+        act.precioVenta = act.venta;
+        act.precioRevendedor = Math.ceil(Math.max(v * 1.05, v + 20000) / 1000) * 1000;
+      } else if (c > 0 && v > 0) {
+        act.costo = c;
+        act.venta = v;
+        act.precioVenta = v;
+        if (!act.precioRevendedor) {
+          act.precioRevendedor = Math.ceil(Math.max(c * 1.05, c + 20000) / 1000) * 1000;
+        }
+      }
+    }
+  });
+
+  // Si hay productos o celulares detectados que NO tienen costo (costo === 0), abrir Wizard
+  const productActions = actionsList.filter(a => a.type === 'crear_producto' || a.type === 'crear_equipo');
+  const needsPricing = productActions.some(a => !a.costo || Number(a.costo) === 0);
+
+  if (productActions.length > 0 && needsPricing) {
     renderMultiProductWizard(actionsList, appendChatMessage);
+    return;
+  }
+
+  // Si ya tienen costo y son múltiples productos, ejecutarlos directamente y mostrar tarjeta verde de éxito
+  if (actionsList.length > 1 && productActions.length > 1) {
+    let savedCount = 0;
+    for (const act of actionsList) {
+      await ejecutarAccionIndividual(act, appendChatMessage);
+      savedCount++;
+    }
+    const costSample = productActions[0]?.costo ? Number(productActions[0].costo).toLocaleString('es-CO') : '';
+    const saleSample = productActions[0]?.venta ? Number(productActions[0].venta).toLocaleString('es-CO') : '';
+    appendChatMessage("ai", null, `
+      <div class="bg-slate-900/95 text-white p-4 rounded-2xl border border-emerald-500/50 shadow-2xl space-y-2">
+        <div class="flex items-center gap-2.5 text-emerald-400">
+          <span class="material-symbols-outlined text-[26px]">check_circle</span>
+          <div>
+            <h4 class="text-sm font-black text-white">¡${savedCount} equipos guardados con éxito en la base de datos!</h4>
+            <p class="text-[11px] text-emerald-300/80 font-medium">Costo unitario: $${costSample} | Precio venta calculado (+20%): $${saleSample}</p>
+          </div>
+        </div>
+      </div>
+    `, null, true);
     return;
   }
 
