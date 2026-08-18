@@ -239,7 +239,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 
   try {
     const keyPreview = openRouterApiKey ? openRouterApiKey.slice(0, 12) + "..." : "(vacía)";
-    console.log(`[IA] → OpenRouter | Modelo: google/gemini-2.5-flash | Key: ${keyPreview}`);
+    console.log(`[IA] → OpenRouter | Modelo: qwen/qwen3.7-flash | Key: ${keyPreview}`);
     console.log(`[IA] → Instrucción: "${instruccion?.slice(0, 100)}"`);
 
     const response = await fetch(openRouterUrl, {
@@ -251,7 +251,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
         "X-Title": "FoneBase IA"
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "qwen/qwen3.7-flash",
         messages: [
           { role: "system", content: systemPrompt },
           ...historyMessages,
