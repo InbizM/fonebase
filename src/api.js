@@ -835,15 +835,39 @@ export const getEquipos = async () => {
   const res = await queryTurso("SELECT * FROM equipos ORDER BY fecha_ingreso DESC, imei1 DESC");
   return (res && res[0]) || [];
 };
-export const crearEquipo = (d) => queryTurso({ 
-  sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, precio_revendedor, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
-  args: mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.precio_revendedor || d.reventa || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']) 
-});
-export const actualizarEquipo = (id, d) => queryTurso({ 
-  sql: "UPDATE equipos SET imei1=?, imei2=?, id_producto=?, marca=?, nombre=?, proveedor=?, costo=?, venta=?, precio_revendedor=?, estado=?, fecha_ingreso=?, color=?, ram=?, memoria=?, condicion=?, notas=? WHERE imei1=?", 
-  args: [...mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.precio_revendedor || d.reventa || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']), { type: "text", value: id }] 
-});
-export const eliminarEquipo = (id) => queryTurso({ sql: "DELETE FROM equipos WHERE imei1 = ?", args: [{ type: "text", value: id }] });
+export const crearEquipo = (d) => {
+  const insertStmt = { 
+    sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, precio_revendedor, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", 
+    args: mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.precio_revendedor || d.reventa || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']) 
+  };
+  const syncStmt = d.id_producto ? {
+    sql: "UPDATE inventario SET stock_actual = (SELECT COUNT(*) FROM equipos WHERE id_producto = ? AND estado = 'Disponible') WHERE id = ?",
+    args: [{ type: "text", value: d.id_producto }, { type: "text", value: d.id_producto }]
+  } : null;
+  return syncStmt ? queryTurso([insertStmt, syncStmt]) : queryTurso(insertStmt);
+};
+
+export const actualizarEquipo = (id, d) => {
+  const updateStmt = { 
+    sql: "UPDATE equipos SET imei1=?, imei2=?, id_producto=?, marca=?, nombre=?, proveedor=?, costo=?, venta=?, precio_revendedor=?, estado=?, fecha_ingreso=?, color=?, ram=?, memoria=?, condicion=?, notas=? WHERE imei1=?", 
+    args: [...mapArgs([d.imei1, d.imei2 || '', d.id_producto || '', d.marca || '', d.nombre || '', d.proveedor || '', d.costo || 0, d.venta || 0, d.precio_revendedor || d.reventa || 0, d.estado || 'Disponible', d.fecha_ingreso || new Date().toISOString(), d.color || '', d.ram || '', d.memoria || '', d.condicion || 'Nuevo', d.notas || '']), { type: "text", value: id }] 
+  };
+  const syncStmt = d.id_producto ? {
+    sql: "UPDATE inventario SET stock_actual = (SELECT COUNT(*) FROM equipos WHERE id_producto = ? AND estado = 'Disponible') WHERE id = ?",
+    args: [{ type: "text", value: d.id_producto }, { type: "text", value: d.id_producto }]
+  } : null;
+  return syncStmt ? queryTurso([updateStmt, syncStmt]) : queryTurso(updateStmt);
+};
+
+export const eliminarEquipo = (id, id_producto = null) => {
+  const delStmt = { sql: "DELETE FROM equipos WHERE imei1 = ?", args: [{ type: "text", value: id }] };
+  const syncStmt = {
+    sql: "UPDATE inventario SET stock_actual = (SELECT COUNT(*) FROM equipos WHERE equipos.id_producto = inventario.id AND equipos.estado = 'Disponible') WHERE id IN (SELECT DISTINCT id_producto FROM equipos UNION SELECT ? WHERE ? IS NOT NULL AND ? != '')",
+    args: [{ type: "text", value: id_producto || "" }, { type: "text", value: id_producto || "" }, { type: "text", value: id_producto || "" }]
+  };
+  return queryTurso([delStmt, syncStmt]);
+};
+
 export const crearEquiposLote = (list) => {
   const requests = list.map(d => ({
     sql: "INSERT INTO equipos (imei1, imei2, id_producto, marca, nombre, proveedor, costo, venta, precio_revendedor, estado, fecha_ingreso, color, ram, memoria, condicion, notas) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -866,6 +890,15 @@ export const crearEquiposLote = (list) => {
       d.notas || ''
     ])
   }));
+
+  const prodIds = [...new Set(list.map(d => d.id_producto).filter(Boolean))];
+  prodIds.forEach(pid => {
+    requests.push({
+      sql: "UPDATE inventario SET stock_actual = (SELECT COUNT(*) FROM equipos WHERE id_producto = ? AND estado = 'Disponible') WHERE id = ?",
+      args: [{ type: "text", value: pid }, { type: "text", value: pid }]
+    });
+  });
+
   return queryTurso(requests);
 };
 
