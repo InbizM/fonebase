@@ -341,27 +341,6 @@ function buildWizardStepHtml(wizardId, stepIndex) {
           `}
         </div>
       </div>
-          ${item.type === 'crear_equipo' ? `
-          <div>
-            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">IMEI Principal (15 dígitos)</label>
-            <input type="text" data-field="imei1" placeholder="Ej: 356251200774692" value="${item.imei1 || ''}" maxlength="15" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
-          </div>
-          <div>
-            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color</label>
-            <input type="text" data-field="color" placeholder="Ej: Azul, Negro" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
-          </div>
-          ` : `
-          <div>
-            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Stock Inicial</label>
-            <input type="number" data-field="stockActual" placeholder="1" value="${item.stockActual || 1}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white font-mono outline-none focus:border-primary" />
-          </div>
-          <div>
-            <label class="block text-[10px] font-black uppercase tracking-wider text-slate-400 mb-1">Color / Versión</label>
-            <input type="text" data-field="color" placeholder="Ej: Azul, 128GB" value="${item.color || ''}" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3 py-1.5 text-xs sm:text-sm text-white outline-none focus:border-primary" />
-          </div>
-          `}
-        </div>
-      </div>
 
       <!-- Navigation & Action Buttons -->
       <div class="flex items-center ${isSingle ? 'justify-end' : 'justify-between'} pt-2 border-t border-slate-800 gap-2">
