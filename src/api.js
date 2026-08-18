@@ -203,7 +203,12 @@ export async function queryTurso(sqls, bypassQueue = false) {
     const config = getTursoConfig();
     const res = await fetch(config.url, { method: "POST", headers: { "Authorization": `Bearer ${config.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ requests }) });
     const data = await res.json();
-    if (data.error) throw new Error(data.error.message);
+    if (data.error) throw new Error(data.error.message || String(data.error));
+    for (const r of (data.results || [])) {
+      if (r.type === "error") {
+        throw new Error((r.error && r.error.message) || "Error en la base de datos");
+      }
+    }
     const results = (data.results || []).map(r => {
       if (!r.response || !r.response.result) return [];
       const { cols, rows } = r.response.result;

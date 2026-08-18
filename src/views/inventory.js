@@ -503,20 +503,18 @@ async function saveProduct() {
 
     if (file) {
       btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Procesando foto...`;
-      const reader = new FileReader();
-      imagenUrl = await new Promise((resolve, reject) => {
-        reader.onload = async (ev) => {
-          try {
-            const res = await uploadFoto(ev.target.result, file.name, file.type);
-            resolve(res.url || res);
-          } catch (err) {
-            const fallback = await compressImage(ev.target.result, 800, 800, 0.8);
-            resolve(fallback);
-          }
-        };
-        reader.onerror = (err) => reject(err);
-        reader.readAsDataURL(file);
-      });
+      try {
+        const reader = new FileReader();
+        const base64Raw = await new Promise((resolve, reject) => {
+          reader.onload = (ev) => resolve(ev.target.result);
+          reader.onerror = () => reject(new Error("No se pudo leer el archivo de imagen"));
+          reader.readAsDataURL(file);
+        });
+        imagenUrl = await compressImage(base64Raw, 800, 800, 0.8);
+      } catch (imgErr) {
+        console.warn("Fallo al leer archivo de imagen:", imgErr);
+        if (!imagenUrl) imagenUrl = document.getElementById("inv-existing-img")?.value || "";
+      }
     }
 
     const nombreBase = document.getElementById("inv-nombre").value.trim();
@@ -563,9 +561,10 @@ async function saveProduct() {
       res = await crearProducto(datos);
     }
 
-    showToast(res.mensaje || "Guardado correctamente", res.success ? "success" : "error");
-    if (res.success) {
-      // If this was opened from POS as a Reventa, add product to the cart
+    const isOk = res && (res.success !== false);
+    showToast(res?.mensaje || (isOk ? "Guardado correctamente" : "Error al guardar"), isOk ? "success" : "error");
+
+    if (isOk) {
       if (window.__posReventaMode && !editingId) {
         const product = {
           id: datos[0],
@@ -594,7 +593,9 @@ async function saveProduct() {
       await loadInventario();
     }
   } catch (err) {
-    showToast("Error: " + err.message, "error");
+    console.error("Error en saveProduct:", err);
+    const msg = err && err.message ? err.message : (typeof err === "string" ? err : "Ocurrió un error al guardar");
+    showToast("Error: " + msg, "error");
   } finally {
     btn.disabled = false;
     btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">save</span> Guardar`;
