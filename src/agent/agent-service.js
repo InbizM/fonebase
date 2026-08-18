@@ -270,7 +270,8 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
     }
 
     const data = await response.json();
-    let text = data.choices?.[0]?.message?.content || "";
+    const messageObj = data.choices?.[0]?.message || {};
+    let text = (messageObj.content || messageObj.reasoning || "").trim();
     console.log("[IA] ← Respuesta cruda:", text.slice(0, 500));
 
     // ── PARSEO Y REPARACIÓN ROBUSTA DE JSON EN 3 NIVELES ──

@@ -678,7 +678,8 @@ async function callGeminiDirect(base64Data, mimeType, mode = "label") {
       throw new Error("Sin respuesta del modelo Qwen 3.7 Flash");
     }
 
-    const responseContent = data.choices[0].message.content.trim();
+    const messageObj = data.choices[0].message || {};
+    const responseContent = (messageObj.content || messageObj.reasoning || "").trim();
     let jsonStr = responseContent;
 
     const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
