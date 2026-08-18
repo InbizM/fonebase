@@ -453,13 +453,21 @@ function closeModal() {
   toggleSpecsContainer();
 }
 
-function previewImg(e) {
-  const file = e.target.files[0];
+async function previewImg(e) {
+  const file = e.target.files && e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = (ev) => {
-    document.getElementById("inv-img-preview").innerHTML =
-      `<img src="${ev.target.result}" class="w-full h-full object-cover">`;
+  reader.onload = async (ev) => {
+    const rawData = ev.target.result;
+    const compressed = await compressImage(rawData, 800, 800, 0.8);
+    const previewEl = document.getElementById("inv-img-preview");
+    if (previewEl) {
+      previewEl.innerHTML = `<img src="${compressed}" class="w-full h-full object-cover">`;
+    }
+    const existingImgEl = document.getElementById("inv-existing-img");
+    if (existingImgEl) {
+      existingImgEl.value = compressed;
+    }
   };
   reader.readAsDataURL(file);
 }
@@ -470,21 +478,24 @@ async function saveProduct() {
   btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Guardando...`;
 
   try {
-    let imagenUrl = document.getElementById("inv-existing-img").value;
-    const fileInputCamera = document.getElementById("inv-img-file-camera");
-    const fileInputGallery = document.getElementById("inv-img-file-gallery");
-    const file = (fileInputCamera && fileInputCamera.files[0]) || (fileInputGallery && fileInputGallery.files[0]);
+    let imagenUrl = document.getElementById("inv-existing-img")?.value || "";
+    const fileInput = document.getElementById("inv-img-file") || document.getElementById("inv-img-file-camera") || document.getElementById("inv-img-file-gallery");
+    const file = fileInput?.files?.[0];
 
     if (file) {
-      btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Subiendo foto...`;
+      btn.innerHTML = `<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> Procesando foto...`;
       const reader = new FileReader();
       imagenUrl = await new Promise((resolve, reject) => {
         reader.onload = async (ev) => {
           try {
             const res = await uploadFoto(ev.target.result, file.name, file.type);
             resolve(res.url || res);
-          } catch (err) { reject(err); }
+          } catch (err) {
+            const fallback = await compressImage(ev.target.result, 800, 800, 0.8);
+            resolve(fallback);
+          }
         };
+        reader.onerror = (err) => reject(err);
         reader.readAsDataURL(file);
       });
     }
@@ -820,6 +831,8 @@ window.inventoryView = {
       const invFijadoEl = document.getElementById("inv-fijado");
       if (invFijadoEl) invFijadoEl.checked = p.fijado === 1 || p.fijado === true;
 
+      const fileMain = document.getElementById("inv-img-file");
+      if (fileMain) fileMain.value = "";
       const fileCam = document.getElementById("inv-img-file-camera");
       const fileGal = document.getElementById("inv-img-file-gallery");
       if (fileCam) fileCam.value = "";
@@ -868,6 +881,8 @@ window.inventoryView = {
     
     // Clear checkbox and file inputs
     document.getElementById("inv-fijado").checked = false;
+    const fileMain = document.getElementById("inv-img-file");
+    if (fileMain) fileMain.value = "";
     const fileCam = document.getElementById("inv-img-file-camera");
     const fileGal = document.getElementById("inv-img-file-gallery");
     if (fileCam) fileCam.value = "";
@@ -1136,6 +1151,7 @@ export function initInventory() {
   document.getElementById("inv-modal-backdrop")?.addEventListener("click", closeModal);
 
   // Image preview
+  document.getElementById("inv-img-file")?.addEventListener("change", previewImg);
   document.getElementById("inv-img-file-camera")?.addEventListener("change", previewImg);
   document.getElementById("inv-img-file-gallery")?.addEventListener("change", previewImg);
 
