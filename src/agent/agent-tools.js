@@ -33,9 +33,12 @@ export function matchExistingInventoryProduct(inv, item) {
     if (byId) return byId;
   }
 
-  // 2. Direct match by SKU / Reference code (e.g. "KN3", "KL7", "15C")
+  // 2. Direct match by SKU / Reference code (e.g. "KN3", "KL7", "15C", "A175F", "A17")
   if (targetSku) {
-    const bySku = inv.find(p => (p.sku || "").toLowerCase().trim() === targetSku);
+    const bySku = inv.find(p => {
+      const pSku = (p.sku || "").toLowerCase().trim();
+      return pSku && (pSku === targetSku || pSku.includes(targetSku) || targetSku.includes(pSku));
+    });
     if (bySku) return bySku;
   }
 
@@ -45,30 +48,35 @@ export function matchExistingInventoryProduct(inv, item) {
 
   // 4. Check if known reference code in item is in existing product name or SKU
   const extractRef = (str) => {
-    const match = str.match(/\b(kn\d+|kl\d+|bg\d+|a\d+e?|c\d+|\d+c|sm-[a-z\d]+|\d{4}[a-z\d]+)\b/i);
+    const match = str.match(/\b(sm-[a-z\d]+|[a-z]\d{2,4}[a-z\d]*|\d{1,2}[a-z]|kn\d+|kl\d+|bg\d+|\d{4}[a-z\d]+)\b/i);
     return match ? match[1].toLowerCase() : null;
   };
   const itemRef = targetSku || extractRef(rawName);
   if (itemRef) {
+    const baseCodeMatch = itemRef.match(/([a-z]\d{2,3})/i);
+    const baseCode = baseCodeMatch ? baseCodeMatch[1].toLowerCase() : null;
+
     const byRef = inv.find(p => {
       const pSku = (p.sku || "").toLowerCase().trim();
       const pRef = pSku || extractRef(p.nombre || "");
-      if (pRef && pRef === itemRef) return true;
       const pName = (p.nombre || "").toLowerCase();
-      return pName.includes(itemRef);
+      if (pRef && (pRef === itemRef || pRef.includes(itemRef) || itemRef.includes(pRef))) return true;
+      if (pName.includes(itemRef)) return true;
+      if (baseCode && (pSku.includes(baseCode) || pName.includes(baseCode))) return true;
+      return false;
     });
     if (byRef) return byRef;
   }
 
-  // 5. Check if names overlap substantially
-  const cleanTokens = rawName.replace(/[\(\)\/\,\.\-\_]/g, " ").split(/\s+/).filter(t => t.length >= 3 && !['tecno', 'xiaomi', 'samsung', 'celular', 'nuevo'].includes(t));
+  // 5. Check if model name tokens match (e.g. "Galaxy A17", "Spark Go 3", "Blade A35e", "Redmi 15C")
+  const cleanTokens = rawName.replace(/[\(\)\/\,\.\-\_]/g, " ").split(/\s+/).filter(t => t.length >= 2 && !['celular', 'nuevo', 'telefono', 'equipo'].includes(t));
   if (cleanTokens.length > 0) {
     const byTokens = inv.find(p => {
       const pName = (p.nombre || "").toLowerCase();
       const pBrand = (p.marca || "").toLowerCase();
-      const brandMatch = !targetBrand || pBrand.includes(targetBrand) || targetBrand.includes(pBrand);
+      const brandMatch = !targetBrand || pBrand.includes(targetBrand) || targetBrand.includes(pBrand) || pName.includes(targetBrand);
       if (!brandMatch) return false;
-      return cleanTokens.every(token => pName.includes(token));
+      return cleanTokens.some(token => token.length >= 3 && pName.includes(token));
     });
     if (byTokens) return byTokens;
   }
@@ -714,9 +722,29 @@ export async function ejecutarAccionIA(actionOrActions, base64Image = null, appe
     return originalAppend(role, text, html, ...rest);
   };
 
-  // Normalizar precios y costos si vienen definidos en el mensaje o en la acción
+  // 1. Vincular automáticamente con productos existentes en inventario para heredar costos, precios y fotos
+  const currentInv = await getInventario().catch(() => []);
   actionsList.forEach(act => {
     if (act.type === 'crear_producto' || act.type === 'crear_equipo') {
+      const existing = matchExistingInventoryProduct(currentInv, act);
+      if (existing) {
+        const existCosto = Number(existing.costo) || 0;
+        const existVenta = Number(existing.precioVenta || existing.precio_venta) || 0;
+
+        if ((!act.costo || Number(act.costo) === 0) && existCosto > 0) {
+          act.costo = existCosto;
+        }
+        if ((!act.venta || Number(act.venta) === 0) && existVenta > 0) {
+          act.venta = existVenta;
+          act.precioVenta = existVenta;
+        }
+        if (!act.id_producto) act.id_producto = existing.id;
+        if (!act.imagen && existing.imagen) act.imagen = existing.imagen;
+        if (!act.marca && existing.marca) act.marca = existing.marca;
+        if (!act.sku && existing.sku) act.sku = existing.sku;
+      }
+
+      // Normalizar precios y costos
       const c = Number(act.costo) || 0;
       const v = Number(act.venta || act.precioVenta || act.precio) || 0;
 
@@ -726,7 +754,6 @@ export async function ejecutarAccionIA(actionOrActions, base64Image = null, appe
         act.precioVenta = act.venta;
         act.precioRevendedor = Math.ceil(Math.max(c * 1.05, c + 20000) / 1000) * 1000;
       } else if (v > 0 && c === 0) {
-        // Si el usuario envió un precio en el texto (ej: "precio de 330000"), ese es el costo de compra:
         act.costo = v;
         act.venta = Math.ceil((v * 1.20) / 1000) * 1000;
         act.precioVenta = act.venta;

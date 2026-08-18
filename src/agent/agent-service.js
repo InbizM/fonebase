@@ -25,7 +25,7 @@ export async function enviarComandoVozIA(instruccion, base64Image = null, histor
 
   // Resumen legible del inventario para el prompt
   const inventarioResumen = inventario.map(p =>
-    `• ${p.nombre} (${p.marca || ""}): stock=${p.stock_actual ?? p.stockActual ?? "?"}, precio=$${p.precio_venta ?? p.precioVenta ?? "?"}, costo=$${p.costo ?? "?"}`
+    `• ID: ${p.id} | ${p.nombre} | Marca: ${p.marca || "Universal"} | Ref/SKU: ${p.sku || "N/A"} | Costo: $${p.costo || 0} | Venta: $${p.precio_venta ?? p.precioVenta ?? 0} | Stock: ${p.stock_actual ?? p.stockActual ?? 0}`
   ).join("\n") || "Sin datos de inventario";
 
   const equiposResumen = equipos.map(e =>
@@ -80,7 +80,7 @@ ${clientesResumen}
 ${tareasResumen}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 INSTRUCCIONES DE RECONOCIMIENTO:
+🎯 INSTRUCCIONES DE RECONOCIMIENTO Y ASOCIACIÓN:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 IMEI: Siempre 15 dígitos numéricos. IMEI1 = principal, IMEI2 = secundario.
 No confundir con S/N (contiene letras) ni FCC ID.
@@ -92,20 +92,25 @@ MEMORIA: Formato "128+4GB" o "4GB RAM / 128GB ROM":
 COLOR: Identifica colores en español e inglés en etiquetas.
 
 REFERENCIAS TÉCNICAS Y NOMBRES DE CELULARES:
-- En cajas y etiquetas de celulares, identifica SIEMPRE el **Nombre Comercial** y el **Código de Modelo / Referencia** (ej: "KN3" es "Tecno Spark Go 3 (KN3)", "KL7" es "Tecno Spark 30 Pro (KL7)", "A35e" es "ZTE Blade A35e", etc.).
-- Incluye SIEMPRE el código de referencia en el campo "sku" (ej: "sku": "KN3", "sku": "KL7").
-- Nombra el producto/equipo incluyendo su referencia técnica entre paréntesis (ej: "nombre": "Tecno Spark Go 3 (KN3)"). Esto asegura que el inventario no cree modelos duplicados y asocie correctamente las fotos.
+- En cajas y etiquetas de celulares, identifica SIEMPRE el **Nombre Comercial** y el **Código de Modelo / Referencia** (ej: "KN3" es "Tecno Spark Go 3 (KN3)", "KL7" es "Tecno Spark 30 Pro (KL7)", "A35e" es "ZTE Blade A35e", "A175F" o "A17" es "Samsung Galaxy A17", "A075M" o "A07" es "Samsung Galaxy A07", etc.).
+- Incluye SIEMPRE el código de referencia en el campo "sku" (ej: "sku": "KN3", "sku": "A175F").
+- Nombra el producto/equipo incluyendo su referencia técnica entre paréntesis (ej: "nombre": "Samsung Galaxy A17 (A175F)").
+
+VINCULACIÓN OBLIGATORIA CON PRECIOS DE INVENTARIO EXISTENTE:
+- Cuando el usuario solicite registrar equipos, celulares o IMEIs (por foto o texto), revisa SIEMPRE si el producto o modelo ya existe en la lista de "📦 INVENTARIO ACTUAL".
+- SI EL PRODUCTO YA EXISTE EN EL INVENTARIO:
+  * HEREDA AUTOMÁTICAMENTE el "costo" y el "precio_venta" registrados en el inventario.
+  * ASIGNA "id_producto" con el ID del producto (ej: "PROD-...").
+  * NUNCA asignes "costo": 0 ni "venta": 0 cuando el producto ya existe en inventario con precios definidos.
+  * En "response", confirma con claridad que los equipos fueron asociados al producto del inventario con sus precios ya establecidos.
+- SI EL PRODUCTO ES NUEVO (NO está en el inventario):
+  * Si el usuario indicó un precio en su mensaje, tómalo como el costo de compra y calcula venta (+20%).
+  * Si no indicó ningún precio y el producto no existe en inventario, deja costo: 0 para que el asistente solicite el costo de compra.
 
 REGISTRO POR IMAGEN Y DATOS FALTANTES:
 - Si hay IMEI visible en imagen → acción "crear_equipo"
 - Si hay modelo/specs pero sin IMEI → acción "crear_producto"
-- PRECIOS Y COSTOS EN EL MENSAJE: Si el usuario escribe en su mensaje un valor o precio (ej: "precio de 330000", "a 330000", "costaron 330000", "330mil cada uno", "precio 330000"):
-  * ESE VALOR ES EL COSTO DE COMPRA DEL EQUIPO/PRODUCTO: Asigna "costo": 330000 en CADA una de las acciones.
-  * Calcula automáticamente el precio de venta sugerido con el +20% (ej: "venta": 396000, "precioVenta": 396000) y precio revendedor (ej: "precioRevendedor": 350000).
-  * NUNCA dejes "costo": 0 ni digas "costo pendiente de completar" cuando el usuario ya te indicó el precio en su mensaje.
-  * En el campo "response", confirma con alegría que registraste los equipos con costo $330.000 y venta $396.000.
-- Si NO se indica ningún costo ni precio en el mensaje ni en la foto, deja costo: 0 y venta: 0 para que el sistema interactivo solicite el costo.
-- MÚLTIPLES PRODUCTOS EN IMÁGENES: Si detectas varios productos en las imágenes (o varias imágenes de diferentes celulares/productos), DEBES retornar en el JSON el campo "actions": [ { ...acción 1... }, { ...acción 2... }, ... ] con una acción para CADA producto. Cada acción debe incluir su campo "imagen_index" (0 para la 1ra foto, 1 para la 2da, 2 para la 3ra, etc.), nombre exacto con referencia, marca, sku, ram, memoria, color e IMEI si está visible. Si conoces el costo (por el mensaje), asígnalo a todos.
+- MÚLTIPLES PRODUCTOS EN IMÁGENES: Si detectas varios productos en las imágenes (o varias imágenes de diferentes celulares/productos), DEBES retornar en el JSON el campo "actions": [ { ...acción 1... }, { ...acción 2... }, ... ] con una acción para CADA producto. Cada acción debe incluir su campo "imagen_index" (0 para la 1ra foto, 1 para la 2da, 2 para la 3ra, etc.), nombre exacto con referencia, marca, sku, ram, memoria, color e IMEI si está visible. Si conoces el costo (por el inventario o mensaje), asígnalo a todos.
 - CAMPO imagen_index: Cuando el usuario envía varias imágenes, DEBES incluir en cada acción el campo "imagen_index" con el número (0-based) de la imagen que corresponde al producto que estás registrando. Ejemplo: si el producto está en la 2ª imagen enviada, usa "imagen_index": 1. Esto permite al sistema guardar la foto correcta para cada producto.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
