@@ -180,8 +180,20 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
   let userContent = instruccion || "¿Cuál es el estado del negocio hoy?";
   if (base64Image) {
     const imagesArray = Array.isArray(base64Image) ? base64Image : [base64Image];
+    // Si el usuario envía imágenes con un texto corto o ambiguo, añadir contexto de que debe leer IMEIs/modelos
+    const instruccionLower = (instruccion || "").toLowerCase();
+    const isVagueWithImages = !instruccion || instruccion.trim().length < 80 && (
+      instruccionLower.includes("agrega") || instruccionLower.includes("registra") ||
+      instruccionLower.includes("añade") || instruccionLower.includes("imei") ||
+      instruccionLower.includes("esto") || instruccionLower.includes("estos") ||
+      instruccionLower.includes("equipo") || instruccionLower.includes("celular") ||
+      instruccionLower.includes("foto") || instruccionLower.includes("etiqueta")
+    );
+    const instruccionFinal = isVagueWithImages
+      ? `${instruccion || ""}. Analiza las imágenes adjuntas: lee todos los IMEIs visibles (15 dígitos), identifica el modelo, marca, RAM, memoria y color de cada equipo. Usa la acción crear_equipo para cada uno. Si el modelo ya existe en el inventario, usa su ID, costo y precio. Si no hay precio en el mensaje ni en el inventario, deja costo: 0 para que el asistente solicite el costo.`
+      : instruccion || "Analiza esta imagen y registra lo que encuentres.";
     userContent = [
-      { type: "text", text: instruccion || "Analiza esta imagen y registra lo que encuentres." }
+      { type: "text", text: instruccionFinal }
     ];
     imagesArray.forEach(img => {
       if (img) {
@@ -212,85 +224,68 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
     });
   }
 
-  const candidateModels = [
-    "qwen/qwen3.7-flash",
-    "google/gemini-2.0-flash-001",
-    "google/gemini-2.5-flash",
-    "meta-llama/llama-3.2-11b-vision-instruct",
-    "openai/gpt-4o-mini"
-  ];
+  try {
+    const keyPreview = openRouterApiKey ? openRouterApiKey.slice(0, 12) + "..." : "(vacía)";
+    console.log(`[IA] → OpenRouter | Modelo: qwen/qwen3.7-flash | Key: ${keyPreview}`);
+    console.log(`[IA] → Instrucción: "${instruccion?.slice(0, 100)}"`);
 
-  let lastError = null;
+    const response = await fetch(openRouterUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${openRouterApiKey}`,
+        "HTTP-Referer": "https://inbizm.github.io/fonebase/",
+        "X-Title": "FoneBase IA"
+      },
+      body: JSON.stringify({
+        model: "qwen/qwen3.7-flash",
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...historyMessages,
+          { role: "user", content: userContent }
+        ],
+        temperature: 0.3,
+        max_tokens: 4000
+      })
+    });
 
-  for (const model of candidateModels) {
-    try {
-      const keyPreview = openRouterApiKey ? openRouterApiKey.slice(0, 12) + "..." : "(vacía)";
-      console.log(`[IA] → OpenRouter | Intentando Modelo: ${model} | Key: ${keyPreview}`);
-      console.log(`[IA] → Instrucción: "${instruccion?.slice(0, 100)}"`);
-
-      const response = await fetch(openRouterUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openRouterApiKey}`,
-          "HTTP-Referer": "https://inbizm.github.io/fonebase/",
-          "X-Title": "FoneBase IA"
-        },
-        body: JSON.stringify({
-          model: model,
-          messages: [
-            { role: "system", content: systemPrompt },
-            ...historyMessages,
-            { role: "user", content: userContent }
-          ],
-          temperature: 0.3,
-          max_tokens: 4000
-        })
-      });
-
-      if (!response.ok) {
-        let errorBody = "";
-        try { errorBody = await response.text(); } catch (_) {}
-        console.warn(`[IA] Modelo ${model} retornó HTTP ${response.status}: ${errorBody.slice(0, 200)}. Probando siguiente modelo...`);
-        lastError = new Error(`Error (${response.status}) en ${model}: ${errorBody.slice(0, 200)}`);
-        
-        // Si el proveedor tiene Rate Limit (429) o error de servidor (5xx), saltar al siguiente modelo de respaldo
-        if (response.status === 429 || response.status >= 500) {
-          continue;
-        }
-        throw lastError;
-      }
-
-      const data = await response.json();
-      let text = data.choices?.[0]?.message?.content || "";
-      console.log(`[IA] ← Respuesta exitosa de [${model}]:`, text.slice(0, 500));
-
-      // ── PARSEO Y REPARACIÓN ROBUSTA DE JSON EN 3 NIVELES ──
-      const parsedResult = cleanAndParseAgentJSON(text);
-      if (parsedResult) {
-        return parsedResult;
-      }
-
-      // Si la respuesta es texto plano conversacional normal sin formato JSON
-      if (text && text.trim().length > 0 && !text.trim().startsWith("{")) {
-        return {
-          response: text,
-          action: null
-        };
-      }
-
-      // Si no parseó, probar el siguiente modelo
-      lastError = new Error(`El modelo ${model} no devolvió un formato estructurado válido`);
-    } catch (modelErr) {
-      console.warn(`[IA] Falló intento con ${model}:`, modelErr.message);
-      lastError = modelErr;
+    if (!response.ok) {
+      let errorBody = "";
+      try { errorBody = await response.text(); } catch (_) {}
+      console.error(`[IA] Error HTTP ${response.status}:`, errorBody);
+      throw new Error(`Error del servidor IA (${response.status}): ${errorBody.slice(0, 200)}`);
     }
-  }
 
-  return {
-    response: `⚠️ No pude procesar tu solicitud después de intentar con los servidores de respaldo. Error: ${lastError?.message || "Servicio temporalmente no disponible. Por favor reintenta en un momento."}`,
-    action: null
-  };
+    const data = await response.json();
+    let text = data.choices?.[0]?.message?.content || "";
+    console.log("[IA] ← Respuesta cruda:", text.slice(0, 500));
+
+    // ── PARSEO Y REPARACIÓN ROBUSTA DE JSON EN 3 NIVELES ──
+    const parsedResult = cleanAndParseAgentJSON(text);
+    if (parsedResult) {
+      return parsedResult;
+    }
+
+    // Si la respuesta es texto plano conversacional normal sin formato JSON
+    if (text && text.trim().length > 0 && !text.trim().startsWith("{")) {
+      return {
+        response: text,
+        action: null
+      };
+    }
+
+    // Fallback de error
+    return {
+      response: "⚠️ No se pudo procesar tu instrucción. Asegúrate de indicar la acción de forma clara (ej: 'crea una tarea para...', 'registra un egreso de...', 'agrega estos productos') y que los datos sean correctos.",
+      action: null
+    };
+  } catch (e) {
+    console.error("[IA] Error al procesar:", e);
+    return {
+      response: `⚠️ No pude procesar tu solicitud. Error: ${e.message}`,
+      action: null
+    };
+  }
 }
 
 function extractEquiposFromTextFallback(text) {
