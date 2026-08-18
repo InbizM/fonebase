@@ -1223,21 +1223,27 @@
               <div class="px-5 pt-5 pb-4">
                 <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Foto del producto</p>
                 <div class="flex gap-3 items-center">
-                  <div id="inv-img-preview"
-                    class="w-[72px] h-[72px] rounded-2xl bg-slate-50 border-2 border-dashed border-slate-200
-                           flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
-                    onclick="document.getElementById('inv-img-file').click()">
+                  <label for="inv-img-file" id="inv-img-preview"
+                    class="w-[76px] h-[76px] rounded-2xl bg-surface-container border-2 border-dashed border-surface-variant
+                           flex items-center justify-center overflow-hidden flex-shrink-0 cursor-pointer active:scale-95 transition-transform hover:border-primary">
                     <span class="material-symbols-outlined text-2xl text-slate-300">add_photo_alternate</span>
-                  </div>
-                  <div class="flex-1">
-                    <input id="inv-img-file" type="file" accept="image/*" class="hidden" />
-                    <button type="button" onclick="document.getElementById('inv-img-file').click()"
-                      class="flex items-center gap-2 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl
-                             text-sm font-semibold text-slate-600 hover:bg-slate-100 transition-colors w-full justify-center active:scale-[0.98]">
-                      <span class="material-symbols-outlined text-[18px] text-primary">camera_alt</span>
-                      Tomar foto o elegir archivo
-                    </button>
-                    <p class="text-[10px] text-slate-400 mt-1.5 text-center">Se sube automáticamente a Google Drive</p>
+                  </label>
+                  <div class="flex-1 relative flex flex-col gap-1.5">
+                    <div class="relative overflow-hidden rounded-2xl">
+                      <input id="inv-img-file" type="file" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20" />
+                      <label for="inv-img-file"
+                        class="flex items-center gap-2 px-4 py-3 bg-surface-container border border-surface-variant rounded-2xl
+                               text-sm font-semibold text-on-surface hover:bg-surface-variant transition-colors w-full justify-center active:scale-[0.98] cursor-pointer">
+                        <span class="material-symbols-outlined text-[18px] text-primary">camera_alt</span>
+                        Tomar foto o elegir archivo
+                      </label>
+                    </div>
+                    <div class="flex items-center justify-between px-1">
+                      <p class="text-[10px] text-slate-400">Cámara o Galería</p>
+                      <button type="button" id="inv-remove-img-btn" class="text-[10px] text-error font-bold hover:underline hidden" onclick="window.inventoryRemovePhoto && window.inventoryRemovePhoto()">
+                        Quitar foto
+                      </button>
+                    </div>
                   </div>
                 </div>
                 <input id="inv-existing-img" type="hidden" value="" />

@@ -447,11 +447,28 @@ function closeModal() {
     document.getElementById("inv-ai-ad").value = "";
   }
   
+  const removeBtn = document.getElementById("inv-remove-img-btn");
+  if (removeBtn) removeBtn.classList.add("hidden");
+  
   _selectedScanImages = [];
   renderScanThumbnails();
   
   toggleSpecsContainer();
 }
+
+window.inventoryRemovePhoto = () => {
+  const existingImgEl = document.getElementById("inv-existing-img");
+  if (existingImgEl) existingImgEl.value = "";
+  const fileMain = document.getElementById("inv-img-file");
+  if (fileMain) fileMain.value = "";
+  const previewEl = document.getElementById("inv-img-preview");
+  if (previewEl) {
+    previewEl.innerHTML = `<span class="material-symbols-outlined text-3xl text-on-surface-variant/40">add_photo_alternate</span>`;
+  }
+  const removeBtn = document.getElementById("inv-remove-img-btn");
+  if (removeBtn) removeBtn.classList.add("hidden");
+  showToast("Foto removida. Presiona Guardar para aplicar el cambio.", "info");
+};
 
 async function previewImg(e) {
   const file = e.target.files && e.target.files[0];
@@ -468,6 +485,8 @@ async function previewImg(e) {
     if (existingImgEl) {
       existingImgEl.value = compressed;
     }
+    const removeBtn = document.getElementById("inv-remove-img-btn");
+    if (removeBtn) removeBtn.classList.remove("hidden");
   };
   reader.readAsDataURL(file);
 }
@@ -820,11 +839,14 @@ window.inventoryView = {
       if (invExistingImgEl) invExistingImgEl.value = p.imagen || "";
 
       const invImgPreviewEl = document.getElementById("inv-img-preview");
+      const removeBtn = document.getElementById("inv-remove-img-btn");
       if (invImgPreviewEl) {
         if (p.imagen) {
           invImgPreviewEl.innerHTML = `<img src="${p.imagen}" class="w-full h-full object-cover">`;
+          if (removeBtn) removeBtn.classList.remove("hidden");
         } else {
           invImgPreviewEl.innerHTML = `<span class="material-symbols-outlined text-3xl text-on-surface-variant/40">add_photo_alternate</span>`;
+          if (removeBtn) removeBtn.classList.add("hidden");
         }
       }
 
@@ -870,6 +892,9 @@ window.inventoryView = {
     document.getElementById("inv-existing-img").value = "";
     document.getElementById("inv-img-preview").innerHTML =
       `<span class="material-symbols-outlined text-3xl text-on-surface-variant/40">add_photo_alternate</span>`;
+    
+    const removeBtn = document.getElementById("inv-remove-img-btn");
+    if (removeBtn) removeBtn.classList.add("hidden");
     
     if (defaultCategory) {
       document.getElementById("inv-categoria").value = defaultCategory;
