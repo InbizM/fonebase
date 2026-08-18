@@ -180,18 +180,31 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
   let userContent = instruccion || "¿Cuál es el estado del negocio hoy?";
   if (base64Image) {
     const imagesArray = Array.isArray(base64Image) ? base64Image : [base64Image];
-    // Si el usuario envía imágenes con un texto corto o ambiguo, añadir contexto de que debe leer IMEIs/modelos
     const instruccionLower = (instruccion || "").toLowerCase();
-    const isVagueWithImages = !instruccion || instruccion.trim().length < 80 && (
-      instruccionLower.includes("agrega") || instruccionLower.includes("registra") ||
-      instruccionLower.includes("añade") || instruccionLower.includes("imei") ||
-      instruccionLower.includes("esto") || instruccionLower.includes("estos") ||
-      instruccionLower.includes("equipo") || instruccionLower.includes("celular") ||
-      instruccionLower.includes("foto") || instruccionLower.includes("etiqueta")
-    );
-    const instruccionFinal = isVagueWithImages
-      ? `${instruccion || ""}. Analiza las imágenes adjuntas: lee todos los IMEIs visibles (15 dígitos), identifica el modelo, marca, RAM, memoria y color de cada equipo. Usa la acción crear_equipo para cada uno. Si el modelo ya existe en el inventario, usa su ID, costo y precio. Si no hay precio en el mensaje ni en el inventario, deja costo: 0 para que el asistente solicite el costo.`
+    const msgLen = (instruccion || "").trim().length;
+
+    // REGLA: Si hay imágenes y el texto es corto O menciona imei/agrega/registra/equipo → modo registro IMEI
+    const isImeiIntent = (
+      msgLen < 120 &&
+      (
+        instruccionLower.includes("imei") ||
+        instruccionLower.includes("agrega") ||
+        instruccionLower.includes("registra") ||
+        instruccionLower.includes("añade") ||
+        instruccionLower.includes("estos") ||
+        instruccionLower.includes("esto") ||
+        instruccionLower.includes("equipo") ||
+        instruccionLower.includes("celular") ||
+        instruccionLower.includes("etiqueta") ||
+        instruccionLower.includes("los") ||
+        instruccionLower.includes("foto")
+      )
+    ) || msgLen < 30; // Cualquier mensaje muy corto con imágenes → IMEI intent
+
+    const instruccionFinal = isImeiIntent
+      ? `${instruccion || ""}. INSTRUCCIÓN PRINCIPAL: Analiza TODAS las imágenes adjuntas. En cada imagen busca y lee los códigos IMEI (números de 15 dígitos). Para cada equipo detectado, genera una acción crear_equipo con: imei1 (IMEI principal), nombre del modelo (ej: Samsung Galaxy A17), marca, ram, memoria, color. Si el modelo ya existe en el inventario con su ID y precio, usa esos datos. Si no hay precio, deja costo: 0.`
       : instruccion || "Analiza esta imagen y registra lo que encuentres.";
+
     userContent = [
       { type: "text", text: instruccionFinal }
     ];
@@ -226,7 +239,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 
   try {
     const keyPreview = openRouterApiKey ? openRouterApiKey.slice(0, 12) + "..." : "(vacía)";
-    console.log(`[IA] → OpenRouter | Modelo: qwen/qwen3.7-flash | Key: ${keyPreview}`);
+    console.log(`[IA] → OpenRouter | Modelo: google/gemini-2.5-flash | Key: ${keyPreview}`);
     console.log(`[IA] → Instrucción: "${instruccion?.slice(0, 100)}"`);
 
     const response = await fetch(openRouterUrl, {
@@ -238,13 +251,13 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
         "X-Title": "FoneBase IA"
       },
       body: JSON.stringify({
-        model: "qwen/qwen3.7-flash",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           ...historyMessages,
           { role: "user", content: userContent }
         ],
-        temperature: 0.3,
+        temperature: 0.2,
         max_tokens: 4000
       })
     });
@@ -268,6 +281,13 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 
     // Si la respuesta es texto plano conversacional normal sin formato JSON
     if (text && text.trim().length > 0 && !text.trim().startsWith("{")) {
+      // Si el usuario envió imágenes con intent de IMEI y el modelo no devolvió JSON, devolver fallback útil
+      if (base64Image && instruccionFinal && instruccionFinal.includes("IMEI")) {
+        return {
+          response: "📷 Vi las imágenes pero el modelo no pudo extraer los IMEIs automáticamente.\n\nPor favor escribe los IMEIs manualmente, por ejemplo:\n**\"registra IMEI 356482402015899, Samsung Galaxy A17, 4GB RAM, 64GB, Negro\"**",
+          action: null
+        };
+      }
       return {
         response: text,
         action: null
@@ -276,7 +296,9 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 
     // Fallback de error
     return {
-      response: "⚠️ No se pudo procesar tu instrucción. Asegúrate de indicar la acción de forma clara (ej: 'crea una tarea para...', 'registra un egreso de...', 'agrega estos productos') y que los datos sean correctos.",
+      response: base64Image
+        ? "📷 Vi tus imágenes pero no pude leer los IMEIs automáticamente. Escribe los datos del equipo o el IMEI directamente en el chat."
+        : "⚠️ No se pudo procesar tu instrucción. Asegúrate de indicar la acción de forma clara (ej: 'registra un egreso de...', 'agrega estos equipos con IMEI').",
       action: null
     };
   } catch (e) {
