@@ -656,7 +656,7 @@ async function callGeminiDirect(base64Data, mimeType, mode = "label") {
         "X-Title": "FoneBase Inventory AI"
       },
       body: JSON.stringify({
-        model: "qwen/qwen3.7-flash",
+        model: "google/gemini-2.5-flash-lite",
         messages: [
           {
             role: "user",
@@ -675,7 +675,7 @@ async function callGeminiDirect(base64Data, mimeType, mode = "label") {
 
     const data = await response.json();
     if (!data.choices || data.choices.length === 0) {
-      throw new Error("Sin respuesta del modelo Qwen 3.7 Flash");
+      throw new Error("Sin respuesta del modelo Gemini 2.5 Flash Lite");
     }
 
     const messageObj = data.choices[0].message || {};
@@ -694,12 +694,12 @@ async function callGeminiDirect(base64Data, mimeType, mode = "label") {
     }
 
     const parsed = JSON.parse(jsonStr);
-    console.log("[Qwen 3.7 Flash] Éxito al analizar producto:", parsed);
-    return { success: true, data: parsed, model: "qwen/qwen3.7-flash" };
+    console.log("[Gemini 2.5 Flash Lite] Éxito al analizar producto:", parsed);
+    return { success: true, data: parsed, model: "google/gemini-2.5-flash-lite" };
 
   } catch (e) {
-    console.error("[Qwen 3.7 Flash] Excepción al analizar imagen:", e);
-    return { success: false, mensaje: `Error de análisis con Qwen 3.7 Flash: ${e.message}` };
+    console.error("[Gemini 2.5 Flash Lite] Excepción al analizar imagen:", e);
+    return { success: false, mensaje: `Error de análisis con Gemini 2.5 Flash Lite: ${e.message}` };
   }
 }
 
