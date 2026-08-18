@@ -177,7 +177,8 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
 - Si no entiendes la petición, responde: {"response":"No entendí tu instrucción. Puedo registrar equipos, productos, clientes, gastos, servicios técnicos, tareas, metas, créditos, reventas y préstamos a empleados. ¿Qué necesitas?","action":null}
 `;
 
-  let userContent = instruccion || "¿Cuál es el estado del negocio hoy?";
+  let instruccionFinal = instruccion || "¿Cuál es el estado del negocio hoy?";
+  let userContent = instruccionFinal;
   if (base64Image) {
     const imagesArray = Array.isArray(base64Image) ? base64Image : [base64Image];
     const instruccionLower = (instruccion || "").toLowerCase();
@@ -201,7 +202,7 @@ Ejemplo: {"response":"Hoy llevas $320.000 en ventas, $45.000 en egresos, dejando
       )
     ) || msgLen < 30; // Cualquier mensaje muy corto con imágenes → IMEI intent
 
-    const instruccionFinal = isImeiIntent
+    instruccionFinal = isImeiIntent
       ? `${instruccion || ""}. INSTRUCCIÓN PRINCIPAL: Analiza TODAS las imágenes adjuntas. En cada imagen busca y lee los códigos IMEI (números de 15 dígitos). Para cada equipo detectado, genera una acción crear_equipo con: imei1 (IMEI principal), nombre del modelo (ej: Samsung Galaxy A17), marca, ram, memoria, color. Si el modelo ya existe en el inventario con su ID y precio, usa esos datos. Si no hay precio, deja costo: 0.`
       : instruccion || "Analiza esta imagen y registra lo que encuentres.";
 
