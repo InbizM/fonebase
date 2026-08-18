@@ -1,0 +1,31 @@
+{
+  "name": "FoneBase - Sistema de Gestión",
+  "short_name": "FoneBase",
+  "description": "Sistema de Gestión Empresarial",
+  "start_url": "/adminpro/",
+  "scope": "/adminpro/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#dc2626",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/adminpro/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/adminpro/icon-512.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/adminpro/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
